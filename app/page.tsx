@@ -1,9 +1,15 @@
 import Image from "next/image";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { getJokes } from "@/lib/jokes";
+import { getViewer, hasCompleteName } from "@/lib/auth/profile";
+import { logout } from "@/app/auth/actions";
 
 export default async function Home() {
   await connection();
+  const viewer = await getViewer();
+  if (viewer && !hasCompleteName(viewer.profile)) redirect("/profile/complete");
   const { data: jokes, error } = await getJokes();
 
   if (error) {
@@ -13,9 +19,14 @@ export default async function Home() {
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-12">
       <header className="border-b border-current/15 pb-8">
+        <div className="flex items-start justify-between gap-4">
         <p className="text-sm font-semibold uppercase tracking-widest opacity-60">
           The Humor Project
         </p>
+        <nav aria-label="Account" className="flex flex-wrap items-center justify-end gap-3 text-sm">
+          {viewer ? <><span>Hi, {viewer.profile?.first_name}</span><form action={logout}><button className="rounded-full border border-current/25 px-4 py-2 hover:bg-foreground/5">Log out</button></form></> : <Link href="/login" className="rounded-full bg-foreground px-5 py-2 font-semibold text-background hover:opacity-85">Log in</Link>}
+        </nav>
+        </div>
         <h1 className="mt-3 text-4xl font-bold tracking-tight">Jokes</h1>
         <p className="mt-3 text-lg opacity-70">A photo, a question, a little laugh.</p>
         {!error && (
