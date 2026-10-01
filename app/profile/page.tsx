@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/auth/profile";
 import { profilePhotoUrl } from "@/lib/profile-photo";
@@ -11,8 +10,7 @@ export default async function ProfilePage() {
   const photoUrl = await profilePhotoUrl(viewer.profile?.avatar_path ?? null);
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-12">
-      <nav aria-label="Account" className="flex items-center justify-between gap-4 text-sm">
-        <Link href="/" className="opacity-70 hover:underline">← Back to jokes</Link>
+      <nav aria-label="Account" className="flex items-center justify-end gap-4 text-sm">
         <form action={logout}><button className="rounded-full border border-current/25 px-4 py-2 hover:bg-foreground/5">Log out</button></form>
       </nav>
       <section className="mt-8 rounded-2xl border border-current/15 p-6 sm:p-8">
