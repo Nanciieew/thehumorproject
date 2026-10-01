@@ -55,7 +55,9 @@ interactive consent screen still needs a real browser sign-in.
 
 ## Editing profiles and uploading photos
 
-Signed-in users can open Profile from the homepage to edit both names and
+The Home/Profile sidebar is rendered only after the server verifies a signed-in
+user. Guests see the public jokes page and Log in button, without a sidebar.
+Signed-in users can open Profile from the sidebar to edit both names and
 upload a JPG, PNG, or WebP photo (up to 2 MB and 24 megapixels). The server
 validates and decodes the image with Sharp, strips metadata, and crops it to a
 512×512 WebP. The private `profile-photos` Supabase Storage bucket contains the

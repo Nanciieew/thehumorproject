@@ -38,11 +38,14 @@ async function assertRedirect(response, path) {
 }
 let response = await fetch(base, { redirect: "manual" });
 assert.equal(response.status, 200);
-assert.match(await response.text(), /Log in/);
+const anonymousHome = await response.text();
+assert.match(anonymousHome, /Log in/);
+assert.doesNotMatch(anonymousHome, /aria-label="Main navigation"/);
 await assertRedirect(await fetch(base + "/profile/complete", { redirect: "manual" }), "/login");
 await assertRedirect(await fetch(base + "/profile", { redirect: "manual" }), "/login");
 await assertRedirect(await fetch(base + "/auth/callback?error=access_denied", { redirect: "manual" }), "/login?error=oauth");
 const loginHtml = await (await fetch(base + "/login")).text();
+assert.doesNotMatch(loginHtml, /aria-label="Main navigation"/);
 response = await fetch(base + "/login", {
   method: "POST", headers: { origin: base }, body: formData(loginHtml, "Continue with Google"), redirect: "manual",
 });
@@ -76,6 +79,7 @@ try {
   assert.ifError(signed.error);
   await assertRedirect(await fetch(base, { headers: { cookie: cookie() }, redirect: "manual" }), "/profile/complete");
   let html = await (await fetch(base + "/profile/complete", { headers: { cookie: cookie() } })).text();
+  assert.match(html, /aria-label="Main navigation"/);
   assert.match(html, /name="first_name"/);
   assert.match(html, /name="last_name"/);
   let form = formData(html, "first_name");
@@ -167,6 +171,7 @@ try {
   assert.ifError(signedPhoto.error);
   assert.equal((await fetch(signedPhoto.data.signedUrl)).status, 200);
   const savedPage = await (await fetch(base + "/profile", { headers: { cookie: cookie() } })).text();
+  assert.match(savedPage, /aria-label="Main navigation"/);
   assert.match(savedPage, /Your profile photo/);
   assert.ok(savedPage.includes("/storage/v1/object/sign/profile-photos/"));
   console.log("PASS: names updated; image saved in private Storage; only its path stored in profiles; signed photo renders.");
@@ -194,6 +199,8 @@ try {
   });
   assert.equal(response.status, 303);
   assert.ok(response.headers.getSetCookie().some((c) => c.includes("Max-Age=0")));
+  const loggedOutHome = await (await fetch(base)).text();
+  assert.doesNotMatch(loggedOutHome, /aria-label="Main navigation"/);
   console.log("PASS: completed users return home; logout clears cookies.");
 } finally {
   if (id) {
