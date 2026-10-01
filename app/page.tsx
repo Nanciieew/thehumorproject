@@ -24,7 +24,7 @@ export default async function Home() {
           The Humor Project
         </p>
         <nav aria-label="Account" className="flex flex-wrap items-center justify-end gap-3 text-sm">
-          {viewer ? <><span>Hi, {viewer.profile?.first_name}</span><form action={logout}><button className="rounded-full border border-current/25 px-4 py-2 hover:bg-foreground/5">Log out</button></form></> : <Link href="/login" className="rounded-full bg-foreground px-5 py-2 font-semibold text-background hover:opacity-85">Log in</Link>}
+          {viewer ? <><span>Hi, {viewer.profile?.first_name}</span><Link href="/profile" className="rounded-full border border-current/25 px-4 py-2 hover:bg-foreground/5">Profile</Link><form action={logout}><button className="rounded-full border border-current/25 px-4 py-2 hover:bg-foreground/5">Log out</button></form></> : <Link href="/login" className="rounded-full bg-foreground px-5 py-2 font-semibold text-background hover:opacity-85">Log in</Link>}
         </nav>
         </div>
         <h1 className="mt-3 text-4xl font-bold tracking-tight">Jokes</h1>

@@ -48,8 +48,26 @@ supports older accounts without a profile. No password is stored in profiles.
 To run the authentication integration checks, start the app on port 3000, then
 run `node --env-file=.env.local scripts/test-auth.mjs`. This uses the configured
 Supabase project, creates one temporary test user, and deletes it and its profile
-afterward. It checks the Google authorization redirect, but completing Google's
+and uploaded test images afterward. It checks profile edits, image validation,
+private Storage access, replacement cleanup, and the Google authorization
+redirect, but completing Google's
 interactive consent screen still needs a real browser sign-in.
+
+## Editing profiles and uploading photos
+
+Signed-in users can open Profile from the homepage to edit both names and
+upload a JPG, PNG, or WebP photo (up to 2 MB and 24 megapixels). The server
+validates and decodes the image with Sharp, strips metadata, and crops it to a
+512×512 WebP. The private `profile-photos` Supabase Storage bucket contains the
+image bytes. `profiles.avatar_path` contains only the user's object path;
+the existing `avatar_url` column is retained for Google metadata.
+
+Run `supabase/migrations/20261001000000_add_profile_photos.sql` for new database
+setups. Photo access uses temporary signed URLs; no public Storage policies are
+needed. Every update verifies the signed-in user and uses that ID, never an ID
+from the form. A successfully replaced photo is removed from Storage; if the
+profile save fails, the new upload is removed instead. The app allows a 3 MB
+Server Action body to accommodate the 2 MB photo and multipart form overhead.
 
 First, run the development server:
 
