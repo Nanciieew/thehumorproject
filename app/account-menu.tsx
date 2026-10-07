@@ -21,15 +21,22 @@ export function AccountMenu({ signedIn, name, initials, photoUrl }: { signedIn: 
     document.addEventListener("keydown", escape);
     return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
   }, []);
-  return <nav aria-label="Account" className="flex justify-end px-6 pt-6 sm:px-10">
+  return <nav aria-label="Account" className={signedIn ? "fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-3 z-40" : "flex justify-end px-6 pt-6 sm:px-10"}>
     {signedIn ? <details ref={menu} className="relative z-20">
-      <summary aria-label="Open account options" className="flex h-14 w-14 cursor-pointer list-none items-center justify-center overflow-hidden rounded-full border-[3px] border-white bg-foreground/10 shadow-md outline-offset-4 [&::-webkit-details-marker]:hidden">
-        {photoUrl ? <Image src={photoUrl} alt="Your profile photo" width={56} height={56} unoptimized className="h-full w-full object-cover" /> : <span className="font-semibold">{initials || ":)"}</span>}
+      <summary aria-label="Open account options" title={name || "Your account"} className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-xl bg-background shadow-sm outline-offset-4 hover:bg-foreground/5 [&::-webkit-details-marker]:hidden">
+        <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-white bg-violet-600 text-xs font-medium text-white">
+          {photoUrl ? <Image src={photoUrl} alt="Your profile photo" width={32} height={32} unoptimized className="h-full w-full object-cover" /> : <span>{initials || ":)"}</span>}
+        </span>
       </summary>
-      <div className="absolute right-0 mt-3 w-56 rounded-2xl border border-current/10 bg-background p-2 shadow-xl">
-        <p className="truncate px-3 py-2 text-sm font-semibold">{name || "Your account"}</p>
-        <Link href="/profile" onClick={() => { if (menu.current) menu.current.open = false; }} className="block rounded-lg px-3 py-3 text-sm hover:bg-foreground/5">Profile Settings</Link>
-        <form action={logout}><button className="w-full rounded-lg px-3 py-3 text-left text-sm hover:bg-foreground/5">Log out</button></form>
+      <div className="absolute bottom-0 left-full ml-3 w-60 max-w-[calc(100vw-5rem)] rounded-2xl border border-current/10 bg-background p-2 shadow-xl">
+        <Link href="/profile" onClick={() => { if (menu.current) menu.current.open = false; }} className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm hover:bg-foreground/5">
+          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="9" r="3" /><path d="M5.8 18.5a6.5 6.5 0 0 1 12.4 0" /></svg>
+          Profile
+        </Link>
+        <form action={logout}><button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm hover:bg-foreground/5">
+          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M9 12h12m-4-4 4 4-4 4" /></svg>
+          Log out
+        </button></form>
       </div>
     </details> : <Link href="/login" className="flex h-14 w-14 items-center justify-center rounded-full border-[3px] border-white bg-foreground text-xs font-semibold text-background shadow-md">Log in</Link>}
   </nav>;

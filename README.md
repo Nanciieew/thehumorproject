@@ -62,8 +62,8 @@ interactive consent screen still needs a real browser sign-in.
 
 The Home sidebar is rendered only after the server verifies a signed-in
 user. Guests see the public jokes page and circular Log in button, without a sidebar.
-The top-right avatar (initials until a photo is uploaded) opens a dropdown with
-Profile Settings and Log out. Profile Settings lets users edit both names, choose
+The small bottom-left avatar (initials until a photo is uploaded) opens a menu
+with outlined Profile and Log out icons. The menu stays available across pages. Profile Settings lets users edit both names, choose
 which of the 50 US states they represent, and
 upload a JPG, PNG, or WebP photo (up to 2 MB and 24 megapixels). The server
 validates and decodes the image with Sharp, strips metadata, and crops it to a
