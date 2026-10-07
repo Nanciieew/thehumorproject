@@ -38,12 +38,15 @@ Vercel deployment URL only covers that deployment; allow the stable domain for
 future releases. Google's authorized redirect URI remains the Supabase URL
 `https://YOUR-PROJECT.supabase.co/auth/v1/callback`.
 
-After login, the app checks `profiles.first_name` and `profiles.last_name`.
-If either is null, empty, or whitespace, `/profile/complete` asks for the missing
-fields. Server actions verify the user with Supabase before saving, derive the
-profile ID from that user, validate names, and preserve existing names. Profiles
-are normally created by the SQL sign-in trigger; completing the form also
-supports older accounts without a profile. No password is stored in profiles.
+After login, users without `profiles.onboarding_completed_at` see a three-step
+welcome dialog: required first/last names, an optional photo, and a required US
+state. The final “start my journey!” button saves the profile and completion
+timestamp together. Existing accounts also complete this once to select a state.
+`/profile/complete` redirects home, where the dialog appears. Server actions
+verify the session, validate every required answer, and prevent a stale welcome
+form from overwriting a completed profile. The SQL sign-in trigger normally
+creates profiles; saving also supports older accounts without one. No password
+is stored in profiles.
 
 To run the authentication integration checks, start the app on port 3000, then
 run `node --env-file=.env.local scripts/test-auth.mjs`. This uses the configured
@@ -55,9 +58,11 @@ interactive consent screen still needs a real browser sign-in.
 
 ## Editing profiles and uploading photos
 
-The Home/Profile sidebar is rendered only after the server verifies a signed-in
-user. Guests see the public jokes page and Log in button, without a sidebar.
-Signed-in users can open Profile from the sidebar to edit both names and
+The Home sidebar is rendered only after the server verifies a signed-in
+user. Guests see the public jokes page and circular Log in button, without a sidebar.
+The top-right avatar (initials until a photo is uploaded) opens a dropdown with
+Profile Settings and Log out. Profile Settings lets users edit both names, choose
+which of the 50 US states they represent, and
 upload a JPG, PNG, or WebP photo (up to 2 MB and 24 megapixels). The server
 validates and decodes the image with Sharp, strips metadata, and crops it to a
 512×512 WebP. The private `profile-photos` Supabase Storage bucket contains the
@@ -65,7 +70,9 @@ image bytes. `profiles.avatar_path` contains only the user's object path;
 the existing `avatar_url` column is retained for Google metadata.
 
 Run `supabase/migrations/20261001000000_add_profile_photos.sql` for new database
-setups. Photo access uses temporary signed URLs; no public Storage policies are
+setups, followed by `supabase/migrations/20261006000000_add_profile_state_onboarding.sql`
+for `state_code` and `onboarding_completed_at` with database constraints.
+Photo access uses temporary signed URLs; no public Storage policies are
 needed. Every update verifies the signed-in user and uses that ID, never an ID
 from the form. A successfully replaced photo is removed from Storage; if the
 profile save fails, the new upload is removed instead. The app allows a 3 MB

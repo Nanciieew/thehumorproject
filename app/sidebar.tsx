@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/", label: "Home", description: "Jokes", icon: "home" },
-  { href: "/profile", label: "Profile", description: "Your name & photo", icon: "profile" },
 ];
 
 export function Sidebar() {

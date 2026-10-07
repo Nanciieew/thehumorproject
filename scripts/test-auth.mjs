@@ -77,45 +77,48 @@ try {
   id = created.data.user.id;
   const signed = await auth.auth.signInWithPassword({ email, password });
   assert.ifError(signed.error);
-  await assertRedirect(await fetch(base, { headers: { cookie: cookie() }, redirect: "manual" }), "/profile/complete");
-  let html = await (await fetch(base + "/profile/complete", { headers: { cookie: cookie() } })).text();
+  let html = await (await fetch(base, { headers: { cookie: cookie() } })).text();
   assert.match(html, /aria-label="Main navigation"/);
+  assert.match(html, /id="welcome-title"/);
   assert.match(html, /name="first_name"/);
   assert.match(html, /name="last_name"/);
-  let form = formData(html, "first_name");
-  form.set("first_name", "   ");
-  form.set("last_name", "Tester");
-  response = await fetch(base + "/profile/complete", {
-    method: "POST", headers: { origin: base, cookie: cookie() }, body: form, redirect: "manual",
-  });
-  assert.match(await response.text(), /Enter both names/);
-  let row = await admin.from("profiles").select("first_name,last_name").eq("id", id).single();
+  assert.match(html, /name="state_code"/);
+  assert.match(html, /Profile Settings/);
+  let form;
+  async function welcome(first, last, state) {
+    const data = formData(html, 'name="first_name"');
+    data.set("first_name", first);
+    data.set("last_name", last);
+    data.set("state_code", state);
+    return data;
+  }
+  async function submitWelcome(data, authenticated = true) {
+    return fetch(base, { method: "POST", headers: { origin: base, ...(authenticated ? {cookie: cookie()} : {}) }, body: data, redirect: "manual" });
+  }
+  assert.match(await (await submitWelcome(await welcome("   ", "Tester", "NY"))).text(), /Enter a first and last name/);
+  for (const state of ["", "XX"]) {
+    assert.match(await (await submitWelcome(await welcome("Existing", "Tester", state))).text(), /Choose a US state/);
+  }
+  let row = await admin.from("profiles").select("first_name,onboarding_completed_at").eq("id", id).single();
   assert.ifError(row.error);
   assert.equal(row.data.first_name, null);
-  console.log("PASS: first sign-in creates profile; whitespace-only names rejected.");
-
-  const preset = await admin.from("profiles").update({ first_name: "Existing", last_name: "   " }).eq("id", id);
-  assert.ifError(preset.error);
-  html = await (await fetch(base + "/profile/complete", { headers: { cookie: cookie() } })).text();
-  assert.doesNotMatch(html, /<input[^>]*name="first_name"/);
-  assert.match(html, /<input[^>]*name="last_name"/);
-  form = formData(html, "last_name");
-  form.set("first_name", "Overwrite attempt");
-  form.set("last_name", "  Tester  ");
-  await assertRedirect(await fetch(base + "/profile/complete", {
-    method: "POST", headers: { origin: base }, body: form, redirect: "manual",
-  }), "/login");
-  response = await fetch(base + "/profile/complete", {
-    method: "POST", headers: { origin: base, cookie: cookie() }, body: form, redirect: "manual",
-  });
-  assert.equal(response.status, 303);
-  assert.equal(response.headers.get("location"), "/");
-  row = await admin.from("profiles").select("first_name,last_name").eq("id", id).single();
+  assert.equal(row.data.onboarding_completed_at, null);
+  await assertRedirect(await submitWelcome(await welcome("Existing", "Tester", "NY"), false), "/login");
+  await assertRedirect(await submitWelcome(await welcome("  Existing  ", "Tester", "NY")), "/");
+  row = await admin.from("profiles").select("first_name,state_code,avatar_path,onboarding_completed_at").eq("id", id).single();
   assert.ifError(row.error);
   assert.equal(row.data.first_name, "Existing");
-  assert.equal(row.data.last_name, "Tester");
-  console.log("PASS: unauthenticated writes blocked; missing name saved; existing name preserved.");
-  await assertRedirect(await fetch(base + "/profile/complete", { headers: { cookie: cookie() }, redirect: "manual" }), "/");
+  assert.equal(row.data.state_code, "NY");
+  assert.equal(row.data.avatar_path, null);
+  assert.ok(row.data.onboarding_completed_at);
+  const completedHome = await (await fetch(base, {headers: {cookie: cookie()}})).text();
+  assert.doesNotMatch(completedHome, /id="welcome-title"/);
+  // Replaying a stale welcome form cannot overwrite a completed profile.
+  await assertRedirect(await submitWelcome(await welcome("Overwrite", "Attempt", "CA")), "/");
+  row = await admin.from("profiles").select("first_name,state_code").eq("id", id).single();
+  assert.equal(row.data.first_name, "Existing");
+  assert.equal(row.data.state_code, "NY");
+  console.log("PASS: onboarding requires names and valid state, allows no photo, saves completion, and does not repeat; unauthenticated writes and stale overwrites blocked.");
 
   // Profile editing uses the session's user ID, never an ID supplied in the form.
   async function editorForm() {
@@ -124,6 +127,7 @@ try {
     const data = formData(await page.text(), 'name="photo"');
     data.set("first_name", "Updated");
     data.set("last_name", "Person");
+    data.set("state_code", "CA");
     data.set("id", randomUUID());
     return data;
   }
@@ -150,10 +154,11 @@ try {
   form = await editorForm();
   form.set("photo", new Blob([image], { type: "image/png" }), "portrait.png");
   assert.match(await (await saveEditor(form)).text(), /Your profile has been saved/);
-  row = await admin.from("profiles").select("first_name,last_name,avatar_path").eq("id", id).single();
+  row = await admin.from("profiles").select("first_name,last_name,avatar_path,state_code").eq("id", id).single();
   assert.ifError(row.error);
   assert.equal(row.data.first_name, "Updated");
   assert.equal(row.data.last_name, "Person");
+  assert.equal(row.data.state_code, "CA");
   const firstPath = row.data.avatar_path;
   assert.ok(firstPath.startsWith(id + "/"));
   assert.ok(firstPath.endsWith(".webp"));

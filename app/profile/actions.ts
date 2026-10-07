@@ -7,20 +7,33 @@ import { createAuthClient } from "@/lib/auth/server";
 import { readProfile } from "@/lib/auth/profile";
 import { supabase } from "@/lib/supabase";
 import { PHOTO_BUCKET, prepareProfilePhoto } from "@/lib/profile-photo";
+import { isUSState } from "@/lib/us-states";
 
 export type ProfileState = { error?: string; success?: boolean };
 
 export async function saveProfile(_state: ProfileState, form: FormData): Promise<ProfileState> {
+  return persistProfile(form, false);
+}
+
+export async function finishOnboarding(_state: ProfileState, form: FormData): Promise<ProfileState> {
+  const result = await persistProfile(form, true);
+  if (result.error) return result;
+  redirect("/");
+}
+
+async function persistProfile(form: FormData, complete: boolean): Promise<ProfileState> {
   const auth = await createAuthClient();
   const { data: { user }, error: authError } = await auth.auth.getUser();
   if (authError || !user) redirect("/login");
 
   const firstName = form.get("first_name");
   const lastName = form.get("last_name");
+  const stateCode = form.get("state_code");
   if (typeof firstName !== "string" || typeof lastName !== "string" ||
       !firstName.trim() || !lastName.trim() || firstName.trim().length > 100 || lastName.trim().length > 100) {
     return { error: "Enter a first and last name, using 1–100 characters for each." };
   }
+  if (!isUSState(stateCode)) return { error: "Choose a US state to represent." };
   const file = form.get("photo");
   let image: Buffer | undefined;
   if (file instanceof File && file.size > 0) {
@@ -35,6 +48,7 @@ export async function saveProfile(_state: ProfileState, form: FormData): Promise
   let previousPath: string | null = null;
   try {
     let profile = await readProfile(user.id);
+    if (complete && profile?.onboarding_completed_at) return { success: true };
     if (!profile) {
       const { error } = await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
       if (error) throw error;
@@ -51,9 +65,12 @@ export async function saveProfile(_state: ProfileState, form: FormData): Promise
     }
     const values = {
       first_name: firstName.trim(), last_name: lastName.trim(),
+      state_code: stateCode,
+      ...(complete ? { onboarding_completed_at: new Date().toISOString() } : {}),
       ...(uploadedPath ? { avatar_path: uploadedPath } : {}),
     };
     let query = supabase.from("profiles").update(values).eq("id", user.id);
+    if (complete) query = query.is("onboarding_completed_at", null);
     if (uploadedPath) {
       // A competing upload must not silently replace the photo we just read.
       query = previousPath === null ? query.is("avatar_path", null) : query.eq("avatar_path", previousPath);

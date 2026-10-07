@@ -3,9 +3,10 @@
 import Image from "next/image";
 import { useActionState } from "react";
 import { saveProfile, type ProfileState } from "./actions";
+import { StateSelect } from "../state-select";
 
-export function ProfileEditor({ firstName, lastName, photoUrl }: {
-  firstName: string; lastName: string; photoUrl: string | null;
+export function ProfileEditor({ firstName, lastName, photoUrl, stateCode }: {
+  firstName: string; lastName: string; photoUrl: string | null; stateCode: string;
 }) {
   const [state, action, pending] = useActionState<ProfileState, FormData>(saveProfile, {});
 
@@ -25,6 +26,7 @@ export function ProfileEditor({ firstName, lastName, photoUrl }: {
         <div><label htmlFor="first_name" className="mb-2 block text-sm font-medium">First name</label><input id="first_name" name="first_name" defaultValue={firstName} autoComplete="given-name" required maxLength={100} disabled={pending} className="w-full rounded-xl border border-current/25 bg-transparent px-4 py-3 outline-offset-4 focus:outline-2 disabled:opacity-50" /></div>
         <div><label htmlFor="last_name" className="mb-2 block text-sm font-medium">Last name</label><input id="last_name" name="last_name" defaultValue={lastName} autoComplete="family-name" required maxLength={100} disabled={pending} className="w-full rounded-xl border border-current/25 bg-transparent px-4 py-3 outline-offset-4 focus:outline-2 disabled:opacity-50" /></div>
       </div>
+      <StateSelect value={stateCode} disabled={pending} />
       {state.error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       {state.success && <p role="status" className="text-sm text-green-700 dark:text-green-400">Your profile has been saved.</p>}
       <button disabled={pending} className="w-full rounded-full bg-foreground px-6 py-3 font-semibold text-background hover:opacity-85 disabled:opacity-50 sm:w-auto">{pending ? "Saving…" : "Save changes"}</button>

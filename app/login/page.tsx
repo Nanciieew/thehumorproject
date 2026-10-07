@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getViewer, hasCompleteName } from "@/lib/auth/profile";
+import { getViewer } from "@/lib/auth/profile";
 import { GoogleLoginForm } from "./google-login-form";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
   const viewer = await getViewer();
-  if (viewer && !error) redirect(hasCompleteName(viewer.profile) ? "/" : "/profile/complete");
+  if (viewer && !error) redirect("/");
   return (
     <main className="mx-auto w-full max-w-md px-6 py-16 sm:py-24">
       <Link href="/" className="text-sm opacity-70 hover:underline">← Back to jokes</Link>
