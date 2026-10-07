@@ -35,7 +35,7 @@ function GalleryCard({ photo, signedIn, requestLogin }: { photo: GalleryPhoto; s
     inFlight.current = true; setBusy(true); setError("");
     const previous = { vote, count };
     const next = vote === choice ? null : choice;
-    setVote(next); setCount(count + Number(next === 1) - Number(vote === 1));
+    setVote(next); setCount(Math.max(0, count + Number(next === 1) - Number(vote === 1)));
     try {
       const response = await fetch("/api/gallery/vote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ photoId: photo.id, value: next }) });
       const result = await response.json();
