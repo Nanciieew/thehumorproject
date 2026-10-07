@@ -61,7 +61,7 @@ interactive consent screen still needs a real browser sign-in.
 ## Editing profiles and uploading photos
 
 The Home sidebar is rendered only after the server verifies a signed-in
-user. Guests see the public jokes page and circular Log in button, without a sidebar.
+user. Guests see the public Avatar Gallery and circular Log in button, without a sidebar.
 The small bottom-left avatar (initials until a photo is uploaded) opens a menu
 with outlined Profile and Log out icons. The menu stays available across pages. Profile Settings lets users edit both names, choose
 which of the 50 US states they represent, and
@@ -101,7 +101,71 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Jokes table
+## Avatar Gallery
+
+Apply `supabase/migrations/20261007000001_avatar_gallery.sql` after the existing
+migrations. The homepage is a separate public gallery; it does not publish
+profile photos or migrate the old joke images. Photos appear immediately after
+explicit publication and display the contributor's full name.
+
+The feed loads automatically as visitors scroll. Top ranks all photos by upvotes;
+Top this week ranks photos published since Monday midnight in America/New_York;
+Newest orders by publication time. Ties use publication time and ID. Cursor
+requests exclude newer publications until a fresh feed load and the UI removes
+duplicates. Vote counts can change between requests; refreshing starts a fresh
+ranking. Voting never reorders the cards currently on screen.
+
+`photo_votes` has one row per photo/user, with value 1 or -1. Selecting the same
+vote removes it. Completed users write through a session client and RLS; guests
+can browse totals but cannot vote. `gallery_vote_totals` exposes both counts to
+administrators, while the restricted public feed/score functions expose only
+upvote counts and contributor credit. Individual voter records stay private.
+
+Gallery uploads accept JPG/PNG/WebP up to 10 MB and 24 megapixels. The upload
+ticket endpoint creates an owner-bound record and signed URL for private
+`gallery-staging` Storage. The browser uploads there directly. Publication
+verifies and re-encodes image bytes, preserves aspect ratio (maximum 2048 pixels
+on either side), strips metadata, and writes to public `gallery-photos` Storage.
+Profile and onboarding photos retain their separate 2 MB limit and private bucket.
+
+Generated images are downloaded from approved provider hosts, saved privately in
+`generated-images`, and recorded with their owner before success is returned.
+Image Studio reloads the latest 30 saved images. Publication uses the saved ID,
+not a browser-supplied URL. Concurrent/repeated publications create only one
+gallery row; images remain usable after the provider's original URL expires.
+
+Staging tickets expire after two hours. Background cleanup on gallery visits and
+upload requests removes up to 100 abandoned objects older than 24 hours per run
+(at most once per five minutes per server process). With no traffic, cleanup
+runs on the next visit. To run it manually or from a scheduler:
+
+```bash
+node --env-file=.env.local --conditions=react-server --import tsx scripts/cleanup-gallery.ts
+```
+
+API endpoints: `GET /api/gallery?sort=top|week|newest&cursor=…`,
+`POST /api/gallery/vote` with `{photoId, value: 1|-1|null}`,
+`POST /api/gallery/upload` with file `{size, type}`, and
+`POST /api/gallery/publish` with `{assetId, source: "upload"|"generated"}`.
+Writes require same-origin requests and completed signup. Secrets remain server-only.
+
+Tests (integration checks create and remove temporary data in the configured project):
+
+```bash
+npm run test:gallery-ui
+# With the local app on port 3000:
+node --env-file=.env.local scripts/test-gallery.mjs
+node --env-file=.env.local scripts/test-auth.mjs
+node --env-file=.env.local --conditions=react-server --import tsx scripts/test-gallery-media.ts
+```
+
+Component tests cover optimistic voting, colors, login prompts, infinite scrolling,
+retry, and direct upload sequencing. Integration tests cover RLS with separate
+users, counts, weekly/DST boundaries, upload size and decoding, image ownership,
+concurrent publication, and expired staging cleanup. The media test mocks only the
+provider download, preserving real Supabase persistence without buying a generation.
+
+## Preserved jokes table
 
 Run `supabase/migrations/20260922000000_create_jokes.sql` in your project's
 Supabase SQL Editor to create `public.jokes`. The migration enables row level
@@ -117,9 +181,8 @@ required fields:
 | `funny_question` | The joke's question |
 | `funny_answer` | The joke's answer |
 
-Add rows using the Supabase Table Editor. The homepage calls `getJokes()` from
-`lib/jokes.ts` on each request and displays the newest jokes first. The image
-URL must be publicly accessible so visitors can see the photo.
+The existing records and `lib/jokes.ts` remain available, but the homepage now
+displays gallery submissions instead.
 
 ## Learn More
 
