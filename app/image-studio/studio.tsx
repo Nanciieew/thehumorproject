@@ -4,22 +4,23 @@ import Image from "next/image";
 import sampleTest from "@/lib/seedream-test.json";
 import { useRef, useState } from "react";
 import { SEEDREAM_MODEL, SEEDREAM_TEST_PROMPT } from "@/lib/seedream";
+import { PublishButton } from "./publish-button";
 
-type Generation = { id: number; prompt: string; test: boolean; url?: string; error?: string };
+type Generation = { id: string; prompt: string; test: boolean; url?: string; error?: string; generationId?: string; published?: boolean };
 
-export function ImageStudio({ configured }: { configured: boolean }) {
+export function ImageStudio({ configured, saved }: { configured: boolean; saved: Generation[] }) {
   const [prompt, setPrompt] = useState("");
-  const [history, setHistory] = useState<Generation[]>([{ id: 0, prompt: SEEDREAM_TEST_PROMPT, test: true, error: `${sampleTest.message} (Tested ${sampleTest.testedOn}; ${sampleTest.code})` }]);
+  const [history, setHistory] = useState<Generation[]>(saved);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
-  const [testStatus, setTestStatus] = useState("Failed — account usage limit reached");
+  const [testStatus, setTestStatus] = useState("Not run during this visit");
 
   async function generate(text: string, test = false) {
     if (inFlight.current || !text.trim()) return;
     inFlight.current = true;
     setBusy(true);
     if (test) setTestStatus("Running…");
-    const id = Date.now();
+    const id = crypto.randomUUID();
     setHistory((items) => [{ id, prompt: text.trim(), test }, ...items]);
     try {
       const response = await fetch("/api/images", {
@@ -28,7 +29,7 @@ export function ImageStudio({ configured }: { configured: boolean }) {
       });
       const data = await response.json();
       if (!response.ok || !data.url) throw new Error(data.error || "No image returned. Please try again.");
-      setHistory((items) => items.map((item) => item.id === id ? { ...item, url: data.url } : item));
+      setHistory((items) => items.map((item) => item.id === id ? { ...item, url: data.url, generationId: data.generationId } : item));
       if (test) setTestStatus("Passed — image generated");
     } catch (error) {
       const message = error instanceof Error && error.name === "TimeoutError" ? "Generation timed out. Please try again." : error instanceof Error ? error.message : "Generation failed. Please try again.";
@@ -49,6 +50,7 @@ export function ImageStudio({ configured }: { configured: boolean }) {
       <section aria-labelledby="test-title" className="mt-8 rounded-2xl border border-current/15 p-6">
         <h2 id="test-title" className="text-xl font-semibold">Black hole train — sample test</h2>
         <details className="mt-3 text-sm opacity-75"><summary className="cursor-pointer">View sample prompt</summary><p className="mt-3 leading-relaxed">{SEEDREAM_TEST_PROMPT}</p></details>
+        <details className="mt-3 text-sm opacity-75"><summary className="cursor-pointer">Previous test result ({sampleTest.testedOn})</summary><p className="mt-3 leading-relaxed">{sampleTest.message} This is a saved result, not a live account status. Run the sample test to check again.</p></details>
         <div className="mt-4 flex flex-wrap items-center gap-4">
           <button type="button" disabled={busy || !configured} onClick={() => generate(SEEDREAM_TEST_PROMPT, true)} className="rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-background disabled:cursor-not-allowed disabled:opacity-40">Run sample test</button>
           <p role="status" className="text-sm opacity-70">{testStatus}</p>
@@ -62,11 +64,12 @@ export function ImageStudio({ configured }: { configured: boolean }) {
       </form>
       <section aria-labelledby="results-title" className="mt-10">
         <h2 id="results-title" className="text-2xl font-semibold">Results</h2>
-        <p className="mt-2 text-sm opacity-60">Results stay here during this visit. Open and save images before their temporary links expire.</p>
+        <p className="mt-2 text-sm opacity-60">Your latest 30 saved images stay private until you publish them. Refresh this page if a preview link expires.</p>
         {!history.length && <p className="mt-6 opacity-60">Run the sample test or send your own prompt to see a result.</p>}
         <div className="mt-6 space-y-6">{history.map((item) => <article key={item.id} className="overflow-hidden rounded-2xl border border-current/15">
           <div className="p-6"><p className="text-xs font-semibold uppercase tracking-widest opacity-60">{item.test ? "Sample test" : "Your prompt"}</p><p className="mt-3 whitespace-pre-wrap leading-relaxed">{item.prompt}</p>
             {item.error ? <p role="alert" className="mt-4">{item.error}</p> : !item.url ? <p role="status" className="mt-4 animate-pulse">Seedream is creating your image. This can take a few minutes…</p> : <a href={item.url} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block underline underline-offset-4">Open full image ↗</a>}
+            {item.url && item.generationId && <PublishButton generationId={item.generationId} published={item.published} />}
           </div>
           {item.url && <Image src={item.url} alt={item.prompt} width={2048} height={2048} unoptimized className="h-auto max-h-[800px] w-full object-contain" />}
         </article>)}</div>

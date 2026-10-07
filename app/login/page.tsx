@@ -9,7 +9,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (viewer && !error) redirect("/");
   return (
     <main className="mx-auto w-full max-w-md px-6 py-16 sm:py-24">
-      <Link href="/" className="text-sm opacity-70 hover:underline">← Back to jokes</Link>
+      <Link href="/" className="text-sm opacity-70 hover:underline">← Back to gallery</Link>
       <section className="mt-8 rounded-2xl border border-current/15 p-6 sm:p-8">
         <p className="text-xs font-semibold uppercase tracking-widest opacity-60">The Humor Project</p>
         <h1 className="mt-3 text-3xl font-bold">A little more you.</h1>

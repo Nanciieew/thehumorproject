@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Jokes | The Humor Project",
-  description: "Browse photo jokes, funny questions, and their punchlines.",
+  title: "Avatar Gallery | The Humor Project",
+  description: "Share avatars, discover favorites, and vote for the photos you love.",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {

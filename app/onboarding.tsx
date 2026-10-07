@@ -62,7 +62,7 @@ export function Onboarding({ firstName, lastName, stateCode, preview = false }: 
       <h2 id="welcome-title" className="text-3xl font-bold">You’re ready for your journey!</h2>
       <p>You completed all three steps. In the real flow, this is when your profile is created and your account unlocks.</p>
       <button onClick={() => { setFinished(false); setPhotoName(""); setFirst(""); setLast(""); setError(""); setStep(0); }} className="rounded-full bg-foreground px-6 py-3 font-semibold text-background">Test again</button>
-      <Link href="/" className="block text-sm underline">Back to jokes</Link>
+      <Link href="/" className="block text-sm underline">Back to gallery</Link>
     </div> : <>
     <p className="text-xs font-semibold uppercase tracking-widest opacity-60">Welcome to the Humor Project · {step + 1} / 3</p>
     <div className="my-5 flex gap-2" aria-hidden="true">{[0, 1, 2].map((index) => <span key={index} className={`h-1 flex-1 rounded-full ${index <= step ? "bg-foreground" : "bg-foreground/15"}`} />)}</div>

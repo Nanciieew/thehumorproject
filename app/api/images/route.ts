@@ -1,5 +1,6 @@
 import { getViewer } from "@/lib/auth/profile";
 import { SEEDREAM_MODEL } from "@/lib/seedream";
+import { saveGeneratedImage } from "@/lib/gallery-media";
 
 export const maxDuration = 180;
 
@@ -41,7 +42,8 @@ export async function POST(request: Request) {
     if (typeof url !== "string" || new URL(url).protocol !== "https:") {
       return Response.json({ error: "The model returned no usable image. Please try again." }, { status: 502 });
     }
-    return Response.json({ url, model: SEEDREAM_MODEL }, { headers: { "Cache-Control": "no-store" } });
+    const saved = await saveGeneratedImage(viewer.user.id, url);
+    return Response.json({ ...saved, model: SEEDREAM_MODEL }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
     return Response.json({ error: timedOut ? "Generation timed out. Please try again." : "Could not connect to Ark. Please try again later." }, { status: timedOut ? 504 : 502 });
