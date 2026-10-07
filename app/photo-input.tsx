@@ -8,7 +8,7 @@ export function PhotoInput({ fileName, onSelect, disabled = false, describedBy, 
 }) {
   const input = useRef<HTMLInputElement>(null);
   const statusId = useId();
-  return <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+  return <div className="photo-picker mt-3 flex flex-wrap items-center gap-3 text-sm">
     <input ref={input} name="photo" type="file" hidden accept="image/jpeg,image/png,image/webp" disabled={disabled}
       onChange={(event) => { const file = event.target.files?.[0] ?? null; onSelect(file?.name ?? ""); onFile?.(file); }} />
     <button type="button" disabled={disabled} onClick={() => input.current?.click()}

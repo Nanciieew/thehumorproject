@@ -16,8 +16,8 @@ export function ProfileEditor({ firstName, lastName, photoUrl, stateCode }: {
   return (
     <form noValidate onReset={() => setPhotoName("")} action={action} className="mt-8 space-y-7">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-        {photoUrl ? <Image src={photoUrl} alt="Your profile photo" width={112} height={112} unoptimized className="h-28 w-28 rounded-full border border-current/10 object-cover" /> : (
-          <div aria-label="No profile photo" className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-foreground/5 text-3xl font-semibold">{firstName.slice(0, 1)}{lastName.slice(0, 1)}</div>
+        {photoUrl ? <Image src={photoUrl} alt="Your profile photo" width={112} height={112} unoptimized className="profile-avatar h-24 w-24 rounded-full object-cover" /> : (
+          <div aria-label="No profile photo" className="profile-avatar flex h-24 w-24 shrink-0 items-center justify-center rounded-full text-3xl font-semibold">{firstName.slice(0, 1)}{lastName.slice(0, 1)}</div>
         )}
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">Profile photo</p>
@@ -32,7 +32,7 @@ export function ProfileEditor({ firstName, lastName, photoUrl, stateCode }: {
       <StateSelect value={stateCode} disabled={pending} />
       {state.error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       {state.success && <p role="status" className="text-sm text-green-700 dark:text-green-400">Your profile has been saved.</p>}
-      <button disabled={pending} className="w-full rounded-full bg-foreground px-6 py-3 font-semibold text-background hover:opacity-85 disabled:opacity-50 sm:w-auto">{pending ? "Saving…" : "Save changes"}</button>
+      <button disabled={pending} className="action-button">{pending ? "Saving…" : "Save changes"}</button>
     </form>
   );
 }

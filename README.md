@@ -61,7 +61,7 @@ interactive consent screen still needs a real browser sign-in.
 ## Editing profiles and uploading photos
 
 The Home sidebar is rendered only after the server verifies a signed-in
-user. Guests see the public Avatar Gallery and circular Log in button, without a sidebar.
+user. Guests see the public Avatar Gallery and Log in link, without a sidebar.
 The small bottom-left avatar (initials until a photo is uploaded) opens a menu
 with outlined Profile and Log out icons. The menu stays available across pages. Profile Settings lets users edit both names, choose
 which of the 50 US states they represent, and
@@ -99,7 +99,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The interface uses locally hosted Inter and Anton fonts through `next/font/local`. Their SIL Open Font Licenses are included in `app/fonts`. The main surface is glossy white, with yellow, pink, blue and moss accents. The gallery uses one responsive grid, and the sidebar includes Image Studio, a future Leaderboard page and the account menu.
 
 ## Avatar Gallery
 
@@ -198,3 +198,5 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+Image Studio accepts an optional JPEG or PNG reference photo (up to 2 MB and 24 megapixels). The server validates its type and dimensions before sending it to Ark alongside the prompt. Reference photos are sent to Ark only when generating; the sample test uses its original text prompt. Run `npm run test:studio-ui` for UI submission and reference validation checks.

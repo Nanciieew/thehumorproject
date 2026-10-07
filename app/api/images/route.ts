@@ -1,5 +1,6 @@
 import { getViewer } from "@/lib/auth/profile";
 import { SEEDREAM_MODEL } from "@/lib/seedream";
+import { validateSeedreamReference } from "@/lib/seedream-reference";
 import { saveGeneratedImage } from "@/lib/gallery-media";
 
 export const maxDuration = 180;
@@ -17,13 +18,19 @@ export async function POST(request: Request) {
   if (typeof body?.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 4000) {
     return Response.json({ error: "Enter a prompt between 1 and 4,000 characters." }, { status: 400 });
   }
+  let image: string | undefined;
+  if (body.image !== undefined) {
+    const validated = await validateSeedreamReference(body.image);
+    if (!validated) return Response.json({ error: "Choose a valid, non-animated JPG or PNG reference photo up to 2 MB and 24 megapixels." }, { status: 400 });
+    image = validated;
+  }
   const apiKey = process.env.ARK_API_KEY;
   if (!apiKey) return Response.json({ error: "Image generation is not configured. Add ARK_API_KEY to the server environment." }, { status: 503 });
   try {
     const response = await fetch("https://ark.cn-beijing.volces.com/api/v3/images/generations", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: SEEDREAM_MODEL, prompt: body.prompt.trim(), size: "2K", response_format: "url", watermark: true }),
+      body: JSON.stringify({ model: SEEDREAM_MODEL, prompt: body.prompt.trim(), ...(image ? { image } : {}), size: "2K", response_format: "url", watermark: true }),
       signal: AbortSignal.timeout(150_000),
       cache: "no-store",
     });

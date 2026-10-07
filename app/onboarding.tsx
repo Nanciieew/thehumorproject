@@ -56,7 +56,7 @@ export function Onboarding({ firstName, lastName, stateCode, preview = false }: 
     setError(""); setStep(step + 1);
   }
   if (suppressed) return null;
-  return <dialog ref={dialog} onCancel={(event) => event.preventDefault()} aria-labelledby="welcome-title" className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-3xl border border-current/10 bg-background p-7 text-foreground shadow-2xl backdrop:bg-black/45 backdrop:backdrop-blur-sm sm:p-10">
+  return <dialog ref={dialog} onCancel={(event) => event.preventDefault()} aria-labelledby="welcome-title" className="design-dialog onboarding-dialog">
     {preview && <p className="mb-5 rounded-xl bg-foreground/5 p-3 text-sm">Test mode · No account is created. Answers and photos are not saved or uploaded.</p>}
     {finished ? <div className="space-y-5">
       <h2 id="welcome-title" className="text-3xl font-bold">You’re ready for your journey!</h2>

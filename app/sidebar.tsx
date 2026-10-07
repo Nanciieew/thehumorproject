@@ -2,36 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
+import { Icon, Smile } from "./ui";
 
 const links = [
-  { href: "/", label: "Home", description: "Avatar Gallery", icon: "home" },
-  { href: "/image-studio", label: "Image Studio", description: "Generate photos", icon: "image" },
+  { href: "/", label: "Avatar Gallery", icon: "grid" as const },
+  { href: "/image-studio", label: "Image Studio", icon: "spark" as const },
+  { href: "/leaderboard", label: "Leaderboard", icon: "leaderboard" as const },
 ];
 
-export function Sidebar() {
+export function Sidebar({ children }: { children?: ReactNode }) {
   const pathname = usePathname();
-  return (
-    <aside className="border-b border-current/10 bg-foreground/[0.025] md:sticky md:top-0 md:h-dvh md:border-r md:border-b-0">
-      <div className="px-5 pt-6 pb-4 md:px-6 md:pt-10 md:pb-8">
-        <Link href="/" className="inline-flex items-center gap-3 rounded-lg font-semibold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-4">
-          <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-xl bg-foreground text-xl text-background">:)</span>
-          <span>The Humor<br className="hidden md:block" /> Project</span>
-        </Link>
-      </div>
-      <nav aria-label="Main navigation" className="grid grid-cols-2 gap-2 px-3 pb-4 md:grid-cols-1 md:px-4">
-        {links.map((link) => {
-          const active = link.href === "/" ? pathname === "/" : pathname === link.href || pathname.startsWith(`${link.href}/`);
-          return (
-            <Link key={link.href} href={link.href} aria-current={active ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? "bg-foreground text-background" : "hover:bg-foreground/5"}`}>
-              <svg aria-hidden="true" className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                {link.icon === "home" ? <><path d="m3 10 9-7 9 7" /><path d="M5 9v11h5v-6h4v6h5V9" /></> : <><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8" cy="8" r="1.5" /><path d="m3 17 5-5 4 4 4-6 5 7" /></>}
-              </svg>
-              <span><span className="block text-sm font-semibold">{link.label}</span><span className="mt-0.5 hidden text-xs opacity-65 sm:block">{link.description}</span></span>
-            </Link>
-          );
-        })}
-      </nav>
-    </aside>
-  );
+  return <aside className="app-sidebar">
+    <Link href="/" className="app-brand" aria-label="The Humor Project home"><Smile className="brand-mark" /><span>THE HUMOR<br />PROJECT<small>A little less serious.</small></span></Link>
+    <p className="nav-label">YOUR LITTLE CORNER</p>
+    <nav aria-label="Main navigation" className="sidebar-links">{links.map((link) => {
+      const active = link.href === "/" ? pathname === "/" : pathname === link.href || pathname.startsWith(`${link.href}/`);
+      return <Link key={link.href} href={link.href} aria-label={link.label} aria-current={active ? "page" : undefined} className={active ? "active" : ""}><Icon name={link.icon} /><span>{link.label}</span><span className="nav-arrow" aria-hidden="true">↗</span></Link>;
+    })}</nav>
+    <div className="sidebar-doodle" aria-hidden="true"><svg viewBox="0 0 180 170"><path d="M15 142c38-27 36-79 65-83s14 74 57 46 23-62 11-67m-1 1 3 24m-3-24-21 12" fill="none" stroke="currentColor" strokeWidth="1.5" /><text x="16" y="160" fill="currentColor" fontSize="12">make yourself at home.</text><path d="m68 16 5 13 14 2-12 8 2 15-10-9-14 7 4-15-9-8 15-1Z" fill="var(--pink)" stroke="currentColor" strokeWidth="1.5" /></svg></div>
+    {children}
+  </aside>;
 }

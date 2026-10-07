@@ -21,7 +21,7 @@ export function PublishButton({ generationId, published = false }: { generationI
   return <div className="mt-4">
     {done ? <p role="status" className="text-sm">Published to Avatar Gallery. <Link href="/" className="underline">View gallery ↗</Link></p> : <>
       <p className="mb-3 text-xs opacity-65">Publishing shares this photo and your full name publicly.</p>
-      <button disabled={busy} onClick={() => void publish()} className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-40">{busy ? "Publishing…" : "Publish to gallery"}</button>
+      <button disabled={busy} onClick={() => void publish()} className="action-button">{busy ? "Publishing…" : "Publish to gallery"}</button>
     </>}
     {error && <p role="alert" className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
   </div>;
