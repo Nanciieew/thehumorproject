@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Sidebar } from "./sidebar";
-import { getViewer } from "@/lib/auth/profile";
+import { getAuthViewer } from "@/lib/auth/profile";
 import { profilePhotoUrl } from "@/lib/profile-photo";
 import { AccountMenu } from "./account-menu";
 import { Onboarding } from "./onboarding";
@@ -23,8 +23,9 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const viewer = await getViewer();
-  const profile = viewer?.profile;
+  const session = await getAuthViewer();
+  const profile = session?.profile;
+  const viewer = profile?.onboarding_completed_at ? session : null;
   const photoUrl = await profilePhotoUrl(profile?.avatar_path ?? null);
   return (
     <html
@@ -39,7 +40,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             {children}
           </div>
         </div>
-        {viewer && !profile?.onboarding_completed_at && <Onboarding firstName={profile?.first_name ?? ""} lastName={profile?.last_name ?? ""} stateCode={profile?.state_code ?? ""} />}
+        {session && !viewer && <Onboarding firstName={profile?.first_name ?? ""} lastName={profile?.last_name ?? ""} stateCode={profile?.state_code ?? ""} />}
       </body>
     </html>
   );

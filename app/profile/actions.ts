@@ -25,6 +25,9 @@ async function persistProfile(form: FormData, complete: boolean): Promise<Profil
   const auth = await createAuthClient();
   const { data: { user }, error: authError } = await auth.auth.getUser();
   if (authError || !user) redirect("/login");
+  const profile = await readProfile(user.id);
+  if (!complete && !profile?.onboarding_completed_at) redirect("/profile/complete");
+  if (complete && profile?.onboarding_completed_at) return { success: true };
 
   const firstName = form.get("first_name");
   const lastName = form.get("last_name");
@@ -47,13 +50,6 @@ async function persistProfile(form: FormData, complete: boolean): Promise<Profil
   let uploadedPath: string | null = null;
   let previousPath: string | null = null;
   try {
-    let profile = await readProfile(user.id);
-    if (complete && profile?.onboarding_completed_at) return { success: true };
-    if (!profile) {
-      const { error } = await supabase.from("profiles").upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
-      if (error) throw error;
-      profile = await readProfile(user.id);
-    }
     previousPath = profile?.avatar_path ?? null;
     if (image) {
       const path = `${user.id}/${randomUUID()}.webp`;
@@ -69,14 +65,23 @@ async function persistProfile(form: FormData, complete: boolean): Promise<Profil
       ...(complete ? { onboarding_completed_at: new Date().toISOString() } : {}),
       ...(uploadedPath ? { avatar_path: uploadedPath } : {}),
     };
-    let query = supabase.from("profiles").update(values).eq("id", user.id);
-    if (complete) query = query.is("onboarding_completed_at", null);
-    if (uploadedPath) {
-      // A competing upload must not silently replace the photo we just read.
-      query = previousPath === null ? query.is("avatar_path", null) : query.eq("avatar_path", previousPath);
+    if (!profile) {
+      // The complete profile is inserted once, only after validation and upload.
+      // A concurrent completion cannot overwrite the winning insert.
+      const { error } = await supabase.from("profiles").insert({ id: user.id, ...values,
+        avatar_url: typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : null,
+      });
+      if (error) throw error;
+    } else {
+      let query = supabase.from("profiles").update(values).eq("id", user.id);
+      if (complete) query = query.is("onboarding_completed_at", null);
+      if (uploadedPath) {
+        // A competing upload must not silently replace the photo we just read.
+        query = previousPath === null ? query.is("avatar_path", null) : query.eq("avatar_path", previousPath);
+      }
+      const { data, error } = await query.select("id").maybeSingle();
+      if (error || !data) throw error ?? new Error("Profile changed; retry.");
     }
-    const { data, error } = await query.select("id").maybeSingle();
-    if (error || !data) throw error ?? new Error("Profile changed; retry.");
   } catch {
     if (uploadedPath) await supabase.storage.from(PHOTO_BUCKET).remove([uploadedPath]).catch(() => {});
     return { error: "We couldn’t save your profile. Please try again." };

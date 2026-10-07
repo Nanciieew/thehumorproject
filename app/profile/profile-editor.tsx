@@ -1,24 +1,27 @@
 "use client";
 
 import Image from "next/image";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { saveProfile, type ProfileState } from "./actions";
 import { StateSelect } from "../state-select";
+import { PhotoInput } from "../photo-input";
 
 export function ProfileEditor({ firstName, lastName, photoUrl, stateCode }: {
   firstName: string; lastName: string; photoUrl: string | null; stateCode: string;
 }) {
   const [state, action, pending] = useActionState<ProfileState, FormData>(saveProfile, {});
 
+  const [photoName, setPhotoName] = useState("");
+
   return (
-    <form action={action} className="mt-8 space-y-7">
+    <form noValidate onReset={() => setPhotoName("")} action={action} className="mt-8 space-y-7">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
         {photoUrl ? <Image src={photoUrl} alt="Your profile photo" width={112} height={112} unoptimized className="h-28 w-28 rounded-full border border-current/10 object-cover" /> : (
           <div aria-label="No profile photo" className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-foreground/5 text-3xl font-semibold">{firstName.slice(0, 1)}{lastName.slice(0, 1)}</div>
         )}
         <div className="min-w-0 flex-1">
-          <label htmlFor="photo" className="block text-sm font-semibold">Profile photo</label>
-          <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" disabled={pending} aria-describedby="photo-help" className="mt-3 block w-full text-sm file:mr-3 file:rounded-full file:border file:border-current/20 file:bg-transparent file:px-4 file:py-2 file:font-medium file:text-foreground disabled:opacity-50" />
+          <p className="text-sm font-semibold">Profile photo</p>
+          <PhotoInput fileName={photoName} onSelect={setPhotoName} disabled={pending} describedBy="photo-help" />
           <p id="photo-help" className="mt-2 text-xs leading-relaxed opacity-60">JPG, PNG, or WebP, up to 2 MB and 24 megapixels. Photos are cropped to a square. Leave empty to keep your current photo.</p>
         </div>
       </div>

@@ -48,16 +48,16 @@ export function ImageStudio({ configured }: { configured: boolean }) {
       {!configured && <p role="status" className="mt-6 rounded-xl border border-current/15 p-4">Image generation awaits server setup: ARK_API_KEY is missing. No test image has been generated yet.</p>}
       <section aria-labelledby="test-title" className="mt-8 rounded-2xl border border-current/15 p-6">
         <h2 id="test-title" className="text-xl font-semibold">Black hole train — sample test</h2>
-        <details className="mt-3 text-sm opacity-75"><summary className="cursor-pointer">View original test prompt</summary><p className="mt-3 leading-relaxed">{SEEDREAM_TEST_PROMPT}</p></details>
+        <details className="mt-3 text-sm opacity-75"><summary className="cursor-pointer">View sample prompt</summary><p className="mt-3 leading-relaxed">{SEEDREAM_TEST_PROMPT}</p></details>
         <div className="mt-4 flex flex-wrap items-center gap-4">
           <button type="button" disabled={busy || !configured} onClick={() => generate(SEEDREAM_TEST_PROMPT, true)} className="rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-background disabled:cursor-not-allowed disabled:opacity-40">Run sample test</button>
           <p role="status" className="text-sm opacity-70">{testStatus}</p>
         </div>
       </section>
-      <form onSubmit={(event) => { event.preventDefault(); void generate(prompt); }} className="mt-8 rounded-2xl border border-current/15 p-6">
+      <form noValidate onSubmit={(event) => { event.preventDefault(); void generate(prompt); }} className="mt-8 rounded-2xl border border-current/15 p-6">
         <label htmlFor="image-prompt" className="text-xl font-semibold">Talk to Seedream</label>
         <p id="prompt-help" className="mt-2 text-sm opacity-70">Describe the subject, setting, lighting, and style. Each message generates a new image independently.</p>
-        <textarea id="image-prompt" aria-describedby="prompt-help" required maxLength={4000} rows={5} value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="例如：一只在纽约地铁上读报纸的猫，电影感，温暖的灯光…" className="mt-4 w-full rounded-xl border border-current/20 bg-background p-4 focus-visible:outline-2 focus-visible:outline-offset-2" />
+        <textarea id="image-prompt" aria-describedby="prompt-help" required maxLength={4000} rows={5} value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="For example: a cat reading a newspaper on the New York subway, cinematic style, warm lighting…" className="mt-4 w-full rounded-xl border border-current/20 bg-background p-4 focus-visible:outline-2 focus-visible:outline-offset-2" />
         <div className="mt-3 flex items-center justify-between gap-4"><span className="text-xs opacity-60">{prompt.length}/4,000</span><button disabled={busy || !configured || !prompt.trim()} className="rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-background disabled:cursor-not-allowed disabled:opacity-40">{busy ? "Generating…" : "Generate photo"}</button></div>
       </form>
       <section aria-labelledby="results-title" className="mt-10">

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { getViewer } from "@/lib/auth/profile";
+import { getAuthViewer } from "@/lib/auth/profile";
 
 export default async function CompleteProfilePage() {
-  const viewer = await getViewer();
+  const viewer = await getAuthViewer();
   redirect(viewer ? "/" : "/login");
 }

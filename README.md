@@ -44,8 +44,10 @@ state. The final “start my journey!” button saves the profile and completion
 timestamp together. Existing accounts also complete this once to select a state.
 `/profile/complete` redirects home, where the dialog appears. Server actions
 verify the session, validate every required answer, and prevent a stale welcome
-form from overwriting a completed profile. The SQL sign-in trigger normally
-creates profiles; saving also supports older accounts without one. No password
+form from overwriting a completed profile. A Google session is only a pending signup until completion. The final action
+inserts the complete profile in one write; pending users cannot access Profile
+Settings, Image Studio, or its generation API. Existing incomplete profiles are
+preserved and completed by the same flow. No password
 is stored in profiles.
 
 To run the authentication integration checks, start the app on port 3000, then
@@ -71,7 +73,10 @@ the existing `avatar_url` column is retained for Google metadata.
 
 Run `supabase/migrations/20261001000000_add_profile_photos.sql` for new database
 setups, followed by `supabase/migrations/20261006000000_add_profile_state_onboarding.sql`
-for `state_code` and `onboarding_completed_at` with database constraints.
+for `state_code` and `onboarding_completed_at` with database constraints. Then apply
+`supabase/migrations/20261007000000_create_profiles_after_onboarding.sql` to
+remove automatic profile creation on sign-in. The new server action creates
+profiles only after all required onboarding answers are valid.
 Photo access uses temporary signed URLs; no public Storage policies are
 needed. Every update verifies the signed-in user and uses that ID, never an ID
 from the form. A successfully replaced photo is removed from Storage; if the

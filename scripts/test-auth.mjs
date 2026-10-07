@@ -78,12 +78,16 @@ try {
   const signed = await auth.auth.signInWithPassword({ email, password });
   assert.ifError(signed.error);
   let html = await (await fetch(base, { headers: { cookie: cookie() } })).text();
-  assert.match(html, /aria-label="Main navigation"/);
+  assert.doesNotMatch(html, /aria-label="Main navigation"/);
+  assert.doesNotMatch(html, /Open account options/);
+  await assertRedirect(await fetch(base + "/profile", {headers: {cookie: cookie()}, redirect: "manual"}), "/login");
+  await assertRedirect(await fetch(base + "/image-studio", {headers: {cookie: cookie()}, redirect: "manual"}), "/login");
+  assert.equal((await fetch(base + "/api/images", {method: "POST", headers: {origin: base, cookie: cookie(), "Content-Type": "application/json"}, body: JSON.stringify({prompt: "test"})})).status, 401);
   assert.match(html, /id="welcome-title"/);
   assert.match(html, /name="first_name"/);
   assert.match(html, /name="last_name"/);
   assert.match(html, /name="state_code"/);
-  assert.match(html, /Profile Settings/);
+  assert.doesNotMatch(html, /Profile Settings/);
   let form;
   async function welcome(first, last, state) {
     const data = formData(html, 'name="first_name"');
@@ -99,10 +103,9 @@ try {
   for (const state of ["", "XX"]) {
     assert.match(await (await submitWelcome(await welcome("Existing", "Tester", state))).text(), /Choose a US state/);
   }
-  let row = await admin.from("profiles").select("first_name,onboarding_completed_at").eq("id", id).single();
+  let row = await admin.from("profiles").select("first_name,onboarding_completed_at").eq("id", id).maybeSingle();
   assert.ifError(row.error);
-  assert.equal(row.data.first_name, null);
-  assert.equal(row.data.onboarding_completed_at, null);
+  assert.equal(row.data, null, "No profile exists before signup completes");
   await assertRedirect(await submitWelcome(await welcome("Existing", "Tester", "NY"), false), "/login");
   await assertRedirect(await submitWelcome(await welcome("  Existing  ", "Tester", "NY")), "/");
   row = await admin.from("profiles").select("first_name,state_code,avatar_path,onboarding_completed_at").eq("id", id).single();
@@ -113,6 +116,8 @@ try {
   assert.ok(row.data.onboarding_completed_at);
   const completedHome = await (await fetch(base, {headers: {cookie: cookie()}})).text();
   assert.doesNotMatch(completedHome, /id="welcome-title"/);
+  assert.match(completedHome, /Open account options/);
+  assert.match(completedHome, /aria-label="Main navigation"/);
   // Replaying a stale welcome form cannot overwrite a completed profile.
   await assertRedirect(await submitWelcome(await welcome("Overwrite", "Attempt", "CA")), "/");
   row = await admin.from("profiles").select("first_name,state_code").eq("id", id).single();

@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getViewer } from "@/lib/auth/profile";
+import { getAuthViewer } from "@/lib/auth/profile";
 import { GoogleLoginForm } from "./google-login-form";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
-  const viewer = await getViewer();
+  const viewer = await getAuthViewer();
   if (viewer && !error) redirect("/");
   return (
     <main className="mx-auto w-full max-w-md px-6 py-16 sm:py-24">

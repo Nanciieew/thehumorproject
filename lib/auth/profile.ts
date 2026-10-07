@@ -12,9 +12,15 @@ export async function readProfile(userId: string): Promise<Profile | null> {
   return data;
 }
 
-export const getViewer = cache(async () => {
+// A verified OAuth session may still be waiting for signup to finish.
+export const getAuthViewer = cache(async () => {
   const auth = await createAuthClient();
   const { data: { user } } = await auth.auth.getUser();
   if (!user) return null;
   return { user, profile: await readProfile(user.id) };
+});
+
+export const getViewer = cache(async () => {
+  const viewer = await getAuthViewer();
+  return viewer?.profile?.onboarding_completed_at ? viewer : null;
 });

@@ -1,4 +1,4 @@
-import { createAuthClient } from "@/lib/auth/server";
+import { getViewer } from "@/lib/auth/profile";
 import { SEEDREAM_MODEL } from "@/lib/seedream";
 
 export const maxDuration = 180;
@@ -8,9 +8,8 @@ export async function POST(request: Request) {
   if (origin && origin !== new URL(request.url).origin) {
     return Response.json({ error: "Invalid request origin." }, { status: 403 });
   }
-  const auth = await createAuthClient();
-  const { data: { user } } = await auth.auth.getUser();
-  if (!user) return Response.json({ error: "Please sign in to generate images." }, { status: 401 });
+  const viewer = await getViewer();
+  if (!viewer) return Response.json({ error: "Please sign in and finish signup to generate images." }, { status: 401 });
   let body;
   try { body = await request.json(); }
   catch { return Response.json({ error: "Invalid request." }, { status: 400 }); }
