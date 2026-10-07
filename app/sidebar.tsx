@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/", label: "Home", description: "Jokes", icon: "home" },
+  { href: "/image-studio", label: "Image Studio", description: "Generate photos", icon: "image" },
 ];
 
 export function Sidebar() {
@@ -24,7 +25,7 @@ export function Sidebar() {
             <Link key={link.href} href={link.href} aria-current={active ? "page" : undefined}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${active ? "bg-foreground text-background" : "hover:bg-foreground/5"}`}>
               <svg aria-hidden="true" className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                {link.icon === "home" ? <><path d="m3 10 9-7 9 7" /><path d="M5 9v11h5v-6h4v6h5V9" /></> : <><circle cx="12" cy="8" r="4" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" /></>}
+                {link.icon === "home" ? <><path d="m3 10 9-7 9 7" /><path d="M5 9v11h5v-6h4v6h5V9" /></> : <><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8" cy="8" r="1.5" /><path d="m3 17 5-5 4 4 4-6 5 7" /></>}
               </svg>
               <span><span className="block text-sm font-semibold">{link.label}</span><span className="mt-0.5 hidden text-xs opacity-65 sm:block">{link.description}</span></span>
             </Link>

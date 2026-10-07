@@ -1,0 +1,6 @@
+{
+  "status": "failed",
+  "code": "SetLimitExceeded",
+  "message": "Ark returned 429: this model has reached the account's set usage limit and is paused. Adjust or close Safe Experience Mode on Ark's Model Activation page, then run the test again.",
+  "testedOn": "2026-10-07"
+}
