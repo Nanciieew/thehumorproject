@@ -9,6 +9,10 @@
   --moss: #dce8e0;
   --green: #1f492b;
   --coral: #d06457;
+  --play-red: #e32320;
+  --play-green: #109f3a;
+  --play-blue: #1395cc;
+  --play-orange: #ed950a;
   --muted: #736d5e;
   --line: rgb(32 32 29 / 24%);
   --sidebar-width: 216px;
@@ -347,3 +351,22 @@ h1 em { color: var(--coral); font-style: normal; }
 
 .page-hero > div { min-width: 0; }
 .page-hero h1 { overflow-wrap: anywhere; }
+
+/* Small toy-like primary colors, keeping the pale page surfaces intact. */
+.color-play { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.color-play > span { display: block; width: 9px; height: 9px; border: 1px solid rgb(32 32 29 / 12%); }
+.color-play > span:nth-child(1) { background: var(--play-red); border-radius: 3px; transform: rotate(-12deg); }
+.color-play > span:nth-child(2) { background: var(--play-green); border-radius: 50%; }
+.color-play > span:nth-child(3) { background: var(--play-blue); border-radius: 3px; transform: rotate(12deg); }
+.color-play > span:nth-child(4) { background: var(--play-orange); border-radius: 50%; }
+.topbar-title, .collection-note { display: inline-flex; align-items: center; gap: 11px; }
+.brand-ticker > span:nth-child(2) { color: #ffad96; }
+.brand-ticker > span:nth-child(4) { color: #87d7f2; }
+.brand-ticker > span:nth-child(6) { color: #ffc45a; }
+.gallery-hero .eyebrow > span { color: var(--play-blue); }
+@media (max-width: 520px) {
+  .collection-note { gap: 6px; }
+  .collection-note .color-play { gap: 2px; }
+  .collection-note .color-play > span { width: 6px; height: 6px; }
+  .topbar-title { gap: 8px; }
+}

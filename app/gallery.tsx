@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PhotoInput } from "./photo-input";
-import { Icon, Smile } from "./ui";
+import { ColorPlay, Icon, Smile } from "./ui";
 import { GALLERY_MIME_TYPES, MAX_GALLERY_BYTES, type GalleryPage, type GalleryPhoto, type GallerySort, type Vote } from "@/lib/gallery-types";
 
 function Thumb({ down = false }: { down?: boolean }) {
@@ -165,7 +165,7 @@ export function Gallery({ initial, userId }: { initial?: GalleryPage; userId: st
     </header>
     <div className="brand-ticker" aria-hidden="true"><span>YOUR FACE. YOUR RULES.</span><span>✳</span><span>A LITTLE LESS SERIOUS.</span><span>✳</span><span>MADE BY YOU, LOVED BY US.</span><span>✳</span></div>
     <section className="gallery-section" aria-labelledby="gallery-title">
-      <div className="section-heading"><h2 id="gallery-title">THE GOOD COMPANY.</h2><span className="collection-note">FACES & COUNTING</span></div>
+      <div className="section-heading"><h2 id="gallery-title">THE GOOD COMPANY.</h2><span className="collection-note"><ColorPlay />FACES & COUNTING</span></div>
       <div className="filterbar"><div aria-label="Sort gallery" className="gallery-filters">{([["top", "Community favorites", "Top"], ["week", "This week", "Top this week"], ["newest", "Fresh faces", "Newest"]] as const).map(([value, label, accessibleLabel]) => <button key={value} aria-label={accessibleLabel} aria-pressed={sort === value} onClick={() => { if (sort !== value) { setSort(value); setRevision((value) => value + 1); setMessage(""); } }}>{label}</button>)}</div><span className="filter-note">A thumbs-up goes a long way.</span></div>
       {sort === "week" && <p className="filter-explanation">Photos shared since Monday, New York time. Ranked by upvotes.</p>}
       {message && <p role="status" className="gallery-message">{message}</p>}
