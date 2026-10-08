@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import type { LeaderboardPeriod, LeaderboardSummary } from "@/lib/leaderboard-types";
 import styles from "./board.module.css";
+import { LeaderboardTitle } from "./title";
 
 function money(cents: string) {
   const amount = BigInt(cents);
@@ -26,12 +27,13 @@ export function LeaderboardBoard({ summary, pending = false, onPeriodChange, onL
   const month = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "America/New_York" }).format(new Date(summary.month_start));
   const label = period === "monthly" ? month : "All time";
   return <main id="main" className={styles.page}>
+    <LeaderboardTitle />
     <div className={styles.previewNote}><span>Community rankings · USD</span>{onRefresh && <button type="button" onClick={onRefresh} disabled={pending}>Refresh ↻</button>}</div>
     {error && <div className={styles.error} role="alert">{error} {onRetry && <button type="button" onClick={onRetry} disabled={pending}>Try again</button>}</div>}
     <p className="visually-hidden" role="status">{pending ? "Loading rankings…" : `${label} rankings loaded.`}</p>
     <div className={styles.layout}>
       <section className={styles.center} aria-labelledby="page-title">
-        <header className={styles.heading}><p className={styles.eyebrow}>Made by our community</p><h1 id="page-title">Leaderboard<span>★</span></h1><p>Create something great. Make your way to the top.</p></header>
+        <header className={styles.heading}><p className={styles.eyebrow}>Made by our community</p><p>Create something great. Make your way to the top.</p></header>
         <section className={styles.podiumSection} aria-label={`${label} top three creators`}>
           <p className={styles.podiumLabel}>{label} <span>· Top creators by revenue</span></p>
           {!podium.length && <p className={styles.empty}>The podium is waiting for our first creators.</p>}

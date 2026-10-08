@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { LeaderboardPeriod, LeaderboardSummary } from "@/lib/leaderboard-types";
 import { LeaderboardBoard } from "./board";
+import { LeaderboardTitle } from "./title";
 
 type RequestAction = { period: LeaderboardPeriod; cursor?: string };
 export function Leaderboard({ initial }: { initial: LeaderboardSummary | null }) {
@@ -41,7 +42,7 @@ export function Leaderboard({ initial }: { initial: LeaderboardSummary | null })
     }
   }
 
-  if (!summary) return <main id="main" className="mx-auto max-w-3xl px-6 py-12"><h1>Leaderboard</h1><p role="alert" className="my-6">{error}</p><button type="button" className="action-button" disabled={pending} onClick={() => load(retry.current)}>{pending ? "Loading…" : "Try again"}</button></main>;
+  if (!summary) return <main id="main" className="mx-auto max-w-3xl px-6 py-12"><LeaderboardTitle /><p role="alert" className="my-6">{error}</p><button type="button" className="action-button" disabled={pending} onClick={() => load(retry.current)}>{pending ? "Loading…" : "Try again"}</button></main>;
   return <LeaderboardBoard summary={summary} pending={pending} error={error}
     onPeriodChange={period => { if (period !== summary.period) void load({ period }); }}
     onLoadMore={() => { if (summary.next_cursor) void load({ period: summary.period, cursor: summary.next_cursor }); }}
