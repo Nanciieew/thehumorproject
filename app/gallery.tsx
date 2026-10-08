@@ -24,9 +24,9 @@ function LoginPrompt({ close }: { close: () => void }) {
   </dialog>;
 }
 
-function GalleryCard({ photo, signedIn, requestLogin }: { photo: GalleryPhoto; signedIn: boolean; requestLogin: () => void }) {
-  const [vote, setVote] = useState<Vote>(photo.vote);
-  const [count, setCount] = useState(photo.upvotes);
+function GalleryCard({ photo, signedIn, requestLogin, updateVote }: { photo: GalleryPhoto; signedIn: boolean; requestLogin: () => void; updateVote: (id: string, vote: Vote, count: number, pending: boolean) => void }) {
+  const vote = photo.vote;
+  const count = photo.upvotes;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const inFlight = useRef(false);
@@ -36,14 +36,14 @@ function GalleryCard({ photo, signedIn, requestLogin }: { photo: GalleryPhoto; s
     inFlight.current = true; setBusy(true); setError("");
     const previous = { vote, count };
     const next = vote === choice ? null : choice;
-    setVote(next); setCount(Math.max(0, count + Number(next === 1) - Number(vote === 1)));
+    updateVote(photo.id, next, Math.max(0, count + Number(next === 1) - Number(vote === 1)), true);
     try {
       const response = await fetch("/api/gallery/vote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ photoId: photo.id, value: next }) });
       const result = await response.json();
       if (!response.ok) { if (response.status === 401) requestLogin(); throw new Error(result.error); }
-      setVote(result.vote); setCount(result.upvotes);
+      updateVote(photo.id, result.vote, result.upvotes, false);
     } catch (error) {
-      setVote(previous.vote); setCount(previous.count);
+      updateVote(photo.id, previous.vote, previous.count, false);
       setError(error instanceof Error && !(error instanceof TypeError) ? error.message : "Your vote couldn’t be saved. Please try again.");
     } finally { inFlight.current = false; setBusy(false); }
   }
@@ -66,6 +66,17 @@ function GalleryFeed({ sort, initial, signedIn, requestLogin }: { sort: GalleryS
   const [started, setStarted] = useState(Boolean(initial));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const itemsRef = useRef(items);
+  useEffect(() => { itemsRef.current = items; }, [items]);
+  const revision = useRef(0);
+  const pendingVotes = useRef(new Set<string>());
+  const [refreshing, setRefreshing] = useState(false);
+  const updateVote = useCallback((id: string, vote: Vote, count: number, pending: boolean) => {
+    revision.current++;
+    if (pending) pendingVotes.current.add(id); else pendingVotes.current.delete(id);
+    setItems((existing) => existing.map((photo) => photo.id === id ? { ...photo, vote, upvotes: count } : photo));
+  }, []);
+  const ordered = [...items].sort((a, b) => (sort === "newest" ? 0 : b.upvotes - a.upvotes) || b.published_at.localeCompare(a.published_at) || b.id.localeCompare(a.id));
   const sentinel = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false);
   const controller = useRef<AbortController | null>(null);
@@ -87,13 +98,51 @@ function GalleryFeed({ sort, initial, signedIn, requestLogin }: { sort: GalleryS
   }, [sort, cursor]);
   useEffect(() => () => { controller.current?.abort(); inFlight.current = false; }, []);
   useEffect(() => {
-    if ((started && !cursor) || loading || error || !sentinel.current) return;
+    // Re-read the entire visible prefix so photos rising from later pages can enter it.
+    let stopped = false;
+    const refresh = async () => {
+      if (document.visibilityState === "hidden" || inFlight.current || pendingVotes.current.size) return;
+      inFlight.current = true;
+      setRefreshing(true);
+      const version = revision.current;
+      const abort = new AbortController(); controller.current = abort;
+      try {
+        const pages = Math.max(1, Math.ceil(itemsRef.current.length / 30));
+        let next: string | null = null;
+        const refreshed = new Map<string, GalleryPhoto>();
+        for (let index = 0; index < pages; index++) {
+          const query = new URLSearchParams({ sort });
+          if (next) query.set("cursor", next);
+          const response = await fetch(`/api/gallery?${query}`, { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(15_000)]), cache: "no-store" });
+          const page: GalleryPage = await response.json();
+          if (!response.ok) throw new Error("Gallery refresh failed");
+          for (const photo of page.items) refreshed.set(photo.id, photo);
+          next = page.next_cursor;
+          if (!next) break;
+        }
+        if (!stopped && !abort.signal.aborted && version === revision.current) {
+          setItems([...refreshed.values()]); setCursor(next); setStarted(true);
+        }
+      } catch { /* Keep the visible gallery and retry on the next refresh. */ }
+      finally {
+        if (controller.current === abort) inFlight.current = false;
+        if (!stopped) setRefreshing(false);
+      }
+    };
+    const timer = window.setInterval(() => void refresh(), 15_000);
+    const onFocus = () => void refresh();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => { stopped = true; window.clearInterval(timer); window.removeEventListener("focus", onFocus); document.removeEventListener("visibilitychange", onFocus); };
+  }, [sort]);
+  useEffect(() => {
+    if ((started && !cursor) || loading || refreshing || error || !sentinel.current) return;
     const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) void load(); }, { rootMargin: "600px" });
     observer.observe(sentinel.current); return () => observer.disconnect();
-  }, [started, cursor, loading, error, load]);
+  }, [started, cursor, loading, refreshing, error, load]);
   return <>
     <ul aria-label="Avatar gallery" className="gallery-grid">
-      {items.map((photo) => <li key={photo.id}><GalleryCard photo={photo} signedIn={signedIn} requestLogin={requestLogin} /></li>)}
+      {ordered.map((photo) => <li key={photo.id}><GalleryCard photo={photo} signedIn={signedIn} requestLogin={requestLogin} updateVote={updateVote} /></li>)}
     </ul>
     {started && !items.length && !error && <div className="gallery-empty">
       <p className="text-xl font-semibold">{sort === "week" ? "A fresh week, a blank canvas." : "Be the first face in the gallery."}</p>

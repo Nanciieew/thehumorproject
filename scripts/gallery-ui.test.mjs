@@ -115,3 +115,40 @@ test("upload control is English and a selected gallery file is uploaded directly
   assert.equal(calls[1][0], "https://storage.example.test/signed"); assert.equal(calls[1][1].method, "PUT");
   assert.deepEqual(JSON.parse(calls[2][1].body), {assetId: "ticket", source: "upload"});
 });
+
+test("ranking moves immediately on upvote/removal, reconciles server totals and rolls back failures", async () => {
+  let finish;
+  globalThis.fetch = async () => new Promise((resolve) => { finish = resolve; });
+  const ui = mount("user", [photo("z", 2), photo("a", 2)]);
+  const order = () => ui.getAllByRole("article").map((element) => element.id);
+  const click = (id) => fireEvent.click(ui.container.querySelector(`#photo-${id} button`));
+  assert.deepEqual(order(), ["photo-z", "photo-a"]);
+  click("a"); assert.deepEqual(order(), ["photo-a", "photo-z"]);
+  await act(async () => finish(Response.json({vote: 1, upvotes: 3})));
+  click("a"); assert.deepEqual(order(), ["photo-z", "photo-a"]);
+  await act(async () => finish(Response.json({vote: null, upvotes: 8})));
+  assert.deepEqual(order(), ["photo-a", "photo-z"]);
+  globalThis.fetch = async () => Response.json({error: "Vote failed"}, {status: 500});
+  fireEvent.click(ui.container.querySelector('#photo-a button[aria-label="Downvote"]'));
+  await waitFor(() => assert.ok(ui.getByText("Vote failed")));
+  assert.equal(ui.container.querySelector('#photo-a button').getAttribute('aria-label'), 'Upvote: 8 upvotes');
+});
+
+test("returning to the page refreshes global leaders, including photos outside the visible page", async () => {
+  const ui = mount("user", [photo("old", 2)]);
+  globalThis.fetch = async () => Response.json({items: [photo("new-leader", 50), photo("old", 3)], next_cursor: "updated-cursor"});
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await waitFor(() => assert.equal(ui.getAllByRole("article")[0].id, "photo-new-leader"));
+  assert.ok(ui.getByRole("button", {name: "Upvote: 3 upvotes"}));
+});
+
+test("a stale background response cannot overwrite a vote made while it was loading", async () => {
+  let finishRefresh;
+  globalThis.fetch = async (url) => url === "/api/gallery/vote" ? Response.json({vote: 1, upvotes: 3}) : new Promise((resolve) => { finishRefresh = resolve; });
+  const ui = mount("user", [photo("one", 2)]);
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  fireEvent.click(ui.getByRole("button", {name: "Upvote: 2 upvotes"}));
+  await waitFor(() => assert.equal(ui.getByRole("button", {name: "Upvote: 3 upvotes"}).disabled, false));
+  await act(async () => finishRefresh(Response.json({items: [photo("one", 2)], next_cursor: null})));
+  assert.equal(ui.getByRole("button", {name: "Upvote: 3 upvotes"}).getAttribute("aria-pressed"), "true");
+});

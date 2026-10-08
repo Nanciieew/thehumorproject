@@ -200,3 +200,5 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
 Image Studio accepts an optional JPEG or PNG reference photo (up to 2 MB and 24 megapixels). The server validates its type and dimensions before sending it to Ark alongside the prompt. Reference photos are sent to Ark only when generating; the sample test uses its original text prompt. Run `npm run test:studio-ui` for UI submission and reference validation checks.
+
+Gallery favorites and this-week rankings reorder immediately when votes change, using upvotes descending and then publication date/ID for ties. Failed votes restore their previous counts and order. Visible pages refresh every 15 seconds while the tab is visible and on focus; this also discovers photos rising from later pages. Newest continues to sort by publication date.
