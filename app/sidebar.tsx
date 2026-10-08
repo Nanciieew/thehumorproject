@@ -14,11 +14,17 @@ const links = [
 
 export function Sidebar({ children }: { children?: ReactNode }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(true);
-  return <aside id="sidebar-panel" className="app-sidebar" data-collapsed={collapsed}>
+  const [pinnedOpen, setPinnedOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const collapsed = !pinnedOpen && !hovered;
+  return <aside id="sidebar-panel" className="app-sidebar" data-collapsed={collapsed}
+    onPointerEnter={(event) => {
+      if (event.pointerType === "mouse") setHovered(true);
+    }}
+    onPointerLeave={() => setHovered(false)}>
     <div className="sidebar-heading">
       <Link href="/" className="app-brand" aria-label="The Humor Project home" title={collapsed ? "The Humor Project" : undefined}><Smile className="brand-mark" /><span>THE HUMOR<br />PROJECT<small>A little less serious.</small></span></Link>
-      <button type="button" className="sidebar-toggle" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-expanded={!collapsed} aria-controls="sidebar-panel" onClick={() => setCollapsed((value) => !value)}>
+      <button type="button" className="sidebar-toggle" aria-label={pinnedOpen ? "Unpin sidebar" : "Pin sidebar open"} title={pinnedOpen ? "Unpin sidebar" : "Pin sidebar open"} aria-expanded={!collapsed} aria-pressed={pinnedOpen} aria-controls="sidebar-panel" onClick={() => setPinnedOpen((value) => !value)}>
         <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M9 4v16" /><path d={collapsed ? "m13 9 3 3-3 3" : "m16 9-3 3 3 3"} /></svg>
       </button>
     </div>

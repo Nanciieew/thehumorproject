@@ -197,3 +197,27 @@ test("an expired creation-time cursor replaces the feed with a fresh publication
   assert.equal(ui.getAllByRole("article").length, 1);
   assert.ok(calls[0].includes("cursor=")); assert.ok(!calls[1].includes("cursor="));
 });
+
+test("avatar name search sends a trimmed query, survives sort changes and clears to the full gallery", async () => {
+  const requests = [];
+  globalThis.fetch = async (url) => {
+    requests.push(new URL(url, "http://localhost:3000"));
+    return Response.json({items: [], next_cursor: null});
+  };
+  const ui = mount();
+  const input = ui.getByRole("searchbox", {name: "Search by avatar name"});
+  fireEvent.change(input, {target: {value: "  Mario  "}});
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 300)); });
+  await scroll();
+  await waitFor(() => assert.ok(ui.getByText("No avatars found.")));
+  assert.equal(requests.at(-1).searchParams.get("search"), "Mario");
+  fireEvent.click(ui.getByRole("button", {name: "Newest"}));
+  await scroll();
+  await waitFor(() => assert.equal(requests.at(-1).searchParams.get("sort"), "newest"));
+  assert.equal(requests.at(-1).searchParams.get("search"), "Mario");
+  fireEvent.change(input, {target: {value: ""}});
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 300)); });
+  await scroll();
+  await waitFor(() => assert.ok(ui.getByText("Be the first face in the gallery.")));
+  assert.equal(requests.at(-1).searchParams.get("search"), "");
+});

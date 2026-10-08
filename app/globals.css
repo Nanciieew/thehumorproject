@@ -127,6 +127,14 @@ h1 em { color: var(--coral); font-style: normal; }
 .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .section-heading h2 { font-size: 28px; }
 .collection-note { font-size: 7px; letter-spacing: 1px; color: var(--muted); }
+.gallery-search { display: flex; align-items: center; gap: 8px; width: min(260px, 100%); padding: 9px 12px; border: 1px solid var(--line); border-radius: 30px; color: var(--muted); }
+.gallery-search:focus-within { border-color: var(--foreground); outline: 2px solid var(--play-blue); outline-offset: 2px; }
+.gallery-search svg { flex-shrink: 0; }
+.gallery-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 11px; }
+@media (max-width: 520px) {
+  .section-heading:has(.gallery-search) { flex-wrap: wrap; gap: 12px; }
+  .gallery-search { width: 100%; }
+}
 .filterbar { display: flex; justify-content: space-between; align-items: center; gap: 20px; border-top: 1px solid var(--foreground); border-bottom: 1px solid var(--line); padding: 11px 0; margin-top: 15px; }
 .gallery-filters { display: flex; gap: 7px; flex-wrap: wrap; }
 .gallery-filters button { padding: 7px 12px; border: 1px solid var(--foreground); border-radius: 30px; font-size: 9px; background: transparent; }

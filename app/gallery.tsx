@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PhotoInput } from "./photo-input";
-import { ColorPlay, Icon, Smile } from "./ui";
+import { Icon, Smile } from "./ui";
 import { GALLERY_MIME_TYPES, MAX_GALLERY_BYTES, type GalleryPage, type GalleryPhoto, type GallerySort, type Vote } from "@/lib/gallery-types";
 
 function Thumb({ down = false }: { down?: boolean }) {
@@ -61,7 +61,7 @@ function GalleryCard({ photo, signedIn, requestLogin, updateVote }: { photo: Gal
   </article>;
 }
 
-function GalleryFeed({ sort, initial, signedIn, requestLogin }: { sort: GallerySort; initial?: GalleryPage; signedIn: boolean; requestLogin: () => void }) {
+function GalleryFeed({ sort, search, initial, signedIn, requestLogin }: { sort: GallerySort; search: string; initial?: GalleryPage; signedIn: boolean; requestLogin: () => void }) {
   const [items, setItems] = useState(initial?.items ?? []);
   const [cursor, setCursor] = useState(initial?.next_cursor ?? null);
   const [started, setStarted] = useState(Boolean(initial));
@@ -86,12 +86,12 @@ function GalleryFeed({ sort, initial, signedIn, requestLogin }: { sort: GalleryS
     inFlight.current = true; setLoading(true); setError("");
     const abort = new AbortController(); controller.current = abort;
     try {
-      const query = new URLSearchParams({ sort }); if (cursor) query.set("cursor", cursor);
+      const query = new URLSearchParams({ sort, search }); if (cursor) query.set("cursor", cursor);
       let response = await fetch(`/api/gallery?${query}`, { signal: abort.signal });
       let page = await response.json();
       const reset = response.status === 409 && page.code === "GALLERY_CURSOR_EXPIRED";
       if (reset) {
-        response = await fetch(`/api/gallery?${new URLSearchParams({ sort })}`, { signal: abort.signal });
+        response = await fetch(`/api/gallery?${new URLSearchParams({ sort, search })}`, { signal: abort.signal });
         page = await response.json();
       }
       if (!response.ok) throw new Error(page.error);
@@ -101,7 +101,7 @@ function GalleryFeed({ sort, initial, signedIn, requestLogin }: { sort: GalleryS
     } catch (error) {
       if (!abort.signal.aborted) setError(error instanceof Error && !(error instanceof TypeError) ? error.message : "Couldn’t load more photos. Please try again.");
     } finally { if (controller.current === abort) { inFlight.current = false; if (!abort.signal.aborted) setLoading(false); } }
-  }, [sort, cursor]);
+  }, [sort, search, cursor]);
   useEffect(() => () => { controller.current?.abort(); inFlight.current = false; }, []);
   useEffect(() => {
     // Re-read the entire visible prefix so photos rising from later pages can enter it.
@@ -117,7 +117,7 @@ function GalleryFeed({ sort, initial, signedIn, requestLogin }: { sort: GalleryS
         let next: string | null = null;
         const refreshed = new Map<string, GalleryPhoto>();
         for (let index = 0; index < pages; index++) {
-          const query = new URLSearchParams({ sort });
+          const query = new URLSearchParams({ sort, search });
           if (next) query.set("cursor", next);
           const response = await fetch(`/api/gallery?${query}`, { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(15_000)]), cache: "no-store" });
           const page: GalleryPage = await response.json();
@@ -140,7 +140,7 @@ function GalleryFeed({ sort, initial, signedIn, requestLogin }: { sort: GalleryS
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
     return () => { stopped = true; window.clearInterval(timer); window.removeEventListener("focus", onFocus); document.removeEventListener("visibilitychange", onFocus); };
-  }, [sort]);
+  }, [sort, search]);
   useEffect(() => {
     if ((started && !cursor) || loading || refreshing || error || !sentinel.current) return;
     const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) void load(); }, { rootMargin: "600px" });
@@ -150,9 +150,9 @@ function GalleryFeed({ sort, initial, signedIn, requestLogin }: { sort: GalleryS
     <ul aria-label="Avatar gallery" className="gallery-grid">
       {ordered.map((photo) => <li key={photo.id}><GalleryCard photo={photo} signedIn={signedIn} requestLogin={requestLogin} updateVote={updateVote} /></li>)}
     </ul>
-    {started && !items.length && !error && <div className="gallery-empty">
-      <p className="text-xl font-semibold">{sort === "week" ? "A fresh week, a blank canvas." : "Be the first face in the gallery."}</p>
-      <p className="mt-3 text-sm opacity-65">Share an avatar you love and let the votes begin.</p>
+    {started && !items.length && !cursor && !loading && !error && <div className="gallery-empty">
+      <p className="text-xl font-semibold">{search ? "No avatars found." : sort === "week" ? "A fresh week, a blank canvas." : "Be the first face in the gallery."}</p>
+      <p className="mt-3 text-sm opacity-65">{search ? "Try another avatar name or clear your search." : "Share an avatar you love and let the votes begin."}</p>
     </div>}
     <div ref={sentinel} className="gallery-status">
       {loading && <p role="status">Loading avatars…</p>}
@@ -208,6 +208,12 @@ function UploadPhoto({ close, published }: { close: () => void; published: () =>
 
 export function Gallery({ initial, userId }: { initial?: GalleryPage; userId: string | null }) {
   const [sort, setSort] = useState<GallerySort>("top");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(searchInput.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
   const [revision, setRevision] = useState(0);
   const [login, setLogin] = useState(false);
   const [upload, setUpload] = useState(false);
@@ -220,11 +226,11 @@ export function Gallery({ initial, userId }: { initial?: GalleryPage; userId: st
     </header>
     <div className="brand-ticker" aria-hidden="true"><span>YOUR FACE. YOUR RULES.</span><span>✳</span><span>A LITTLE LESS SERIOUS.</span><span>✳</span><span>MADE BY YOU, LOVED BY US.</span><span>✳</span></div>
     <section className="gallery-section" aria-labelledby="gallery-title">
-      <div className="section-heading"><h2 id="gallery-title">THE GOOD COMPANY.</h2><span className="collection-note"><ColorPlay />FACES & COUNTING</span></div>
+      <div className="section-heading"><h2 id="gallery-title">THE GOOD COMPANY.</h2><label className="gallery-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></svg><input type="search" aria-label="Search by avatar name" placeholder="Search by avatar name" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} /></label></div>
       <div className="filterbar"><div aria-label="Sort gallery" className="gallery-filters">{([["top", "Community favorites", "Top"], ["week", "This week", "Top this week"], ["newest", "Fresh faces", "Newest"]] as const).map(([value, label, accessibleLabel]) => <button key={value} aria-label={accessibleLabel} aria-pressed={sort === value} onClick={() => { if (sort !== value) { setSort(value); setRevision((value) => value + 1); setMessage(""); } }}>{label}</button>)}</div><span className="filter-note">A thumbs-up goes a long way.</span></div>
       {sort === "week" && <p className="filter-explanation">Photos shared since Monday, New York time. Ranked by upvotes.</p>}
       {message && <p role="status" className="gallery-message">{message}</p>}
-      <GalleryFeed key={`${sort}:${userId}:${revision}`} sort={sort} initial={sort === "top" && revision === 0 ? initial : undefined} signedIn={Boolean(userId)} requestLogin={requestLogin} />
+      <GalleryFeed key={`${sort}:${userId}:${revision}:${search}`} sort={sort} search={search} initial={!search && sort === "top" && revision === 0 ? initial : undefined} signedIn={Boolean(userId)} requestLogin={requestLogin} />
     </section>
     <section className="bottom-cta"><div><p className="eyebrow">LET YOUR IMAGINATION WANDER</p><h2>A NEW FACE.<br />A NEW POSSIBILITY.</h2></div>{userId ? <Link href="/image-studio" className="action-button">Visit Image Studio <span><Icon name="arrow" /></span></Link> : <button className="action-button" onClick={requestLogin}>Visit Image Studio <span><Icon name="arrow" /></span></button>}<Smile /></section>
     {login && <LoginPrompt close={() => setLogin(false)} />}
