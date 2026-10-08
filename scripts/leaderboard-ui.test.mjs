@@ -86,3 +86,13 @@ test("reduced motion shows final revenue immediately", async () => {
     await waitFor(() => assert.equal(counter.textContent, "$900,719,925,474,099.30"));
   } finally { window.matchMedia = original; }
 });
+
+test("animation preview counts sample revenue and replay resets it to zero", async () => {
+  const { LeaderboardPreview } = await import('../app/test/leaderboard/preview.tsx');
+  const ui = render(React.createElement(LeaderboardPreview));
+  const counter = () => ui.container.querySelector('span[aria-label="$1,240.00"]');
+  assert.equal(counter().textContent, "$0.00");
+  await waitFor(() => assert.equal(counter().textContent, "$1,240.00"), {timeout: 4000});
+  fireEvent.click(ui.getByRole("button", {name: "Replay animation ↻"}));
+  assert.equal(counter().textContent, "$0.00");
+});
