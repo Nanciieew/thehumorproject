@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 
-type IconName = "arrow" | "grid" | "spark" | "user" | "leaderboard" | "logout" | "upload" | "close";
+type IconName = "works" | "arrow" | "grid" | "spark" | "user" | "leaderboard" | "logout" | "upload" | "close";
 export function Icon({ name, className = "" }: { name: IconName; className?: string }) {
   const paths: Record<IconName, ReactNode> = {
+    works: <><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8" cy="8" r="2" /><path d="m3 17 6-6 4 4 3-3 5 5" /></>,
     arrow: <path d="M5 19 19 5M5 5h14v14" />,
     grid: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
     spark: <path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" />,

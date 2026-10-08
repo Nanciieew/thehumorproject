@@ -50,7 +50,8 @@ function GalleryCard({ photo, signedIn, requestLogin, updateVote }: { photo: Gal
   return <article id={`photo-${photo.id}`} className="gallery-card">
     <div className="card-image"><Image src={photo.photo_url} alt={`Avatar shared by ${photo.contributor_name}`} width={400} height={400} unoptimized /><span className="image-tag">{photo.source === "generated" ? "FROM THE STUDIO" : "JUST BE YOU"}</span></div>
     <div className="card-info">
-      <h3 title={photo.contributor_name}>{photo.contributor_name}</h3><p>{photo.source === "generated" ? "Made in Image Studio" : "Shared with the community"}</p>
+      <h3 title={photo.title || photo.contributor_name}>{photo.title || photo.contributor_name}</h3><p>{photo.title ? `By ${photo.contributor_name}` : photo.source === "generated" ? "Made in Image Studio" : "Shared with the community"}</p>
+      {photo.description && <p className="work-card-description">{photo.description}</p>}
       <div className="card-votes" aria-label="Photo voting" aria-busy={busy}>
         <button type="button" aria-label={`Upvote: ${count} ${count === 1 ? "upvote" : "upvotes"}`} aria-pressed={vote === 1} disabled={busy} onClick={() => void choose(1)} className={`vote-button ${vote === 1 ? "text-blue-600" : vote === -1 ? "text-gray-400" : ""}`}><Thumb /><span>{count}</span></button>
         <button type="button" aria-label="Downvote" aria-pressed={vote === -1} disabled={busy} onClick={() => void choose(-1)} className={`vote-button down ${vote === -1 ? "text-red-600" : vote === 1 ? "text-gray-400" : ""}`}><Thumb down /></button>

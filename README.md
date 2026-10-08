@@ -103,6 +103,26 @@ The interface uses locally hosted Inter and Anton fonts through `next/font/local
 
 ## Avatar Gallery
 
+### My Works
+
+Apply `supabase/migrations/20261007000002_my_works.sql` after the gallery
+migration before deploying the My Works feature. `/my-works` lists the signed-in
+user’s published uploads and saved generated images, with private/published
+badges and cursor-based scrolling. Generated works appear once after publication.
+Each card opens an owner-only detail page for editing an optional name (100
+characters) and description (1,000 characters).
+
+`work_captions` stores text separately from image assets. The `my_works` view and
+`save_work_caption` function run with the authenticated user’s permissions;
+RLS checks ownership and completed onboarding. Generated-image previews use
+private signed Storage URLs. `gallery_feed` returns captions only for published
+photos, without exposing private captions or changing votes/publication times.
+
+Run `node --import tsx --test scripts/works-ui.test.mjs` for interaction checks.
+After applying the migration and starting the app on port 3000, run
+`node --env-file=.env.local scripts/test-works.mjs` for Supabase/API integration
+checks. The latter creates temporary users/assets and removes them afterward.
+
 Apply `supabase/migrations/20261007000001_avatar_gallery.sql` after the existing
 migrations. The homepage is a separate public gallery; it does not publish
 profile photos or migrate the old joke images. Photos appear immediately after

@@ -143,6 +143,28 @@ h1 em { color: var(--coral); font-style: normal; }
 .card-info { padding: 9px 0 10px; border-bottom: 1px solid var(--line); }
 .card-info h3 { font-family: var(--font-inter), sans-serif; font-size: 10px; font-weight: 600; line-height: 1.5; text-transform: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-info > p { font-size: 8px; margin-top: 2px; color: var(--muted); }
+.work-card-description { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.works-section { padding-bottom: 32px; }
+.works-section .gallery-card > a { display: block; border-radius: 5px; }
+.work-detail { padding: 32px; }
+.work-detail-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 40px; margin-top: 32px; align-items: start; }
+.work-detail-photo { background: var(--beige); border: 1px solid var(--foreground); border-radius: 8px; overflow: hidden; }
+.work-detail-photo img { display: block; width: 100%; height: auto; max-height: 75vh; object-fit: contain; }
+.work-detail h1 { font-size: clamp(32px, 4vw, 56px); margin: 14px 0; }
+.work-detail-note { color: var(--muted); font-size: 12px; line-height: 1.8; }
+.caption-editor { display: flex; flex-direction: column; gap: 12px; margin-top: 28px; }
+.caption-editor label { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 600; }
+.caption-editor label span { color: var(--muted); font-size: 10px; font-weight: 400; }
+.caption-editor input, .caption-editor textarea { width: 100%; border: 1px solid var(--foreground); border-radius: 5px; padding: 13px; background: var(--background); font: inherit; font-size: 14px; line-height: 1.6; }
+.caption-editor textarea { resize: vertical; min-height: 140px; }
+.caption-editor input:focus-visible, .caption-editor textarea:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
+.caption-editor input:disabled, .caption-editor textarea:disabled { opacity: .65; }
+.caption-editor .action-button { align-self: flex-start; margin-top: 8px; }
+@media (max-width: 760px) {
+  .work-detail { padding: 24px 18px; }
+  .work-detail-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .work-detail-photo img { max-height: 55vh; }
+}
 .card-votes { display: flex; gap: 5px; margin-top: 8px; }
 .vote-button { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: 3px; font-size: 9px; background: transparent; }
 .vote-button svg { width: 13px; height: 13px; }
