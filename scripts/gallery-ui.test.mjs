@@ -237,3 +237,20 @@ test("gallery has a single bubble title and avatar cards link to public descript
   assert.ok(ui.getByRole("button", {name: "Newest first"}));
   assert.equal(ui.getByRole("button", {name: "Upvote: 2 upvotes"}).closest("a"), null);
 });
+
+test("New this month ranks by most votes, with newer publication breaking ties, across loaded pages", async () => {
+  let page = 0;
+  const older = {...photo("older", 20), published_at: "2026-10-02T12:00:00Z"};
+  const newer = {...photo("newer", 1), published_at: "2026-10-08T12:00:00Z"};
+  const tied = {...photo("tied", 20), published_at: "2026-10-05T12:00:00Z"};
+  globalThis.fetch = async url => {
+    assert.equal(new URL(url, "http://localhost:3000").searchParams.get("sort"), "month");
+    return Response.json(page++ === 0 ? {items: [newer, older], next_cursor: "next"} : {items: [tied], next_cursor: null});
+  };
+  const ui = mount();
+  fireEvent.click(ui.getByRole("button", {name: "New this month"}));
+  await scroll();
+  await waitFor(() => assert.deepEqual(ui.getAllByRole("article").map(el => el.id), ["photo-older", "photo-newer"]));
+  await scroll();
+  await waitFor(() => assert.deepEqual(ui.getAllByRole("article").map(el => el.id), ["photo-tied", "photo-older", "photo-newer"]));
+});

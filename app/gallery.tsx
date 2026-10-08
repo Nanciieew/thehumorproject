@@ -78,7 +78,7 @@ function GalleryFeed({ sort, search, initial, signedIn, requestLogin }: { sort: 
     if (pending) pendingVotes.current.add(id); else pendingVotes.current.delete(id);
     setItems((existing) => existing.map((photo) => photo.id === id ? { ...photo, vote, upvotes: count } : photo));
   }, []);
-  const ordered = [...items].sort((a, b) => ((sort === "newest" || sort === "month") ? 0 : b.upvotes - a.upvotes) || b.published_at.localeCompare(a.published_at) || b.id.localeCompare(a.id));
+  const ordered = [...items].sort((a, b) => (sort === "newest" ? 0 : b.upvotes - a.upvotes) || b.published_at.localeCompare(a.published_at) || b.id.localeCompare(a.id));
   const sentinel = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false);
   const controller = useRef<AbortController | null>(null);
@@ -220,15 +220,18 @@ export function Gallery({ initial, userId }: { initial?: GalleryPage; userId: st
   const [upload, setUpload] = useState(false);
   const [message, setMessage] = useState("");
   const requestLogin = useCallback(() => setLogin(true), []);
-  return <main id="main">
+  return <main id="main" className={styles.page}>
     <header className={styles.hero}>
+      <div className={styles.decorations} aria-hidden="true"><span className={styles.orbit} /><span className={styles.bubble} /><svg className={styles.star} viewBox="0 0 80 80"><path d="m40 5 9 23 25 4-19 17 5 25-20-13-21 13 5-25L5 32l25-4Z" /></svg><svg className={styles.sparkle} viewBox="0 0 60 60"><path d="M30 3c3 19 8 24 27 27-19 3-24 8-27 27C27 38 22 33 3 30 22 27 27 22 30 3Z" /></svg><span className={styles.cloud} /><span className={styles.confetti} /></div>
       <h1 id="gallery-title" className={styles.title} aria-label="Avatar Gallery">{["AVATAR", "GALLERY"].map(word => <span className={styles.word} key={word} aria-hidden="true">{Array.from(word).map((letter, index) => <span className={styles.letter} key={index}>{letter}</span>)}</span>)}</h1>
       <div className="hero-actions"><button aria-label="Upload photo" onClick={() => userId ? setUpload(true) : requestLogin()} className="action-button">Share your photo <span><Icon name="upload" /></span></button>{userId ? <Link href="/image-studio" className="text-button">Make something new <span aria-hidden="true">↗</span></Link> : <button onClick={requestLogin} className="text-button">Make something new <span aria-hidden="true">↗</span></button>}</div>
     </header>
 
-    <section className="gallery-section" aria-labelledby="gallery-title">
+    <section className={`gallery-section ${styles.collection}`} aria-labelledby="gallery-title">
+      <div className={styles.toolbar}>
       <div className={styles.searchRow}><label className="gallery-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></svg><input type="search" aria-label="Search by avatar name" placeholder="Search by avatar name" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} /></label></div>
       <div className={styles.filterbar}><div aria-label="Sort gallery" className={styles.filters}>{([["top", "Most votes overall", "Most votes overall"], ["month", "New this month", "New this month"], ["newest", "Newest first", "Newest first"]] as const).map(([value, label, accessibleLabel]) => <button key={value} aria-label={accessibleLabel} aria-pressed={sort === value} onClick={() => { if (sort !== value) { setSort(value); setRevision((value) => value + 1); setMessage(""); } }}><span aria-hidden="true">{value === "top" ? "★" : value === "month" ? "✿" : "✦"}</span>{label}</button>)}</div></div>
+      </div>
       {message && <p role="status" className="gallery-message">{message}</p>}
       <GalleryFeed key={`${sort}:${userId}:${revision}:${search}`} sort={sort} search={search} initial={!search && sort === "top" && revision === 0 ? initial : undefined} signedIn={Boolean(userId)} requestLogin={requestLogin} />
     </section>
