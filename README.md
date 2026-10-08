@@ -352,3 +352,28 @@ For live endpoint checks, start the app and run
 `node --env-file=.env.local scripts/test-leaderboard.mjs`. Set
 `LEADERBOARD_TEST_URL=http://localhost:3001` if using another port. This test creates
 and removes temporary profiles/images and never creates sale records.
+
+## Personal dashboard
+
+The sidebar’s My Dashboard page keeps the existing `/my-works` URL and caption
+editing links. Three responsive cards show all-time USD revenue after refunds,
+upvotes on published avatars, and the count of published avatars. Private saved
+generations stay in the collection but do not count as published.
+
+`GET /api/dashboard` requires completed signup and always uses the authenticated
+user ID; it accepts no owner selection. The response is private/no-store and
+contains only aggregate decimal strings. Refresh updates the cards, and failures
+retain the last successful values instead of showing invented zero totals.
+
+The optional `20261008000001_personal_dashboard.sql` migration performs these
+aggregates in one service-only database call. It has not been applied to the
+connected project because the configured management credential was rejected.
+Until installed, the server computes the same totals using owner-scoped,
+keyset-paginated reads of `images`, `gallery_vote_totals`, and `image_sales`,
+without the collection’s 30-item limit or Supabase’s row limit truncating totals.
+No additional tables are required.
+
+Run `npm run test:dashboard-ui` and `npm run test:dashboard-api`; the personal
+aggregate SQL and permissions are also covered by `npm run test:leaderboard-db`.
+The live integration script `scripts/test-leaderboard.mjs` verifies the dashboard
+page and endpoint with temporary fixtures that are removed afterward.

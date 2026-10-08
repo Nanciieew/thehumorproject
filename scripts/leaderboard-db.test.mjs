@@ -43,6 +43,7 @@ for (const [id,owner,age,privateImage] of [[older,a,-2,false],[newA,a,0,false],[
  values($1,$2,'generated',$3,$4,$5,$6)`,[id,owner,`${owner}/${id}.webp`,privateImage?null:`${owner}/public-${id}.webp`,created,privateImage?null:published]);
 }
 await db.exec(await readFile(new URL('../supabase/migrations/20261008000000_sales_leaderboard.sql',import.meta.url),'utf8'));
+await db.exec(await readFile(new URL('../supabase/migrations/20261008000001_personal_dashboard.sql',import.meta.url),'utf8'));
 after(()=>db.close());
 async function as(role,action){await db.exec(`set role ${role}`);try{return await action();}finally{await db.exec('reset role');}}
 const summary=async(period='monthly',cursor=null,limit=30)=>(await as('service_role',()=>sql('select public.leaderboard_summary($1,$2::jsonb,$3) as result',[period,cursor&&JSON.stringify(cursor),limit])))[0].result;
@@ -164,3 +165,18 @@ test('month start includes boundary sales and next-month start excludes them fro
  const april=await summary('monthly',{period:'monthly',rank:0,as_of:'2026-04-01T04:00:00Z'});
  assert.equal(april.individuals.find(x=>x.contributor_id===b).revenue_cents,'2000');
 });
+
+ test('personal dashboard matches all-time totals, isolates owners, excludes drafts/downvotes, and denies browser RPCs',async()=>{
+  const all=await summary('all_time');
+  for(const owner of [a,b,c]) {
+   const result=(await as('service_role',()=>sql('select public.personal_dashboard_summary($1) as result',[owner])))[0].result;
+   const ranked=all.individuals.find(x=>x.contributor_id===owner);
+   assert.deepEqual(result,{published_count:String(ranked?.avatars_made??0),upvotes:String(ranked?.total_votes??0),revenue_cents:ranked?.revenue_cents??'0'});
+  }
+  const alice=(await sql('select public.personal_dashboard_summary($1) as result',[a]))[0].result;
+  assert.equal(alice.upvotes,'5');
+  const draft='20000000-0000-4000-8000-000000000199';
+  await sql("insert into public.images(id,contributor_id,source,private_storage_path) values($1,$2,'generated',$3)",[draft,a,`${a}/${draft}.webp`]);
+  assert.deepEqual((await sql('select public.personal_dashboard_summary($1) as result',[a]))[0].result,alice);
+  for(const role of ['anon','authenticated']) await assert.rejects(as(role,()=>sql('select public.personal_dashboard_summary($1)',[a])),/permission denied/);
+ });

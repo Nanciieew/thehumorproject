@@ -10,7 +10,7 @@ export default async function WorkPage({ params }: { params: Promise<{ id: strin
   if (!await getViewer()) redirect("/login");
   const work = await readWork((await params).id); if (!work) notFound();
   return <main id="main" className="work-detail">
-    <Link href="/my-works" className="text-button">← Back to My Works</Link>
+    <Link href="/my-works" className="text-button">← Back to My Dashboard</Link>
     <div className="work-detail-layout">
       <div className="work-detail-photo"><Image src={work.photo_url} alt={work.title || "Your work"} width={1200} height={1200} unoptimized /></div>
       <section><p className="eyebrow">{work.photo_id ? "PUBLISHED WORK" : "PRIVATE WORK"}</p><h1>Tell its story.</h1>

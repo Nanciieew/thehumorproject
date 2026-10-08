@@ -43,6 +43,18 @@ try{
  assert.ok((await owner.client.rpc('leaderboard_summary',{p_period:'monthly'})).error);
  assert.ok((await owner.client.rpc('record_image_sale',{p_image_id:image,p_amount_cents:100,p_reference:randomUUID()})).error);
  const summary=check(await admin.rpc('leaderboard_summary',{p_period:'monthly'}));assert.ok(summary.individuals.some(x=>x.contributor_id===owner.id));
+ const dashboardRequest=actor=>fetch(`${base}/api/dashboard`,{headers:actor?{cookie:actor.cookie()}:undefined});
+ assert.equal((await dashboardRequest()).status,401);assert.equal((await dashboardRequest(pending)).status,401);
+ const dashboardResponse=await dashboardRequest(owner);assert.equal(dashboardResponse.status,200);assert.equal(dashboardResponse.headers.get('cache-control'),'private, no-store');
+ assert.deepEqual(await dashboardResponse.json(),{published_count:'1',upvotes:'0',revenue_cents:'0'});
+ const isolated=await fetch(`${base}/api/dashboard?contributor_id=${pending.id}`,{headers:{cookie:owner.cookie()}});
+ assert.deepEqual(await isolated.json(),{published_count:'1',upvotes:'0',revenue_cents:'0'});
+ check(await admin.from('images').delete().eq('id',draft));
+ const dashboardPage=await fetch(`${base}/my-works`,{headers:{cookie:owner.cookie()}});assert.equal(dashboardPage.status,200);
+ const dashboardHtml=await dashboardPage.text();
+ for(const title of ['My Dashboard','Revenue earned','Upvotes received','Avatars published','Your works']) assert.ok(dashboardHtml.includes(title),`Missing dashboard content: ${title}`);
+ assert.ok(!dashboardHtml.includes('Couldn’t load your dashboard totals'));
+ console.log('PASS: personal dashboard page, owner-only totals, guest/pending rejection, private drafts excluded, query parameters cannot change owner.');
  console.log('PASS: authenticated endpoint, guest/pending rejection, period/cursor validation, private drafts excluded, names/photos/rewards, service-only sales and aggregates.');
 }finally{
  for(const actor of users){check(await admin.from('images').delete().eq('contributor_id',actor.id));check(await admin.auth.admin.deleteUser(actor.id));}

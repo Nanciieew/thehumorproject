@@ -11,6 +11,8 @@
     "test:studio-ui": "node --import tsx --test scripts/studio-ui.test.mjs scripts/seedream-reference.test.mjs",
     "test:images-db": "node --test scripts/images-db.test.mjs",
     "test:images-media": "node --conditions=react-server --import tsx --test scripts/images-media.test.mjs",
+    "test:dashboard-ui": "node --import tsx --test scripts/dashboard-ui.test.mjs",
+    "test:dashboard-api": "node --conditions=react-server --import tsx --test scripts/dashboard-api.test.mjs",
     "test:leaderboard-ui": "node --import tsx --test scripts/leaderboard-ui.test.mjs",
     "test:leaderboard-db": "node --test scripts/leaderboard-db.test.mjs",
     "test:leaderboard-api": "node --conditions=react-server --import tsx --test scripts/leaderboard-api.test.mjs",

@@ -9,7 +9,7 @@ const links = [
   { href: "/", label: "Avatar Gallery", icon: "grid" as const },
   { href: "/image-studio", label: "Image Studio", icon: "spark" as const },
   { href: "/marketplace", label: "Marketplace", icon: "marketplace" as const },
-  { href: "/my-works", label: "My Works", icon: "works" as const },
+  { href: "/my-works", label: "My Dashboard", icon: "works" as const },
   { href: "/leaderboard", label: "Leaderboard", icon: "leaderboard" as const },
 ];
 
