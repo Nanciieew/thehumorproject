@@ -10,7 +10,11 @@
     "test:gallery-ui": "node --import tsx --test scripts/gallery-ui.test.mjs",
     "test:studio-ui": "node --import tsx --test scripts/studio-ui.test.mjs scripts/seedream-reference.test.mjs",
     "test:images-db": "node --test scripts/images-db.test.mjs",
-    "test:images-media": "node --conditions=react-server --import tsx --test scripts/images-media.test.mjs"
+    "test:images-media": "node --conditions=react-server --import tsx --test scripts/images-media.test.mjs",
+    "test:leaderboard-ui": "node --import tsx --test scripts/leaderboard-ui.test.mjs",
+    "test:leaderboard-db": "node --test scripts/leaderboard-db.test.mjs",
+    "test:leaderboard-api": "node --conditions=react-server --import tsx --test scripts/leaderboard-api.test.mjs",
+    "leaderboard:admin": "node --env-file=.env.local scripts/leaderboard-admin.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

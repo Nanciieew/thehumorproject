@@ -99,7 +99,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-The interface uses locally hosted Inter and Anton fonts through `next/font/local`. Their SIL Open Font Licenses are included in `app/fonts`. The main surface is glossy white, with yellow, pink, blue and moss accents. The gallery uses one responsive grid, and the sidebar includes Image Studio, a future Leaderboard page and the account menu.
+The interface uses locally hosted Inter and Anton fonts through `next/font/local`. Their SIL Open Font Licenses are included in `app/fonts`. The main surface is glossy white, with yellow, pink, blue and moss accents. The gallery uses one responsive grid, and the sidebar includes Image Studio, the Leaderboard page and the account menu.
 
 ## Avatar Gallery
 
@@ -269,3 +269,86 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 Image Studio accepts an optional JPEG or PNG reference photo (up to 2 MB and 24 megapixels). The server validates its type and dimensions before sending it to Ark alongside the prompt. Reference photos are sent to Ark only when generating; the sample test uses its original text prompt. Run `npm run test:studio-ui` for UI submission and reference validation checks.
 
 Gallery favorites and this-week rankings reorder immediately when votes change, using upvotes descending and then creation date/ID for ties. Failed votes restore their previous counts and order. Visible pages refresh every 15 seconds while the tab is visible and on focus; this also discovers photos rising from later pages. Newest continues to sort by creation date.
+
+## Sales leaderboard backend
+
+Apply `supabase/migrations/20261008000000_sales_leaderboard.sql` after the images
+consolidation. It adds nullable `images.price_cents`, an immutable state snapshot
+at publication, and `image_sales`. Existing publication states are backfilled from
+current profiles; their true historical states are unavailable. No sales are
+invented and existing image/vote records are preserved.
+
+`image_sales` stores one completed USD sale per unique transaction reference.
+The server derives its seller and sale-time state. Only published images from
+completed profiles can be sold; sale time cannot precede publication or be in
+the future. Sale facts are immutable and referenced images/profiles cannot be
+deleted while sales exist. `refunded_cents` is a cumulative, non-decreasing refund
+amount, bounded by the original amount. Refunds reduce the original sale month's
+revenue. Image price edits do not affect historical sale amounts.
+
+Use the trusted local admin tool (amounts are integer cents):
+
+```sh
+npm run leaderboard:admin -- price IMAGE_UUID 1000
+npm run leaderboard:admin -- sale IMAGE_UUID 1000 transaction-reference
+npm run leaderboard:admin -- sale IMAGE_UUID 1000 another-reference 2026-10-08T12:00:00Z
+npm run leaderboard:admin -- refund SALE_UUID 250
+```
+
+Repeating the same sale reference and details returns the existing sale ID;
+conflicting details fail. Repeating a cumulative refund does not refund twice.
+These commands use the server secret in `.env.local`; never run them in a browser.
+There is no checkout/payment integration or credit issuance in this version.
+
+`GET /api/leaderboard?period=monthly` (default) or `period=all_time` requires a
+signed-in user with completed onboarding. It returns:
+
+- `individuals`: rank, creator ID, full name, signed profile-photo URL, published
+  avatar count, current upvotes, and net `revenue_cents`.
+- `podium`: the first three rows of the same ranking, independent of page cursor.
+- `monthly_top_avatars`: three avatars published this month ranked by current
+  upvotes, including title, author, author profile photo and public avatar URL.
+- `monthly_top_regions`: three states ranked by this month's net revenue, with
+  state names and avatar contribution counts.
+- `monthly_rewards`: display-only 2,000 / 1,000 / 500 credits; no balances/ledger.
+- `as_of`, `month_start`, `month_end`, and an opaque `next_cursor`; pass it as
+  `&cursor=...` for another 30 individuals.
+
+Monthly periods use calendar-month boundaries in America/New_York. Monthly
+creator avatar/vote counts concern avatars published this month; revenue includes
+sales this month of older avatars. All-time mode expands only the individual
+leaderboard and podium; sidebar arrays remain monthly. States receive sales by
+sale-time state and avatar contributions by publication-time state. Downvotes
+never subtract. Revenue ties use the latest qualifying avatar creation timestamp,
+then creator UUID; avatar vote ties use creation timestamp and image UUID
+descending; state revenue ties use state code ascending.
+
+`revenue_cents` is a decimal **string** to preserve exact large totals; divide by
+100 using an exact decimal formatter when displaying USD. Raw sales and storage
+paths are never returned by the app endpoint. Missing profile photos return null
+for an initials fallback. RLS/grants deny browser access to raw sales and all
+backend RPCs; only the trusted server can call `leaderboard_summary`,
+`record_image_sale`, and `record_image_refund`.
+
+Pagination excludes later publications and sale records using `as_of`; live votes,
+refunds and profile edits can still change results, so reload from the first page
+when refreshing a leaderboard. `/leaderboard` renders the connected podium, creator
+rankings, and monthly rewards/avatar/state panels. Monthly and All Time change
+the central rankings; the right panels stay monthly in New York time. It supports
+refresh, cursor pagination, retryable errors, empty states, and profile-photo
+initials fallbacks. `/test/leaderboard` retains the sample-data design preview.
+Reward credits are display-only; the page does not issue rewards.
+
+The sales leaderboard migration is applied to the connected project. Its sales
+table starts empty; record real sales with the admin tool to populate revenue.
+The existing backup script also includes `image_sales` when present.
+
+Run `npm run test:leaderboard-db` for isolated PostgreSQL schema/ranking tests and
+`npm run test:leaderboard-api` for cursor, signed-photo and response tests.
+`npm run test:leaderboard-ui` checks period switching, pagination, refresh,
+error recovery, empty states, and exact USD rendering.
+
+For live endpoint checks, start the app and run
+`node --env-file=.env.local scripts/test-leaderboard.mjs`. Set
+`LEADERBOARD_TEST_URL=http://localhost:3001` if using another port. This test creates
+and removes temporary profiles/images and never creates sale records.

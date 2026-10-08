@@ -7,7 +7,7 @@ if (!destination || !process.env.SUPABASE_ACCESS_TOKEN || !process.env.NEXT_PUBL
   process.exit(1);
 }
 const ref = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname.split('.')[0];
-const candidates = ['images', 'generated_images', 'gallery_photos', 'work_captions', 'gallery_uploads', 'photo_votes'];
+const candidates = ['images', 'image_sales', 'generated_images', 'gallery_photos', 'work_captions', 'gallery_uploads', 'photo_votes'];
 async function query(sql) {
   const response = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
     method: 'POST', headers: { Authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`, 'Content-Type': 'application/json' },
