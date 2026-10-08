@@ -3,7 +3,7 @@ export type Vote = 1 | -1 | null;
 export type GalleryPhoto = {
   title?: string; description?: string;
   id: string; photo_url: string; contributor_name: string;
-  published_at: string; source: "upload" | "generated"; upvotes: number; vote: Vote;
+  created_at: string; published_at: string; source: "upload" | "generated"; upvotes: number; vote: Vote;
 };
 export type GalleryPage = { items: GalleryPhoto[]; next_cursor: string | null };
 export const MAX_GALLERY_BYTES = 10 * 1024 * 1024;

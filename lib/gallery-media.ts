@@ -56,7 +56,7 @@ export async function saveGeneratedImage(userId: string, source: string) {
   const bucket = supabase.storage.from("generated-images");
   const uploaded = await bucket.upload(path, bytes, { contentType: "image/webp" });
   if (uploaded.error) throw new Error("Couldn’t save your generated image. Please try again.");
-  const saved = await supabase.from("generated_images").insert({ id, contributor_id: userId, storage_path: path });
+  const saved = await supabase.from("images").insert({ id, contributor_id: userId, source: "generated", private_storage_path: path });
   if (saved.error) { await bucket.remove([path]); throw new Error("Couldn’t save your generated image. Please try again."); }
   const signed = await bucket.createSignedUrl(path, 3600);
   if (signed.error) throw new Error("Your image was saved, but its preview couldn’t load. Refresh Image Studio.");
@@ -64,16 +64,23 @@ export async function saveGeneratedImage(userId: string, source: string) {
 }
 
 export async function publishGalleryImage(userId: string, assetId: string, source: "upload" | "generated") {
-  const existing = await supabase.from("gallery_photos").select("id,contributor_id,source").eq("id", assetId).maybeSingle();
+  const existing = await supabase.from("images").select("id,contributor_id,source,published_at,private_storage_path,created_at").eq("id", assetId).maybeSingle();
   if (existing.error) throw new Error("Couldn’t check this publication. Please try again.");
-  if (existing.data) {
-    if (existing.data.contributor_id !== userId || existing.data.source !== source) throw new Error("This image does not belong to you.");
-    return existing.data.id;
+  if (existing.data && (existing.data.contributor_id !== userId || existing.data.source !== source)) {
+    throw new Error("This image does not belong to you.");
   }
+  if (existing.data?.published_at) return existing.data.id;
   const generated = source === "generated";
-  const { data: asset, error } = await supabase.from(generated ? "generated_images" : "gallery_uploads")
-    .select("id,storage_path,created_at").eq("id", assetId).eq("contributor_id", userId).maybeSingle();
-  if (error || !asset) throw new Error("This image is unavailable or does not belong to you.");
+  let asset: { storage_path: string; created_at: string };
+  if (generated) {
+    if (!existing.data?.private_storage_path) throw new Error("This image is unavailable or does not belong to you.");
+    asset = { storage_path: existing.data.private_storage_path, created_at: existing.data.created_at };
+  } else {
+    const ticket = await supabase.from("gallery_uploads").select("storage_path,created_at")
+      .eq("id", assetId).eq("contributor_id", userId).maybeSingle();
+    if (ticket.error || !ticket.data) throw new Error("This image is unavailable or does not belong to you.");
+    asset = ticket.data;
+  }
   if (!generated && Date.now() - Date.parse(asset.created_at) > 2 * 3600_000) throw new Error("This upload expired. Please choose your photo again.");
   const sourceBucket = supabase.storage.from(generated ? "generated-images" : "gallery-staging");
   const downloaded = await sourceBucket.download(asset.storage_path);
@@ -90,12 +97,17 @@ export async function publishGalleryImage(userId: string, assetId: string, sourc
   const publicBucket = supabase.storage.from("gallery-photos");
   const uploaded = await publicBucket.upload(path, bytes, { contentType: "image/webp" });
   if (uploaded.error) throw new Error("Couldn’t publish this photo. Please try again.");
-  const saved = await supabase.from("gallery_photos").insert({ id: assetId, contributor_id: userId,
-    storage_path: path, source, generation_id: generated ? assetId : null });
-  if (saved.error) {
+  const publication = { public_storage_path: path, published_at: new Date().toISOString() };
+  const saved = generated
+    ? await supabase.from("images").update(publication).eq("id", assetId).eq("contributor_id", userId)
+      .eq("source", "generated").is("published_at", null).select("id").maybeSingle()
+    : await supabase.from("images").insert({ id: assetId, contributor_id: userId, source,
+      created_at: asset.created_at, ...publication }).select("id").single();
+  if (saved.error || !saved.data) {
     await publicBucket.remove([path]);
-    const winner = await supabase.from("gallery_photos").select("id").eq("id", assetId).eq("contributor_id", userId).eq("source", source).maybeSingle();
-    if (!winner.data) throw new Error("Couldn’t publish this photo. Please try again.");
+    const winner = await supabase.from("images").select("id").eq("id", assetId).eq("contributor_id", userId)
+      .eq("source", source).not("published_at", "is", null).maybeSingle();
+    if (winner.error || !winner.data) throw new Error("Couldn’t publish this photo. Please try again.");
   }
   if (!generated) {
     await sourceBucket.remove([asset.storage_path]);

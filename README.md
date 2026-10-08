@@ -103,6 +103,48 @@ The interface uses locally hosted Inter and Anton fonts through `next/font/local
 
 ## Avatar Gallery
 
+### Consolidated images migration
+
+The connected project has been migrated to the consolidated `images` schema.
+For a fresh environment, apply migrations through
+`20261007000002_my_works.sql`, then
+`supabase/migrations/20261007000003_consolidate_images.sql` before serving this
+app version. The new `images` table replaces `generated_images`, `gallery_photos`,
+and `work_captions`. Publication updates the existing generated image; uploaded
+images are inserted after validation using the upload ticket's creation date.
+Old uploads without tickets fall back to publication time. Profile pictures and
+Storage buckets remain separate. `photo_votes` references `images` and rejects
+unpublished targets. Public feed results expose no private paths or downvote totals.
+
+Cutover procedure:
+
+1. Inspect the live schema against the repository migrations. Pause generation,
+   publication, caption edits, and voting (stop the app during this short cutover).
+2. Capture a consistent data/schema backup outside the repository using
+   `node --env-file=.env.local scripts/backup-images.mjs /private/tmp/images-backup.json`.
+   This requires a valid Supabase management access token and writes an owner-only
+   file without printing row contents. Storage objects are not moved or deleted.
+3. Run the consolidation migration in Supabase SQL Editor. It locks the affected
+   tables and rolls back completely on ID conflicts, owner mismatches, or orphaned
+   captions. Do not bypass those checks; reconcile conflicting data first.
+4. Deploy/start this app version. Previously open gallery cursors must be refreshed
+   when switching sort definitions. The current forward migration uses publication time.
+5. Compare the backup's row counts, IDs, captions, and votes with `images`; confirm
+   private previews, public URLs, My Works, profile photos, and voting. Run
+   `npm run test:images-db`, `npm run test:images-media`, `npm run test:gallery-ui`, and the integration scripts
+   below against the migrated project and a local app. The database test is fully
+   local and does not require credentials.
+
+The consolidation migration retains restricted legacy snapshots. After successful
+live verification and a fresh backup, apply
+`supabase/migrations/20261007000004_remove_legacy_image_tables.sql` to remove
+`generated_images`, `gallery_photos`, and `work_captions`. This retirement migration
+verifies the original images and publication metadata exist in `images` and uses
+`DROP TABLE` without `CASCADE` so unexpected dependencies abort the transaction.
+The connected project has completed this retirement. Votes, profiles, upload
+tickets, Storage objects, and the gallery/My Works views remain in place.
+`scripts/backup-images.mjs` supports both the old and consolidated schemas.
+
 ### My Works
 
 Apply `supabase/migrations/20261007000002_my_works.sql` after the gallery
@@ -112,11 +154,22 @@ badges and cursor-based scrolling. Generated works appear once after publication
 Each card opens an owner-only detail page for editing an optional name (100
 characters) and description (1,000 characters).
 
-`work_captions` stores text separately from image assets. The `my_works` view and
-`save_work_caption` function run with the authenticated user’s permissions;
+`images` stores each saved image and its captions in one row. My Works queries
+`images` directly with the authenticated client and the verified account ID, ordered
+by creation time then ID. Details also filter by owner and image ID. The
+`save_work_caption` function runs with the authenticated user’s permissions;
 RLS checks ownership and completed onboarding. Generated-image previews use
 private signed Storage URLs. `gallery_feed` returns captions only for published
 photos, without exposing private captions or changing votes/publication times.
+
+For the existing consolidated project, apply the forward migration
+`20261007000006_gallery_publication_order.sql` during the deployment window;
+it changes Gallery ordering and cursors to publication time without changing rows.
+The app detects old creation-time cursors and reloads the first batch automatically.
+Deploy and verify this direct-query app **before** applying
+`20261007000007_remove_my_works_view.sql`. Its `DROP VIEW ... RESTRICT` deliberately
+fails on unexpected dependencies. Do not rerun historical consolidation migrations.
+The local database test runs with the view removed; live integration uses images only.
 
 Run `node --import tsx --test scripts/works-ui.test.mjs` for interaction checks.
 After applying the migration and starting the app on port 3000, run
@@ -130,10 +183,10 @@ explicit publication and display the contributor's full name.
 
 The feed loads automatically as visitors scroll. Top ranks all photos by upvotes;
 Top this week ranks photos published since Monday midnight in America/New_York;
-Newest orders by publication time. Ties use publication time and ID. Cursor
+Newest orders by publication time. Upvote ties use publication time descending, then ID descending. Downvotes are counted separately and never subtracted from the ranking score. Cursor
 requests exclude newer publications until a fresh feed load and the UI removes
 duplicates. Vote counts can change between requests; refreshing starts a fresh
-ranking. Voting never reorders the cards currently on screen.
+ranking. Voting immediately reorders cards using the same ranking rules.
 
 `photo_votes` has one row per photo/user, with value 1 or -1. Selecting the same
 vote removes it. Completed users write through a session client and RLS; guests
@@ -185,24 +238,18 @@ users, counts, weekly/DST boundaries, upload size and decoding, image ownership,
 concurrent publication, and expired staging cleanup. The media test mocks only the
 provider download, preserving real Supabase persistence without buying a generation.
 
-## Preserved jokes table
+## Retired legacy avatar table
 
-Run `supabase/migrations/20260922000000_create_jokes.sql` in your project's
-Supabase SQL Editor to create `public.jokes`. The migration enables row level
-security and allows visitors to read jokes, while keeping writes restricted
-to administrators.
+The connected project's unused `public.avatar` joke table was backed up and
+removed with `supabase/migrations/20261007000005_remove_avatar.sql`. The current
+app uses `images` for gallery content. The historical `create_jokes` migration
+and unused `lib/jokes.ts` remain as repository history; they are not required by
+the current gallery.
 
-Each row contains an automatically generated `id` and `created_at`, plus these
-required fields:
-
-| Column | Content |
-| --- | --- |
-| `photo_url` | An HTTP(S) image URL, such as a public Supabase Storage URL |
-| `funny_question` | The joke's question |
-| `funny_answer` | The joke's answer |
-
-The existing records and `lib/jokes.ts` remain available, but the homepage now
-displays gallery submissions instead.
+`gallery_uploads` is temporary staging, not a saved-drafts collection. Uploads
+can be published for two hours; expired tickets/objects are cleaned up after
+24 hours. Saved generated images instead live in `images` and can be reopened
+through My Works.
 
 ## Learn More
 
@@ -221,4 +268,4 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 Image Studio accepts an optional JPEG or PNG reference photo (up to 2 MB and 24 megapixels). The server validates its type and dimensions before sending it to Ark alongside the prompt. Reference photos are sent to Ark only when generating; the sample test uses its original text prompt. Run `npm run test:studio-ui` for UI submission and reference validation checks.
 
-Gallery favorites and this-week rankings reorder immediately when votes change, using upvotes descending and then publication date/ID for ties. Failed votes restore their previous counts and order. Visible pages refresh every 15 seconds while the tab is visible and on focus; this also discovers photos rising from later pages. Newest continues to sort by publication date.
+Gallery favorites and this-week rankings reorder immediately when votes change, using upvotes descending and then creation date/ID for ties. Failed votes restore their previous counts and order. Visible pages refresh every 15 seconds while the tab is visible and on focus; this also discovers photos rising from later pages. Newest continues to sort by creation date.

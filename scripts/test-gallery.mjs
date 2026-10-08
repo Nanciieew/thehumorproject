@@ -43,9 +43,9 @@ async function score(id) { return check(await anon.rpc("gallery_photo_score", { 
 async function vote(actor, id, value) { return successful("/api/gallery/vote", { photoId: id, value }, actor); }
 async function fixture(actor, publishedAt, generated = false) {
   const id = randomUUID(); const path = `${actor.id}/${id}.webp`;
-  if (generated) check(await admin.from("generated_images").insert({ id, contributor_id: actor.id, storage_path: path }));
+  if (generated) check(await admin.from("images").insert({ id, contributor_id: actor.id, source: "generated", private_storage_path: path }));
   else {
-    check(await admin.from("gallery_photos").insert({ id, contributor_id: actor.id, storage_path: path, source: "upload", published_at: publishedAt })); photos.push(id);
+    check(await admin.from("images").insert({ id, contributor_id: actor.id, public_storage_path: path, source: "upload", created_at: publishedAt, published_at: publishedAt })); photos.push(id);
   }
   return { id, path };
 }
@@ -60,7 +60,7 @@ try {
   assert.ok((await pending.client.from("photo_votes").insert({photo_id: photo.id, voter_id: pending.id, value: 1})).error);
   assert.ok((await a.client.from("photo_votes").insert({photo_id: photo.id, voter_id: b.id, value: 1})).error);
   assert.ok((await a.client.from("photo_votes").insert({photo_id: photo.id, voter_id: a.id, value: 0})).error);
-  assert.ok((await a.client.from("gallery_photos").insert({contributor_id: b.id, storage_path: `${b.id}/spoof.webp`, source: "upload"})).error);
+  assert.ok((await a.client.from("images").insert({contributor_id: b.id, public_storage_path: `${b.id}/spoof.webp`, source: "upload", published_at: new Date().toISOString()})).error);
   assert.ok((await anon.from("gallery_vote_totals").select("*")).error);
   assert.ok((await a.client.from("gallery_vote_totals").select("*")).error);
   console.log("PASS: guest and pending signup writes rejected; spoofed votes/contributors and invalid votes denied; admin totals private.");
@@ -108,8 +108,8 @@ try {
   assert.ok(top.items.findIndex((item) => item.id === photo.id) < top.items.findIndex((item) => item.id === boundary.id));
   assert.equal(top.items.find((item) => item.id === boundary.id).upvotes, 1);
   const sameTime = new Date(Date.now() - 1000).toISOString();
-  const batch = Array.from({length: 35}, () => { const id = randomUUID(); photos.push(id); return {id, contributor_id: a.id, storage_path: `${a.id}/${id}.webp`, source: "upload", published_at: sameTime}; });
-  check(await admin.from("gallery_photos").insert(batch));
+  const batch = Array.from({length: 35}, () => { const id = randomUUID(); photos.push(id); return {id, contributor_id: a.id, public_storage_path: `${a.id}/${id}.webp`, source: "upload", created_at: sameTime, published_at: sameTime}; });
+  check(await admin.from("images").insert(batch));
   for (const sort of ["newest", "top", "week"]) {
     let cursor = null; const seen = new Set(); let loops = 0;
     do {
@@ -129,15 +129,15 @@ try {
   assert.equal((await post("/api/gallery/publish", {assetId: valid.uploadId, source: "upload"}, b)).status, 400);
   const published = await successful("/api/gallery/publish", {assetId: valid.uploadId, source: "upload"}, a); photos.push(published.photoId);
   assert.equal((await successful("/api/gallery/publish", {assetId: valid.uploadId, source: "upload"}, a)).photoId, published.photoId);
-  const row = check(await admin.from("gallery_photos").select("*").eq("id", published.photoId).single());
-  const publicUrl = admin.storage.from("gallery-photos").getPublicUrl(row.storage_path).data.publicUrl;
+  const row = check(await admin.from("images").select("*").eq("id", published.photoId).single());
+  const publicUrl = admin.storage.from("gallery-photos").getPublicUrl(row.public_storage_path).data.publicUrl;
   const imageResponse = await fetch(publicUrl); assert.equal(imageResponse.status, 200);
   const meta = await sharp(Buffer.from(await imageResponse.arrayBuffer())).metadata();
   assert.equal(meta.format, "webp"); assert.equal(meta.width, 80); assert.equal(meta.height, 120); assert.equal(meta.exif, undefined);
   assert.ok((await admin.storage.from("gallery-staging").download(`${a.id}/${valid.uploadId}`)).error);
   const invalid = await ticket(a); assert.ok((await put(invalid, Buffer.from("not a photo"))).ok);
   assert.equal((await post("/api/gallery/publish", {assetId: invalid.uploadId, source: "upload"}, a)).status, 400);
-  assert.equal(check(await admin.from("gallery_photos").select("id").eq("id", invalid.uploadId)).length, 0);
+  assert.equal(check(await admin.from("images").select("id").eq("id", invalid.uploadId)).length, 0);
   const tooLarge = await ticket(a);
   assert.ok(!(await put(tooLarge, Buffer.alloc(10 * 1024 * 1024 + 1))).ok, "Storage enforces actual size even if ticket metadata lied");
   const bigPixels = await sharp({create: {width: 5000, height: 5000, channels: 3, background: "#ffffff"}}).png().toBuffer();
@@ -150,21 +150,21 @@ try {
   const generated = await fixture(a, undefined, true);
   const webp = await sharp(smallPng).webp().toBuffer();
   check(await admin.storage.from("generated-images").upload(generated.path, webp, {contentType: "image/webp"}));
-  assert.deepEqual(check(await b.client.from("generated_images").select("*").eq("id", generated.id)), []);
+  assert.deepEqual(check(await b.client.from("images").select("*").eq("id", generated.id)), []);
   assert.ok((await b.client.storage.from("generated-images").download(generated.path)).error);
   assert.ok((await anon.storage.from("generated-images").download(generated.path)).error);
   assert.ok(check(await a.client.storage.from("generated-images").download(generated.path)));
   assert.equal((await post("/api/gallery/publish", {assetId: generated.id, source: "generated"}, b)).status, 400);
   const results = await Promise.all([successful("/api/gallery/publish", {assetId: generated.id, source: "generated"}, a), successful("/api/gallery/publish", {assetId: generated.id, source: "generated"}, a)]);
   assert.equal(results[0].photoId, results[1].photoId); photos.push(results[0].photoId);
-  assert.equal(check(await admin.from("gallery_photos").select("id").eq("generation_id", generated.id)).length, 1);
+  assert.equal(check(await admin.from("images").select("id").eq("id", generated.id)).length, 1);
   const studio = await (await fetch(base + "/image-studio", {headers: {cookie: a.cookie()}})).text();
   assert.ok(studio.includes("Published to Avatar Gallery"));
   assert.ok(studio.includes("/storage/v1/object/sign/generated-images/"));
   console.log("PASS: generated images persist privately, survive refresh, enforce ownership, and publish exactly once under concurrency.");
 } finally {
   // Remove storage through its API, never by deleting storage.objects rows.
-  if (photos.length) check(await admin.from("gallery_photos").delete().in("id", photos));
+  if (photos.length) check(await admin.from("images").delete().in("id", photos));
   for (const actor of users) {
     for (const name of ["gallery-photos", "gallery-staging", "generated-images"]) {
       const bucket = admin.storage.from(name);

@@ -87,11 +87,16 @@ function GalleryFeed({ sort, initial, signedIn, requestLogin }: { sort: GalleryS
     const abort = new AbortController(); controller.current = abort;
     try {
       const query = new URLSearchParams({ sort }); if (cursor) query.set("cursor", cursor);
-      const response = await fetch(`/api/gallery?${query}`, { signal: abort.signal });
-      const page = await response.json();
+      let response = await fetch(`/api/gallery?${query}`, { signal: abort.signal });
+      let page = await response.json();
+      const reset = response.status === 409 && page.code === "GALLERY_CURSOR_EXPIRED";
+      if (reset) {
+        response = await fetch(`/api/gallery?${new URLSearchParams({ sort })}`, { signal: abort.signal });
+        page = await response.json();
+      }
       if (!response.ok) throw new Error(page.error);
       if (abort.signal.aborted) return;
-      setItems((existing) => { const ids = new Set(existing.map((item) => item.id)); return [...existing, ...page.items.filter((item: GalleryPhoto) => !ids.has(item.id))]; });
+      setItems((existing) => { if (reset) return page.items; const ids = new Set(existing.map((item) => item.id)); return [...existing, ...page.items.filter((item: GalleryPhoto) => !ids.has(item.id))]; });
       setCursor(page.next_cursor); setStarted(true);
     } catch (error) {
       if (!abort.signal.aborted) setError(error instanceof Error && !(error instanceof TypeError) ? error.message : "Couldn’t load more photos. Please try again.");

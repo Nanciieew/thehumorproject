@@ -12,7 +12,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return galleryError(new Error("Use up to 100 characters for the name and 1,000 for the description."));
   }
   const auth = await createAuthClient();
-  const owned = await auth.from("my_works").select("work_id").eq("work_id", id).maybeSingle();
+  const owned = await auth.from("images").select("id").eq("contributor_id", viewer.user.id).eq("id", id).maybeSingle();
   if (owned.error) return galleryError(new Error("Couldn’t check this work. Please try again."), 503);
   if (!owned.data) return galleryError(new Error("Work not found."), 404);
   const title = body.title.trim(); const description = body.description.trim();

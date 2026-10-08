@@ -3,12 +3,15 @@ import { createAuthClient } from "@/lib/auth/server";
 import { supabase } from "@/lib/supabase";
 import type { GalleryPage, GalleryPhoto, GallerySort, Vote } from "./gallery-types";
 
+export class GalleryCursorExpired extends Error {}
+
 export async function readGallery(sort: GallerySort, cursor: string | null = null): Promise<GalleryPage> {
   let decoded = null;
   if (cursor) {
     if (cursor.length > 2048) throw new Error("Invalid gallery cursor.");
     try { decoded = JSON.parse(Buffer.from(cursor, "base64url").toString()); }
     catch { throw new Error("Invalid gallery cursor."); }
+    if (decoded?.created_at && !decoded?.published_at) throw new GalleryCursorExpired("Gallery ordering changed. Refreshing photos.");
   }
   const auth = await createAuthClient();
   const { data, error } = await auth.rpc("gallery_feed", { p_sort: sort, p_cursor: decoded, p_limit: 30 });

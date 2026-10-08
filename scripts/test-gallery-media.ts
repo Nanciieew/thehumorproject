@@ -49,7 +49,7 @@ async function main() {
   } finally {
     globalThis.fetch = originalFetch;
     if (userId) {
-      await supabase.from("gallery_photos").delete().eq("contributor_id", userId);
+      await supabase.from("images").delete().eq("contributor_id", userId);
       for (const name of ["gallery-staging", "gallery-photos", "generated-images"]) {
         const bucket = supabase.storage.from(name); const objects = await bucket.list(userId);
         assert.ifError(objects.error);

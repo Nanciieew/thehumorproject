@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test:gallery-ui": "node --import tsx --test scripts/gallery-ui.test.mjs",
-    "test:studio-ui": "node --import tsx --test scripts/studio-ui.test.mjs scripts/seedream-reference.test.mjs"
+    "test:studio-ui": "node --import tsx --test scripts/studio-ui.test.mjs scripts/seedream-reference.test.mjs",
+    "test:images-db": "node --test scripts/images-db.test.mjs",
+    "test:images-media": "node --conditions=react-server --import tsx --test scripts/images-media.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -20,6 +22,7 @@
     "sharp": "^0.35.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^20",

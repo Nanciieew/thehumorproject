@@ -20,7 +20,7 @@ const { render, fireEvent, waitFor, cleanup, act } = await import("@testing-libr
 const { Gallery } = await import("../app/gallery.tsx");
 const originalFetch = globalThis.fetch;
 afterEach(() => { cleanup(); observers.clear(); globalThis.fetch = originalFetch; });
-const photo = (id, count = 2) => ({ id, photo_url: `https://example.com/${id}.webp`, contributor_name: "Test Contributor", published_at: "2026-10-07T12:00:00Z", source: "upload", upvotes: count, vote: null });
+const photo = (id, count = 2) => ({ id, photo_url: `https://example.com/${id}.webp`, contributor_name: "Test Contributor", created_at: "2026-10-07T12:00:00Z", published_at: "2026-10-07T12:00:00Z", source: "upload", upvotes: count, vote: null });
 const mount = (userId = "user", items = [photo("one")], cursor = null) => render(React.createElement(Gallery, {userId, initial: {items, next_cursor: cursor}}));
 const scroll = async () => { await act(async () => { for (const observer of [...observers]) observer.callback([{isIntersecting: true}]); }); };
 
@@ -151,4 +151,49 @@ test("a stale background response cannot overwrite a vote made while it was load
   await waitFor(() => assert.equal(ui.getByRole("button", {name: "Upvote: 3 upvotes"}).disabled, false));
   await act(async () => finishRefresh(Response.json({items: [photo("one", 2)], next_cursor: null})));
   assert.equal(ui.getByRole("button", {name: "Upvote: 3 upvotes"}).getAttribute("aria-pressed"), "true");
+});
+
+test("equal upvotes use publication time rather than creation time; downvotes preserve order", async () => {
+  let finish;
+  globalThis.fetch = async () => new Promise(resolve => { finish = resolve; });
+  const newer = { ...photo("a", 1), created_at: "2026-10-07T12:00:00Z", published_at: "2026-10-07T12:00:00Z" };
+  const older = { ...photo("z", 1), created_at: "2026-10-06T12:00:00Z", published_at: "2026-10-07T13:00:00Z" };
+  const ui = mount("user", [older, newer]);
+  const order = () => ui.getAllByRole("article").map(x=>x.id);
+  assert.deepEqual(order(), ["photo-z", "photo-a"]);
+  fireEvent.click(ui.container.querySelector('#photo-a button[aria-label="Downvote"]'));
+  assert.deepEqual(order(), ["photo-z", "photo-a"]);
+  await act(async () => finish(Response.json({ vote: -1, upvotes: 1 })));
+  assert.deepEqual(order(), ["photo-z", "photo-a"]);
+  fireEvent.click(ui.container.querySelector('#photo-a button[aria-label="Downvote"]'));
+  await act(async () => finish(Response.json({ vote: null, upvotes: 1 })));
+  assert.deepEqual(order(), ["photo-z", "photo-a"]);
+});
+
+test("Newest ignores scores and orders by publication time after filtering and refresh", async () => {
+  const older = { ...photo("z", 100), created_at: "2026-10-06T12:00:00Z", published_at: "2026-10-07T13:00:00Z" };
+  const newer = { ...photo("a", 0), created_at: "2026-10-07T12:00:00Z", published_at: "2026-10-07T12:00:00Z" };
+  globalThis.fetch = async () => Response.json({ items: [older, newer], next_cursor: null });
+  const ui = mount("user", [older,newer]);
+  fireEvent.click(ui.getByRole("button", { name: "Newest", exact: true }));
+  await scroll();
+  await waitFor(() => assert.equal(ui.getAllByRole("article")[0].id, "photo-z"));
+  await act(async () => window.dispatchEvent(new Event("focus")));
+  await waitFor(() => assert.equal(ui.getAllByRole("article")[0].id, "photo-z"));
+});
+
+
+test("an expired creation-time cursor replaces the feed with a fresh publication-time batch", async () => {
+  const calls = [];
+  globalThis.fetch = async url => {
+    calls.push(url);
+    return calls.length === 1
+      ? Response.json({ code: "GALLERY_CURSOR_EXPIRED" }, { status: 409 })
+      : Response.json({ items: [photo("fresh")], next_cursor: null });
+  };
+  const ui = mount("user", [photo("stale")], "old-cursor");
+  await scroll();
+  await waitFor(() => assert.equal(ui.getAllByRole("article")[0].id, "photo-fresh"));
+  assert.equal(ui.getAllByRole("article").length, 1);
+  assert.ok(calls[0].includes("cursor=")); assert.ok(!calls[1].includes("cursor="));
 });
