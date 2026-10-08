@@ -6,7 +6,7 @@ import { LeaderboardBoard } from "./board";
 import { LeaderboardTitle } from "./title";
 
 type RequestAction = { period: LeaderboardPeriod; cursor?: string };
-export function Leaderboard({ initial }: { initial: LeaderboardSummary | null }) {
+export function Leaderboard({ initial, viewerId }: { initial: LeaderboardSummary | null; viewerId?: string }) {
   const [summary, setSummary] = useState(initial);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(initial ? null : "Couldn’t load the leaderboard. Please try again.");
@@ -43,7 +43,7 @@ export function Leaderboard({ initial }: { initial: LeaderboardSummary | null })
   }
 
   if (!summary) return <main id="main" className="mx-auto max-w-3xl px-6 py-12"><LeaderboardTitle /><p role="alert" className="my-6">{error}</p><button type="button" className="action-button" disabled={pending} onClick={() => load(retry.current)}>{pending ? "Loading…" : "Try again"}</button></main>;
-  return <LeaderboardBoard summary={summary} pending={pending} error={error}
+  return <LeaderboardBoard viewerId={viewerId} summary={summary} pending={pending} error={error}
     onPeriodChange={period => { if (period !== summary.period) void load({ period }); }}
     onLoadMore={() => { if (summary.next_cursor) void load({ period: summary.period, cursor: summary.next_cursor }); }}
     onRefresh={() => load({ period: summary.period })} onRetry={() => load(retry.current)} />;

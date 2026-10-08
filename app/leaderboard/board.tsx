@@ -49,8 +49,8 @@ function Portrait({ name, url }: { name: string; url: string | null }) {
 }
 function Trophy() { return <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M9 4h14v9c0 6-3 9-7 9s-7-3-7-9ZM9 7H4v4c0 5 3 7 7 7M23 7h5v4c0 5-3 7-7 7M16 22v5M10 28h12" /><path d="m16 8 1 3 3 1-2 2v3l-2-2-2 2v-3l-2-2 3-1Z" fill="currentColor" stroke="none" /></svg>; }
 
-export function LeaderboardBoard({ summary, pending = false, onPeriodChange, onLoadMore, onRefresh, error, onRetry }: {
-  summary: LeaderboardSummary; pending?: boolean; onPeriodChange: (period: LeaderboardPeriod) => void;
+export function LeaderboardBoard({ summary, viewerId, pending = false, onPeriodChange, onLoadMore, onRefresh, error, onRetry }: {
+  summary: LeaderboardSummary; viewerId?: string; pending?: boolean; onPeriodChange: (period: LeaderboardPeriod) => void;
   onLoadMore?: () => void; onRefresh?: () => void; error?: string | null; onRetry?: () => void;
 }) {
   const { period, individuals } = summary;
@@ -67,7 +67,7 @@ export function LeaderboardBoard({ summary, pending = false, onPeriodChange, onL
         <section className={styles.podiumSection} aria-label={`${label} top three creators`}>
           {!podium.length && <p className={styles.empty}>The podium is waiting for our first creators.</p>}
           <div className={styles.podium} key={period}>
-            {podium.map(person => <div key={person.contributor_id} className={`${styles.winner} ${styles[`place${person.rank}`]}`} style={{ "--pop-delay": `${(3 - person.rank) * 250}ms` } as CSSProperties}>
+            {podium.map(person => <div key={person.contributor_id} className={`${styles.winner} ${styles[`place${person.rank}`]} ${person.contributor_id === viewerId ? styles.currentWinner : ""}`} style={{ "--pop-delay": `${(3 - person.rank) * 250}ms` } as CSSProperties}>
               <div className={styles.winnerProfile}>{person.rank === 1 && <span className={styles.crown} aria-label="First place">♛</span>}<div className={styles.portraitBurst}><Portrait name={person.name} url={person.profile_photo_url} /><span className={styles.stars} aria-hidden="true"><i>✦</i><i>★</i><i>✦</i><i>★</i></span></div><strong>{person.name}</strong><AnimatedRevenue cents={person.revenue_cents} delay={(3 - person.rank) * 250} /></div>
               <div className={styles.step}><span>{person.rank}</span><small>{person.rank === 1 ? "THE TOP SPOT" : person.rank === 2 ? "RUNNER UP" : "THIRD PLACE"}</small></div>
             </div>)}
@@ -76,7 +76,7 @@ export function LeaderboardBoard({ summary, pending = false, onPeriodChange, onL
         <section className={styles.rankings} aria-labelledby="rankings-title" aria-busy={pending}>
           <div className={styles.tableHeading}><div><h2 id="rankings-title">Creator rankings</h2><p>{label} · Ranked by revenue</p></div><div className={styles.toggle} role="group" aria-label="Ranking period">{(["monthly", "all_time"] as const).map(value => <button key={value} type="button" aria-pressed={period === value} disabled={pending} onClick={() => onPeriodChange(value)}>{value === "monthly" ? "Monthly" : "All Time"}</button>)}</div></div>
           {!individuals.length && <p className={styles.empty}>No creator activity for this period yet. Publish an avatar to get started.</p>}
-          <div className={styles.tableScroll}><table><caption className="visually-hidden">{label} individual leaderboard. Votes count upvotes only.</caption><thead><tr><th scope="col">Rank</th><th scope="col">Creator</th><th scope="col">Avatars made</th><th scope="col">Total upvotes</th><th scope="col">Revenue <small>USD</small></th></tr></thead><tbody>{individuals.map(person => <tr key={person.contributor_id}><td><span className={`${styles.rank} ${person.rank <= 3 ? styles.topRank : ""}`}>{person.rank.toString().padStart(2, "0")}</span></td><th scope="row"><div className={styles.creator}><Portrait name={person.name} url={person.profile_photo_url} /><span>{person.name}</span></div></th><td>{person.avatars_made}</td><td>{person.total_votes.toLocaleString("en-US")}</td><td className={styles.revenue}>{money(person.revenue_cents)}</td></tr>)}</tbody></table></div>
+          <div className={styles.tableScroll}><table><caption className="visually-hidden">{label} individual leaderboard. Votes count upvotes only.</caption><thead><tr><th scope="col">Rank</th><th scope="col">Creator</th><th scope="col">Avatars made</th><th scope="col">Total upvotes</th><th scope="col">Revenue <small>USD</small></th></tr></thead><tbody>{individuals.map(person => <tr key={person.contributor_id} className={person.contributor_id === viewerId ? styles.currentUser : undefined} aria-current={person.contributor_id === viewerId ? "true" : undefined}><td><span className={`${styles.rank} ${person.rank <= 3 ? styles.topRank : ""}`}>{person.rank.toString().padStart(2, "0")}</span></td><th scope="row"><div className={styles.creator}><Portrait name={person.name} url={person.profile_photo_url} /><span>{person.name}{person.contributor_id === viewerId && <small className={styles.youBadge}>You</small>}</span></div></th><td>{person.avatars_made}</td><td>{person.total_votes.toLocaleString("en-US")}</td><td className={styles.revenue}>{money(person.revenue_cents)}</td></tr>)}</tbody></table></div>
           {summary.next_cursor && onLoadMore && <div className={styles.pagination}><button type="button" onClick={onLoadMore} disabled={pending}>{pending ? "Loading…" : "Load more creators"}</button></div>}
           <p className={styles.footnote}>Published avatars and their upvotes for the selected period. Revenue reflects sales after refunds.</p>
         </section>

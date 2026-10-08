@@ -96,3 +96,13 @@ test("animation preview counts sample revenue and replay resets it to zero", asy
   fireEvent.click(ui.getByRole("button", {name: "Replay animation ↻"}));
   assert.equal(counter().textContent, "$0.00");
 });
+
+test("only the authenticated user's row and podium receive the gold highlight", () => {
+  const ui = render(React.createElement(Leaderboard, {initial: summary("monthly", [person("A"), person("B", 2)]), viewerId: "B"}));
+  const row = ui.getByText("You").closest("tr");
+  assert.equal(row.getAttribute("aria-current"), "true");
+  assert.ok(row.className.includes("currentUser"));
+  assert.equal(ui.container.querySelectorAll('tr[aria-current="true"]').length, 1);
+  assert.equal(ui.container.querySelectorAll('.currentWinner').length, 1);
+  assert.ok(row.textContent.includes("Creator B"));
+});

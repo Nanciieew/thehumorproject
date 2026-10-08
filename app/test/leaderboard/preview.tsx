@@ -28,6 +28,6 @@ export function LeaderboardPreview() {
   };
   return <>
     <div className={styles.previewNote} style={{padding: "16px 32px 0"}}><span>Animation preview · Sample data</span><button className="secondary-button" type="button" onClick={() => setReplay(value => value + 1)}>Replay animation ↻</button></div>
-    <LeaderboardBoard key={replay} summary={summary} onPeriodChange={setPeriod} />
+    <LeaderboardBoard key={replay} summary={summary} viewerId="1" onPeriodChange={setPeriod} />
   </>;
 }

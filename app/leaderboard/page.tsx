@@ -7,7 +7,8 @@ import { Leaderboard } from "./leaderboard";
 export const metadata: Metadata = { title: "Leaderboard | The Humor Project" };
 
 export default async function LeaderboardPage() {
-  if (!await getViewer()) redirect("/login");
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login");
   const initial = await readLeaderboard("monthly").catch(() => null);
-  return <Leaderboard initial={initial} />;
+  return <Leaderboard initial={initial} viewerId={viewer.user.id} />;
 }
