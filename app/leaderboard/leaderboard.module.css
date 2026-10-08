@@ -1,0 +1,36 @@
+.header {
+  display: flex;
+  justify-content: center;
+  padding: 28px 16px 12px;
+  background: transparent;
+}
+
+.title {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  font-family: "Arial Rounded MT Bold", "Arial Rounded MT", "Trebuchet MS", var(--font-inter), sans-serif;
+  font-size: clamp(28px, 5.5vw, 76px);
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: 0.025em;
+}
+
+.title span {
+  display: inline-block;
+  color: #f04438;
+  -webkit-text-stroke: 2px #26264b;
+  paint-order: stroke fill;
+  text-shadow: 0 3px 0 #26264b, 0 5px 0 #26264b;
+  transform: rotate(-5deg);
+}
+
+.title span:nth-child(4n + 2) { color: #ffc933; }
+.title span:nth-child(4n + 3) { color: #369df5; }
+.title span:nth-child(4n + 4) { color: #45c86b; }
+.title span:nth-child(even) { transform: translateY(3px) rotate(5deg); }
+
+@media (max-width: 480px) {
+  .title { letter-spacing: 0; }
+  .title span { -webkit-text-stroke-width: 1.5px; text-shadow: 0 3px 0 #26264b; }
+}
