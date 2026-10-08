@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import { JSDOM } from "jsdom";
 import React from "react";
+import { registerHooks } from "node:module";
+registerHooks({ load(url, context, next) {
+  if (url.endsWith(".module.css")) return { format: "module", shortCircuit: true, source: 'export default new Proxy({}, {get: (_, key) => String(key)});' };
+  return next(url, context);
+} });
 
 const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "http://localhost:3000" });
 for (const name of ["window", "document", "HTMLElement", "HTMLDialogElement", "HTMLInputElement", "MutationObserver", "Node", "Event", "MouseEvent", "getComputedStyle"]) {
@@ -66,7 +71,7 @@ test("infinite scrolling appends, deduplicates, and ends; filter changes fetch f
   globalThis.fetch = async (url) => {
     requests.push(String(url));
     const query = new URL(String(url), "http://localhost:3000").searchParams;
-    if (query.get("sort") === "week") return Response.json({items: [], next_cursor: null});
+    if (query.get("sort") === "month") return Response.json({items: [], next_cursor: null});
     if (query.get("cursor") === "first") return Response.json({items: [photo("one", 100), photo("two")], next_cursor: "second"});
     if (query.get("cursor") === "second") return Response.json({items: [photo("three")], next_cursor: null});
     return Response.json({items: [photo("fresh")], next_cursor: null});
@@ -77,9 +82,9 @@ test("infinite scrolling appends, deduplicates, and ends; filter changes fetch f
   await scroll(); await waitFor(() => assert.equal(ui.getAllByRole("article").length, 3));
   assert.ok(ui.getByText("You’re all caught up."));
   assert.equal(ui.queryByRole("button", {name: "Load more"}), null);
-  fireEvent.click(ui.getByRole("button", {name: "Top this week"}));
-  await scroll(); await waitFor(() => assert.ok(ui.getByText("A fresh week, a blank canvas.")));
-  fireEvent.click(ui.getByRole("button", {name: "Top", exact: true}));
+  fireEvent.click(ui.getByRole("button", {name: "New this month"}));
+  await scroll(); await waitFor(() => assert.ok(ui.getByText("No new avatars this month yet.")));
+  fireEvent.click(ui.getByRole("button", {name: "Most votes overall", exact: true}));
   await scroll(); await waitFor(() => assert.equal(ui.getAllByRole("article").length, 1));
   assert.ok(ui.container.querySelector("#photo-fresh"));
   assert.equal(requests.length, 4);
@@ -175,7 +180,7 @@ test("Newest ignores scores and orders by publication time after filtering and r
   const newer = { ...photo("a", 0), created_at: "2026-10-07T12:00:00Z", published_at: "2026-10-07T12:00:00Z" };
   globalThis.fetch = async () => Response.json({ items: [older, newer], next_cursor: null });
   const ui = mount("user", [older,newer]);
-  fireEvent.click(ui.getByRole("button", { name: "Newest", exact: true }));
+  fireEvent.click(ui.getByRole("button", { name: "Newest first", exact: true }));
   await scroll();
   await waitFor(() => assert.equal(ui.getAllByRole("article")[0].id, "photo-z"));
   await act(async () => window.dispatchEvent(new Event("focus")));
@@ -211,7 +216,7 @@ test("avatar name search sends a trimmed query, survives sort changes and clears
   await scroll();
   await waitFor(() => assert.ok(ui.getByText("No avatars found.")));
   assert.equal(requests.at(-1).searchParams.get("search"), "Mario");
-  fireEvent.click(ui.getByRole("button", {name: "Newest"}));
+  fireEvent.click(ui.getByRole("button", {name: "Newest first"}));
   await scroll();
   await waitFor(() => assert.equal(requests.at(-1).searchParams.get("sort"), "newest"));
   assert.equal(requests.at(-1).searchParams.get("search"), "Mario");
@@ -220,4 +225,15 @@ test("avatar name search sends a trimmed query, survives sort changes and clears
   await scroll();
   await waitFor(() => assert.ok(ui.getByText("Be the first face in the gallery.")));
   assert.equal(requests.at(-1).searchParams.get("search"), "");
+});
+
+
+test("gallery has a single bubble title and avatar cards link to public descriptions while voting stays separate", () => {
+  const ui = mount("user", [{...photo("one"), title: "Bubble Hero", description: "A happy little adventurer."}]);
+  assert.equal(ui.getByRole("heading", {level: 1, name: "Avatar Gallery"}).getAttribute("id"), "gallery-title");
+  assert.equal(ui.getByRole("link", {name: "Bubble Hero"}).getAttribute("href"), "/avatars/one");
+  assert.ok(ui.getByRole("button", {name: "Most votes overall"}));
+  assert.ok(ui.getByRole("button", {name: "New this month"}));
+  assert.ok(ui.getByRole("button", {name: "Newest first"}));
+  assert.equal(ui.getByRole("button", {name: "Upvote: 2 upvotes"}).closest("a"), null);
 });

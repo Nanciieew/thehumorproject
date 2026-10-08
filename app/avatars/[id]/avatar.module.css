@@ -1,0 +1,9 @@
+.page { max-width: 1200px; margin: auto; padding: 32px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 40px; margin-top: 28px; align-items: start; }
+.image { border: 2px solid #29264b; border-radius: 24px; overflow: hidden; background: var(--sky); box-shadow: 0 7px 0 #29264b; }
+.image img { display: block; width: 100%; height: auto; }
+.story h1 { font-family: "Arial Rounded MT Bold", var(--font-inter), sans-serif; font-weight: 900; font-size: clamp(28px, 4vw, 48px); text-transform: none; overflow-wrap: anywhere; }
+.creator { margin: 14px 0 32px; color: var(--muted); }
+.story h2 { font-family: var(--font-inter), sans-serif; font-size: 16px; font-weight: 750; text-transform: none; margin-bottom: 12px; }
+.description { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
+@media (max-width: 700px) { .page { padding: 24px 20px; } .layout { grid-template-columns: 1fr; gap: 32px; } }

@@ -14,9 +14,16 @@ export async function readGallery(sort: GallerySort, cursor: string | null = nul
     if (decoded?.created_at && !decoded?.published_at) throw new GalleryCursorExpired("Gallery ordering changed. Refreshing photos.");
   }
   const auth = await createAuthClient();
-  const { data, error } = await auth.rpc("gallery_feed", { p_sort: sort, p_cursor: decoded, p_limit: 30 });
+  const { data, error } = await auth.rpc("gallery_feed", { p_sort: sort === "month" ? "newest" : sort, p_cursor: decoded, p_limit: 30 });
   if (error) throw new Error("Couldn’t load the gallery. Please try again.");
-  const items = data.items as (Omit<GalleryPhoto, "photo_url" | "vote"> & { storage_path: string })[];
+  let items = data.items as (Omit<GalleryPhoto, "photo_url" | "vote"> & { storage_path: string })[];
+  if (sort === "month") {
+    const month = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit" });
+    const currentMonth = month.format(new Date());
+    const current = items.filter(item => month.format(new Date(item.published_at)) === currentMonth);
+    if (current.length !== items.length) data.next_cursor = null;
+    items = current;
+  }
   const { data: { user } } = await auth.auth.getUser();
   const votes = new Map<string, Vote>();
   if (user && items.length) {

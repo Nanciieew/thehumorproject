@@ -33,9 +33,7 @@ export function LeaderboardBoard({ summary, pending = false, onPeriodChange, onL
     <p className="visually-hidden" role="status">{pending ? "Loading rankings…" : `${label} rankings loaded.`}</p>
     <div className={styles.layout}>
       <section className={styles.center} aria-labelledby="page-title">
-        <header className={styles.heading}><p className={styles.eyebrow}>Made by our community</p><p>Create something great. Make your way to the top.</p></header>
         <section className={styles.podiumSection} aria-label={`${label} top three creators`}>
-          <p className={styles.podiumLabel}>{label} <span>· Top creators by revenue</span></p>
           {!podium.length && <p className={styles.empty}>The podium is waiting for our first creators.</p>}
           <div className={styles.podium}>
             {podium.map(person => <div key={person.contributor_id} className={`${styles.winner} ${styles[`place${person.rank}`]}`}>

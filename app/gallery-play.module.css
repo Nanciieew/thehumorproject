@@ -1,0 +1,39 @@
+.hero { position: relative; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 24px; padding: 40px 32px 32px; }
+.title { display: flex; flex-wrap: wrap; justify-content: center; gap: .3em; margin: 0; font-family: "Arial Rounded MT Bold", "Trebuchet MS", var(--font-inter), sans-serif; font-size: clamp(36px, 5.8vw, 82px); font-weight: 900; line-height: 1.25; letter-spacing: .025em; }
+.word { display: inline-flex; }
+.letter { position: relative; display: inline-block; color: #ff514d; -webkit-text-stroke: 3px #29264b; paint-order: stroke fill; text-shadow: 0 4px 0 #29264b, 0 7px 0 #29264b, 0 10px 12px #29264b24; transform: rotate(-7deg); }
+.letter::after { content: ""; position: absolute; top: 15%; left: 28%; width: 7px; height: 4px; border-radius: 50%; background: #fff9; transform: rotate(-30deg); }
+.letter:nth-child(4n + 2) { color: #ffd346; transform: translateY(-5px) rotate(6deg); }
+.letter:nth-child(4n + 3) { color: #50b6ff; transform: translateY(3px) rotate(-3deg); }
+.letter:nth-child(4n + 4) { color: #61d77d; transform: rotate(8deg); }
+.searchRow { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+.filterbar { padding: 4px 0 18px; }
+.filters { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
+.filters button { --button-color: #ffd346; display: inline-flex; align-items: center; gap: 9px; padding: 12px 20px; border: 2px solid #29264b; border-radius: 22px; background: var(--button-color); color: #29264b; box-shadow: 0 5px 0 #29264b; font-family: "Arial Rounded MT Bold", var(--font-inter), sans-serif; font-size: 12px; font-weight: 800; transition: transform 180ms ease, box-shadow 180ms ease; }
+.filters button:nth-child(2) { --button-color: #8de7a1; }
+.filters button:nth-child(3) { --button-color: #9ed9ff; }
+.filters button > span { font-size: 21px; line-height: 1; transition: transform 200ms ease; }
+.filters button:hover { transform: translateY(-4px) rotate(-2deg); box-shadow: 0 9px 0 #29264b; }
+.filters button:hover > span { transform: rotate(25deg) scale(1.2); }
+.filters button[aria-pressed="true"] { outline: 3px solid #fff; outline-offset: -6px; }
+.filters button:active { transform: translateY(4px); box-shadow: 0 1px 0 #29264b; }
+.filters button:focus-visible { outline: 3px solid #ef5147; outline-offset: 5px; }
+.card { position: relative; border-radius: 14px; transition: transform 220ms ease, box-shadow 220ms ease; background: var(--background); }
+.cardLink::after { content: ""; position: absolute; inset: 0; border-radius: 14px; z-index: 1; }
+.cardLink:focus-visible { outline: 0; }
+.card:has(.cardLink:focus-visible) { outline: 3px solid #369df5; outline-offset: 5px; }
+.card button { position: relative; z-index: 2; }
+@media (hover: hover) and (pointer: fine) {
+  .card:hover { z-index: 5; transform: translateY(-12px) scale(1.07) rotate(-1deg); box-shadow: 0 20px 36px -10px #29264b66; }
+}
+@media (max-width: 700px) {
+  .hero { padding: 28px 20px 24px; }
+  .title { font-size: clamp(34px, 8vw, 55px); gap: .25em; }
+  .letter { -webkit-text-stroke-width: 2px; text-shadow: 0 4px 0 #29264b; }
+  .filters { gap: 12px; }
+  .filters button { padding: 10px 12px; font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card, .filters button, .filters button > span { transition: none; }
+  .card:hover, .filters button:hover { transform: none; }
+}
