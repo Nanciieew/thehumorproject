@@ -8,6 +8,7 @@ import { Icon, Smile } from "./ui";
 const links = [
   { href: "/", label: "Avatar Gallery", icon: "grid" as const },
   { href: "/image-studio", label: "Image Studio", icon: "spark" as const },
+  { href: "/marketplace", label: "交易广场", icon: "marketplace" as const },
   { href: "/my-works", label: "My Works", icon: "works" as const },
   { href: "/leaderboard", label: "Leaderboard", icon: "leaderboard" as const },
 ];
