@@ -8,8 +8,9 @@ registerHooks({ load(url, context, next) {
   if (url.endsWith(".module.css")) return { format: "module", shortCircuit: true, source: 'export default new Proxy({}, {get: (_, key) => String(key)});' };
   return next(url, context);
 } });
-const dom = new JSDOM("<html><body></body></html>", { url: "http://localhost:3000" });
+const dom = new JSDOM("<html><body></body></html>", { url: "http://localhost:3000", pretendToBeVisual: true });
 for (const name of ["window", "document", "HTMLElement", "MutationObserver", "Node", "Event", "MouseEvent", "getComputedStyle"]) Object.defineProperty(globalThis, name, { configurable: true, value: dom.window[name] });
+window.matchMedia = () => ({matches: false, addEventListener() {}, removeEventListener() {}});
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { render, fireEvent, waitFor, cleanup } = await import("@testing-library/react");
 const { Leaderboard } = await import("../app/leaderboard/leaderboard.tsx");
@@ -66,4 +67,22 @@ test("empty and initial failure states do not invent creators and can recover", 
   assert.ok(ui.getByText("No avatars published this month yet."));
   assert.ok(ui.getByText("No state activity this month yet."));
   assert.equal(ui.getByRole("table").querySelectorAll("tbody tr").length, 0);
+});
+
+
+test("podium revenue counts from zero to the exact amount without rounding large cents", async () => {
+  const ui = render(React.createElement(Leaderboard, {initial: summary()}));
+  const counter = ui.container.querySelector('span[aria-label="$900,719,925,474,099.30"]');
+  assert.equal(counter.textContent, "$0.00");
+  await waitFor(() => assert.equal(counter.textContent, "$900,719,925,474,099.30"), {timeout: 4000});
+});
+
+test("reduced motion shows final revenue immediately", async () => {
+  const original = window.matchMedia;
+  window.matchMedia = () => ({matches: true, addEventListener() {}, removeEventListener() {}});
+  try {
+    const ui = render(React.createElement(Leaderboard, {initial: summary()}));
+    const counter = ui.container.querySelector('span[aria-label="$900,719,925,474,099.30"]');
+    await waitFor(() => assert.equal(counter.textContent, "$900,719,925,474,099.30"));
+  } finally { window.matchMedia = original; }
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import type { LeaderboardPeriod, LeaderboardSummary } from "@/lib/leaderboard-types";
 import styles from "./board.module.css";
@@ -9,6 +9,37 @@ import { LeaderboardTitle } from "./title";
 function money(cents: string) {
   const amount = BigInt(cents);
   return `$${(amount / BigInt(100)).toLocaleString("en-US")}.${(amount % BigInt(100)).toString().padStart(2, "0")}`;
+}
+function AnimatedRevenue({ cents }: { cents: string }) {
+  const number = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const target = BigInt(cents);
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let frame = 0;
+    let started: number | null = null;
+    const finish = () => {
+      window.cancelAnimationFrame(frame);
+      if (number.current) number.current.textContent = money(cents);
+    };
+    const tick = (now: number) => {
+      started ??= now;
+      const progress = Math.min(1, (now - started) / 850);
+      const eased = 1 - (1 - progress) ** 3;
+      const value = target * BigInt(Math.round(eased * 1_000_000)) / BigInt(1_000_000);
+      if (number.current) number.current.textContent = money(value.toString());
+      if (progress < 1) frame = window.requestAnimationFrame(tick);
+      else finish();
+    };
+    if (number.current) number.current.textContent = money("0");
+    const timer = window.setTimeout(() => {
+      if (motion.matches) finish();
+      else frame = window.requestAnimationFrame(tick);
+    }, motion.matches ? 0 : 1550);
+    const onMotionChange = () => { if (motion.matches) { window.clearTimeout(timer); finish(); } };
+    motion.addEventListener("change", onMotionChange);
+    return () => { window.clearTimeout(timer); window.cancelAnimationFrame(frame); motion.removeEventListener("change", onMotionChange); };
+  }, [cents]);
+  return <span className={styles.amount} aria-label={money(cents)}><span ref={number} aria-hidden="true">{money("0")}</span></span>;
 }
 function Portrait({ name, url }: { name: string; url: string | null }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
@@ -35,9 +66,9 @@ export function LeaderboardBoard({ summary, pending = false, onPeriodChange, onL
       <section className={styles.center} aria-labelledby="page-title">
         <section className={styles.podiumSection} aria-label={`${label} top three creators`}>
           {!podium.length && <p className={styles.empty}>The podium is waiting for our first creators.</p>}
-          <div className={styles.podium}>
-            {podium.map(person => <div key={person.contributor_id} className={`${styles.winner} ${styles[`place${person.rank}`]}`}>
-              <div className={styles.winnerProfile}>{person.rank === 1 && <span className={styles.crown} aria-label="First place">♛</span>}<Portrait name={person.name} url={person.profile_photo_url} /><strong>{person.name}</strong><span className={styles.amount}>{money(person.revenue_cents)}</span></div>
+          <div className={styles.podium} key={period}>
+            {podium.map(person => <div key={person.contributor_id} className={`${styles.winner} ${styles[`place${person.rank}`]}`} style={{ "--pop-order": 3 - person.rank } as CSSProperties}>
+              <div className={styles.winnerProfile}>{person.rank === 1 && <span className={styles.crown} aria-label="First place">♛</span>}<div className={styles.portraitBurst}><Portrait name={person.name} url={person.profile_photo_url} /><span className={styles.stars} aria-hidden="true"><i>✦</i><i>★</i><i>✦</i><i>★</i></span></div><strong>{person.name}</strong><AnimatedRevenue cents={person.revenue_cents} /></div>
               <div className={styles.step}><span>{person.rank}</span><small>{person.rank === 1 ? "THE TOP SPOT" : person.rank === 2 ? "RUNNER UP" : "THIRD PLACE"}</small></div>
             </div>)}
           </div>

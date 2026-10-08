@@ -1,5 +1,6 @@
 "use client";
 
+import { PlayfulTitle } from "../playful-title";
 import Image from "next/image";
 import sampleTest from "@/lib/seedream-test.json";
 import { useRef, useState } from "react";
@@ -74,7 +75,7 @@ export function ImageStudio({ configured, saved }: { configured: boolean; saved:
   }
 
   return <main id="main">
-    <header className="page-hero studio-hero"><div><p className="eyebrow"><span aria-hidden="true">✳</span> IMAGE STUDIO / SEEDREAM</p><h1>MAKE SOMETHING<br /><em>UNEXPECTED.</em></h1><p>Big ideas, little prompts. Turn a passing thought<br />into a photo worth sharing.</p></div><CameraArtwork /></header>
+    <header className="page-hero studio-hero"><div><p className="eyebrow"><span aria-hidden="true">✳</span> IMAGE STUDIO / SEEDREAM</p><PlayfulTitle text="Image Studio" /><p>Big ideas, little prompts. Turn a passing thought<br />into a photo worth sharing.</p></div><CameraArtwork /></header>
     {!configured && <p role="status" className="config-notice">Image generation awaits server setup: ARK_API_KEY is missing.</p>}
     <div className="studio-layout">
       <section className="prompt-panel" aria-labelledby="prompt-title"><p className="eyebrow">01 / THE IDEA</p><h2 id="prompt-title">WHAT’S ON YOUR MIND?</h2><p className="panel-description">Tell us the subject, the setting, and the feeling. English or Chinese—your imagination speaks both.</p>

@@ -5,3 +5,28 @@
 @media(max-width:700px){.page{padding:16px 14px 40px}.previewNote{font-size:9px;flex-wrap:wrap}.heading h1{font-size:38px}.heading h1 span{font-size:25px}.heading>p:last-child{font-size:11px}.eyebrow{font-size:8px}.podiumSection{padding:38px 0 0}.podiumLabel{font-size:10px}.winnerProfile .portrait{width:55px;height:55px;border-radius:19px}.winnerProfile strong{font-size:10px}.winnerProfile{padding:0 3px 15px}.amount{font-size:10px;padding:5px 7px}.place1 .step{height:140px}.place2 .step{height:108px}.place3 .step{height:82px}.step>span{font-size:58px}.step small{font-size:6px;letter-spacing:.6px}.tableHeading{align-items:flex-start;flex-wrap:wrap;gap:15px}.toggle button{padding:8px 12px}.tableScroll table{min-width:570px}.rail{grid-template-columns:1fr}.panel{padding:22px}.panel h2{font-size:20px}.miniList li{flex-wrap:nowrap}.stateList li{flex-wrap:nowrap}.stateRevenue{width:auto;padding:0}.railNote{grid-column:auto}.footnote{padding:15px 16px;line-height:1.7}}
 
 .initials{display:flex;align-items:center;justify-content:center;background:#e6f2fb;font-weight:800;color:#33302b}.portrait{object-fit:cover}.winnerProfile .initials{font-size:24px}.previewNote button{background:transparent;border:0;text-decoration:underline;text-underline-offset:4px;padding:6px}.empty{padding:24px 10px;color:#817a6a;text-align:center;font-size:12px}.panel .empty{padding:12px 0;font-size:11px}.error{background:#fff0e9;border:1px solid #d06457;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:12px}.error button,.pagination button{border:1px solid #33302b;background:#f8e6c4;border-radius:8px;padding:8px 14px}.error button{margin-left:12px}.pagination{padding:20px;text-align:center}
+
+/* Podium entrance: third, second, first; portraits and stars; revenue count-up. */
+.step{transform-origin:center bottom;animation:podium-pop 650ms cubic-bezier(.22,.8,.3,1) both;animation-delay:calc(var(--pop-order) * 160ms)}
+.winnerProfile{animation:portrait-pop 600ms cubic-bezier(.22,.8,.3,1) both;animation-delay:calc(700ms + var(--pop-order) * 180ms)}
+.portraitBurst{position:relative}
+.stars{position:absolute;inset:0;pointer-events:none}
+.stars i{position:absolute;top:40%;left:40%;font-style:normal;color:#f4b92c;font-size:19px;line-height:1;text-shadow:0 1px 0 #b77a1840;animation:star-burst 700ms ease-out both;animation-delay:calc(850ms + var(--pop-order) * 180ms)}
+.stars i:nth-child(1){--star-x:-46px;--star-y:-33px;--star-turn:-25deg}
+.stars i:nth-child(2){--star-x:43px;--star-y:-27px;--star-turn:30deg;color:#ef9cba;font-size:15px}
+.stars i:nth-child(3){--star-x:-42px;--star-y:35px;--star-turn:-40deg;color:#65b9ef;font-size:14px}
+.stars i:nth-child(4){--star-x:47px;--star-y:32px;--star-turn:40deg;font-size:18px}
+.amount{font-variant-numeric:tabular-nums;min-width:90px}
+@keyframes podium-pop{0%{opacity:0;transform:translateY(24px) scale(.75,.05)}45%{opacity:1;transform:translateY(-8px) scale(.94,1.12)}65%{transform:translateY(3px) scale(1.04,.94)}82%{transform:translateY(-2px) scale(.99,1.03)}100%{opacity:1;transform:none}}
+@keyframes portrait-pop{0%{opacity:0;transform:translateY(18px) scale(.35)}55%{opacity:1;transform:translateY(-7px) scale(1.14)}78%{transform:translateY(2px) scale(.95)}100%{opacity:1;transform:none}}
+@keyframes star-burst{0%{opacity:0;transform:translate(0,0) scale(.1)}25%{opacity:1}65%{opacity:1;transform:translate(var(--star-x),var(--star-y)) rotate(var(--star-turn)) scale(1.15)}100%{opacity:0;transform:translate(var(--star-x),var(--star-y)) rotate(var(--star-turn)) scale(.35)}}
+@media(prefers-reduced-motion:reduce){.step,.winnerProfile,.stars i{animation:none}.stars{display:none}}
+
+/* Match the gallery's soft white cards and pastel accents. */
+.rankings,.panel{border-color:#e2e3e9;border-radius:24px;box-shadow:0 5px 18px #29264b08}
+.rewards{background:linear-gradient(140deg,#fff8df,#fff3e4)}
+.rewardList li{border-color:#eadcba;border-radius:14px}
+.toggle{border-radius:16px;background:#edf3fa}
+.toggle button{border-radius:12px}
+.toggle button[aria-pressed=true]{background:#29264b}
+.pagination button,.error button{border-radius:14px;border-color:#29264b;background:#ffd346;box-shadow:0 3px 0 #29264b;font-weight:700}
