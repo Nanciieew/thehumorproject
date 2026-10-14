@@ -16,9 +16,11 @@
     "test:leaderboard-ui": "node --import tsx --test scripts/leaderboard-ui.test.mjs",
     "test:leaderboard-db": "node --test scripts/leaderboard-db.test.mjs",
     "test:leaderboard-api": "node --conditions=react-server --import tsx --test scripts/leaderboard-api.test.mjs",
-    "leaderboard:admin": "node --env-file=.env.local scripts/leaderboard-admin.mjs"
+    "leaderboard:admin": "node --env-file=.env.local scripts/leaderboard-admin.mjs",
+    "test:roast": "node --import tsx --import ./scripts/roast-css-loader.mjs --test scripts/roast.test.mjs scripts/roast-ui.test.mjs && node --conditions=react-server --import tsx --test scripts/roast-provider.test.mjs"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "1.1.1",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.0",
     "next": "16.3.5",

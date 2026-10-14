@@ -377,3 +377,55 @@ Run `npm run test:dashboard-ui` and `npm run test:dashboard-api`; the personal
 aggregate SQL and permissions are also covered by `npm run test:leaderboard-db`.
 The live integration script `scripts/test-leaderboard.mjs` verifies the dashboard
 page and endpoint with temporary fixtures that are removed afterward.
+
+## You Are a Joke
+
+Open `/you-are-a-joke` after signing in and completing onboarding, or use its
+sidebar link. Check the acknowledgement before **Start Experience**. The browser
+then asks for camera permission separately. No microphone is requested.
+
+The default `ROAST_PROVIDER=mock` runs face tracking locally and shows clearly
+labeled scripted demo captions. It never uploads snapshots. For actual roasts,
+configure these server-only values in `.env.local` and restart Next.js:
+
+```dotenv
+ROAST_PROVIDER=gemini
+GEMINI_API_KEY=your-key-from-google-ai-studio
+GEMINI_MODEL=gemini-3.8-flash
+```
+
+Gemini mode requires both credentials and a model available to your account;
+missing configuration never silently falls back to mock output. The integration
+uses the Gemini Developer API's `generateContent` REST endpoint with inline JPEG
+images and structured JSON output. Confirm billing, quota and provider data
+settings in Google AI Studio before a live session. Provider terms and retention
+apply; the app does not promise that Google retains nothing.
+
+Local tracking runs in a classic Web Worker using the pinned MediaPipe Tasks
+Vision 1.1.1 runtime and official Face Landmarker float16 model version 1, served
+from `public/mediapipe`. No tracking assets are fetched from a CDN at runtime.
+The app sends at most three 640px / 200 KB JPEG snapshots per request, only after
+cloud consent, when one face is visible. Requests have an eight-second cooldown
+and a 12-second provider timeout. Pause and consent withdrawal stop new uploads;
+Clear resets temporary callback context; Stop, page hiding, and navigation also
+release the camera. Already transmitted images cannot be recalled.
+
+Sessions retain only up to eight accepted joke texts in server memory, expire
+after 15 idle minutes, and are owned by the signed-in user. Memory is bounded to
+500 sessions; rate limiting is 10 attempts per user per minute, one pending
+request per session, and four provider requests globally. This is a **single
+local-server prototype**. Before multi-instance/serverless production deployment,
+replace in-memory sessions and limits with a shared TTL store, verify provider
+privacy settings, and ensure hosting/monitoring never captures request bodies.
+Do not add body logging, camera analytics, or persistent frame storage.
+
+Use localhost or HTTPS. Embedded pages additionally need camera permission from
+the parent Permissions Policy. If access is blocked, check browser site settings
+and OS camera settings. Modern desktop browsers with WebAssembly, workers and
+ImageBitmap are required. Tracking failures leave the preview available with a
+Retry action and prevent automated requests.
+
+Run `npm run test:roast` for consent/camera lifecycle, request/output validation,
+bounded-body handling, and session isolation checks. Also run `npm run lint` and
+`npm run build`. Physical camera permissions, tracking alignment and joke quality
+require a manual laptop session; automated checks do not establish those results.

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "public/mediapipe/vision_bundle.js",
+    "public/mediapipe/wasm/**",
   ]),
 ]);
 
