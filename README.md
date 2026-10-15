@@ -103,7 +103,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-The interface uses locally hosted Inter and Anton fonts through `next/font/local`. Their SIL Open Font Licenses are included in `app/fonts`. The interface uses dark ink surfaces, chrome details and acid-yellow accents. The gallery uses one responsive grid, and the sidebar links Get Checked, The Arena, Public Evidence, Hall of Shame and My Damage Report.
+The interface uses locally hosted Inter and Anton fonts through `next/font/local`. Their SIL Open Font Licenses are included in `app/fonts`. The interface uses dark ink surfaces, chrome details and acid-yellow accents. The gallery uses one responsive grid, and the sidebar links Get Checked, Disguise My Ego, The Arena, Public Evidence, Hall of Shame and My Damage Report.
 
 ## Avatar Gallery
 
@@ -404,7 +404,7 @@ Evidence**); `/you-are-a-joke` redirects home. `/challenges` is **The Arena**,
 relationships remain available in the challenge picker.
 All public and signed-in pages share the dark ink, chrome and acid-yellow design.
 The existing dashboard keeps its actual photo/vote/revenue calculations.
-Marketplace and Image Studio remain removed.
+Marketplace and the former Image Studio remain removed. `/disguise` is the dedicated **Disguise My Ego** character-portrait page.
 
 ### Database setup (required before deployment)
 
@@ -495,3 +495,25 @@ finalization, gallery publication, unpublishing and private-media cleanup before
 production rollout. Physical-camera behavior and live two-account verification
 are separate from automated tests. Request bodies must stay excluded from
 hosting logs/error capture.
+
+
+## Disguise My Ego
+
+The signed-in `/disguise` page uses the existing server-only `ARK_API_KEY` and
+`doubao-seedream-5-0-flash-260915` image API. Users can upload a JPG/PNG selfie,
+choose a cartoon/anime/comic/clay style or write their own prompt, and explicitly
+consent before sending the photo to Doubao. Outputs are still character portraits,
+saved privately in My Damage Report. Publishing a generated image to Public
+Evidence requires separate approval and keeps ordinary gallery voting.
+
+The post-roast camera button transfers its selected snapshot through a short-lived
+browser-memory draft. Raw selfies are never written to localStorage, sessionStorage,
+URLs or the app database. Reloading the page requires choosing the photo again.
+No camera opens on the disguise page. Cancelling or leaving invalidates late results.
+
+Run `npm run test:disguise`, `npm run test:images-reference`, and
+`npm run test:images-media` for UI/provider validation, reference bounds and private
+storage checks. `scripts/test-disguise-live.mjs` makes one real provider request
+with a synthetic illustrated face and a disposable account, then removes its
+private output and account; run with `DISGUISE_TEST_URL=http://localhost:3011 node
+--conditions=react-server --env-file=.env.local --import tsx scripts/test-disguise-live.mjs`.

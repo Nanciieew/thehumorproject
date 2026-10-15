@@ -59,7 +59,7 @@ export async function saveGeneratedImage(userId: string, source: string) {
   const saved = await supabase.from("images").insert({ id, contributor_id: userId, source: "generated", private_storage_path: path });
   if (saved.error) { await bucket.remove([path]); throw new Error("Couldn’t save your generated image. Please try again."); }
   const signed = await bucket.createSignedUrl(path, 3600);
-  if (signed.error) throw new Error("Your image was saved, but its preview couldn’t load. Refresh Image Studio.");
+  if (signed.error) throw new Error("Your image was saved, but its preview couldn’t load. Open My Damage Report.");
   return { generationId: id, url: signed.data.signedUrl };
 }
 

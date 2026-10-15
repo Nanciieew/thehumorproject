@@ -9,6 +9,7 @@ import { ChallengeCreator } from "../ego-ui";
 import { PlayfulTitle } from "../playful-title";
 import styles from "./studio.module.css";
 import { PublishEgo } from "./publish-ego";
+import { setDisguiseDraft } from "@/lib/disguise-draft";
 
 type Point = { x: number; y: number };
 type Tracking = { faces: number; x: number; y: number; at: number };
@@ -246,6 +247,7 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
           {!mock && selected && !enabled && !thinking && <div className={styles.resultActions}>
             <button ref={challengeButton} className={styles.challengeButton} disabled={sharing || publishing} aria-expanded={challengeOpen} aria-controls={challengePanelId} onClick={() => { pause(); setChallengeOpen(open => !open); }}>Challenge a friend ↗</button>
             <PublishEgo key={selected.receipt} {...selected} onBusyChange={setPublishing} />
+            <Link href="/disguise" className={`${styles.challengeButton} ${styles.disguiseButton}`} aria-disabled={publishing} onClick={e => { if (publishing) { e.preventDefault(); return; } pause(); setDisguiseDraft(selected.snapshot); }}>Disguise my ego ↗</Link>
           </div>}
         </div>
         <div className={caption ? styles.caption : "visually-hidden"} data-anchor={anchor}><p className="eyebrow">{mock ? "DEMO · SCRIPTED CAPTION" : "THE PUNCHLINE"}</p><p role="status" aria-live="polite">{caption}</p></div>

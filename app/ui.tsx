@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type IconName = "marketplace" | "works" | "arrow" | "grid" | "spark" | "user" | "leaderboard" | "logout" | "upload" | "close";
+type IconName = "marketplace" | "works" | "arrow" | "grid" | "spark" | "mask" | "user" | "leaderboard" | "logout" | "upload" | "close";
 export function Icon({ name, className = "" }: { name: IconName; className?: string }) {
   const paths: Record<IconName, ReactNode> = {
     marketplace: <><path d="M4 10v11h16V10M3 10l2-7h14l2 7M3 10a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" /><path d="M9 21v-7h6v7" /></>,
@@ -8,6 +8,7 @@ export function Icon({ name, className = "" }: { name: IconName; className?: str
     arrow: <path d="M5 19 19 5M5 5h14v14" />,
     grid: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
     spark: <path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" />,
+    mask: <><path d="m2 8 10 3 10-3v7c-3 4-6 4-10 0-4 4-7 4-10 0V8Z" /><ellipse cx="7" cy="12" rx="2" ry="1" /><ellipse cx="17" cy="12" rx="2" ry="1" /></>,
     user: <><circle cx="12" cy="8" r="4" /><path d="M4 21v-2a8 8 0 0 1 16 0v2" /></>,
     leaderboard: <path d="M4 21V12h5v9m0 0V4h6v17m0 0V9h5v12M2 21h20" />,
     logout: <path d="M10 4H4v16h6m4-12 4 4-4 4m-5-4h11" />,

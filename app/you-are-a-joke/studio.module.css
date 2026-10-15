@@ -11,13 +11,16 @@
 .empty p { font-size: 13px; }
 .badge { position: absolute; transform: translate(-50%, -50%); opacity: 0; background: var(--accent); color: var(--ink); padding: 8px 12px; border-radius: 10px; font-size: 11px; font-weight: 800; white-space: nowrap; pointer-events: none; transition: left 90ms linear, top 90ms linear; }
 .live { position: absolute; top: 14px; left: 14px; font-size: 10px; padding: 6px 9px; border-radius: 5px; background: var(--accent); color: var(--ink); letter-spacing: .05em; }
-.resultActions { position:absolute;top:14px;right:14px;z-index:2;display:flex;align-items:stretch;gap:8px;max-width:calc(100% - 28px);animation:challengeReveal 180ms ease-out; }
+.resultActions { position:absolute;top:14px;right:14px;z-index:2;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:min(360px,calc(100% - 28px));animation:challengeReveal 180ms ease-out; }
 .challengeButton { display:flex;align-items:center;justify-content:center;min-width:0;min-height:44px;padding:10px 12px;background:var(--accent);color:var(--ink);border:1px solid var(--ink);box-shadow:3px 3px 0 #10110c80;font-size:12px;font-weight:750;text-align:center; }
 .publishButton { background:var(--ink);color:var(--accent);border-color:var(--accent); }
+.disguiseButton { grid-column:1/-1;background:var(--surface-muted);color:var(--foreground);border-color:#7a8571; }
+.disguiseButton[aria-disabled=true] { opacity:.45;cursor:not-allowed; }
 .publishSnapshot { width:100%;height:auto;max-height:260px;object-fit:contain;background:var(--background); }
 .publishCaption { margin:18px 0;font-size:20px;font-weight:650;line-height:1.4;overflow-wrap:anywhere; }
 .challengeButton:hover:not(:disabled) { background:#f4ff77; }
 .publishButton:hover:not(:disabled) { background:var(--surface-raised); }
+.disguiseButton:hover { background:var(--surface-raised); }
 .videoWrap:has(.challengeButton) .live { top:auto;bottom:14px; }
 .reviewHeading { display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px; }
 .reviewHeading h2 { margin:0; }

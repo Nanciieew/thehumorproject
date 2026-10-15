@@ -7,6 +7,7 @@ import { Icon, Smile } from "./ui";
 
 const links = [
   { href: "/", label: "Get Checked", icon: "spark" as const },
+  { href: "/disguise", label: "Disguise My Ego", icon: "mask" as const },
   { href: "/challenges", label: "The Arena", icon: "leaderboard" as const },
   { href: "/gallery", label: "Public Evidence", icon: "grid" as const },
   { href: "/leaderboard", label: "Hall of Shame", icon: "leaderboard" as const },

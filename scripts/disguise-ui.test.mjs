@@ -1,0 +1,65 @@
+import assert from 'node:assert/strict';
+import {afterEach,test} from 'node:test';
+import {JSDOM} from 'jsdom';
+import React from 'react';
+const dom=new JSDOM('<html><body></body></html>',{url:'http://localhost:3000/disguise'});
+for(const name of ['window','document','navigator','HTMLElement','HTMLInputElement','MutationObserver','Node','Event','MouseEvent','getComputedStyle','FileReader'])Object.defineProperty(globalThis,name,{configurable:true,value:dom.window[name]});
+globalThis.self=dom.window;globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+const {render,fireEvent,waitFor,cleanup,act}=await import('@testing-library/react');
+const {DisguiseStudio}=await import('../app/disguise/studio.tsx');
+const {setDisguiseDraft,peekDisguiseDraft,clearDisguiseDraft}=await import('../lib/disguise-draft.ts');
+const originalFetch=globalThis.fetch;
+afterEach(()=>{cleanup();globalThis.fetch=originalFetch;const d=peekDisguiseDraft();if(d)clearDisguiseDraft(d.image);});
+const draft=()=>setDisguiseDraft('/9j/AA==');
+const generated={generationId:'30000000-0000-4000-8000-000000000001',url:'https://fixture.supabase.co/private-character.webp'};
+test('camera handoff stays in memory and generation waits for separate Doubao consent',async()=>{
+ draft();const requests=[];let resolve;
+ globalThis.fetch=(url,options)=>{requests.push({url,body:JSON.parse(options.body)});return new Promise(r=>resolve=r);};
+ const ui=render(React.createElement(DisguiseStudio,{configured:true}));
+ assert.equal(peekDisguiseDraft(),null,'the transferred draft is consumed without browser persistence');
+ assert.ok(ui.getByAltText('Selfie selected for your character'));assert.equal(requests.length,0);
+ const generate=ui.getByRole('button',{name:'Give my ego a disguise ↗'});assert.equal(generate.disabled,true);
+ fireEvent.click(ui.getByRole('checkbox'));
+ fireEvent.change(ui.getByLabelText('Describe your character'),{target:{value:'Make me a clay superhero.'}});
+ fireEvent.click(generate);fireEvent.click(generate);assert.equal(requests.length,1);
+ assert.deepEqual(requests[0],{url:'/api/images',body:{purpose:'disguise',image:'data:image/jpeg;base64,/9j/AA==',prompt:'Make me a clay superhero.',approved:true}});
+ await act(async()=>resolve(Response.json(generated)));
+ assert.equal(ui.getByAltText('Your generated cartoon character').getAttribute('src'),generated.url);
+ assert.equal(ui.getByRole('link',{name:'View saved ego ↗'}).getAttribute('href'),`/my-works/${generated.generationId}`);
+ assert.equal(requests.length,1,'generation does not publish automatically');
+});
+test('generated characters need separate public-sharing approval before gallery publication',async()=>{
+ draft();const calls=[];
+ globalThis.fetch=async(url,options)=>{calls.push({url,...JSON.parse(options.body)});return Response.json(url==='/api/images'?generated:{photoId:generated.generationId});};
+ const ui=render(React.createElement(DisguiseStudio,{configured:true}));fireEvent.click(ui.getByRole('checkbox'));fireEvent.click(ui.getByRole('button',{name:'Give my ego a disguise ↗'}));
+ await waitFor(()=>assert.ok(ui.getByAltText('Your generated cartoon character')));
+ fireEvent.click(ui.getByText('Put this ego on display ↗'));
+ const publish=ui.getByRole('button',{name:'Publish my disguise ↗'});assert.equal(publish.disabled,true);assert.equal(calls.length,1);
+ fireEvent.click(ui.getByLabelText('I agree to publish this character to Public Evidence.'));fireEvent.click(publish);
+ await waitFor(()=>assert.ok(ui.getByRole('link',{name:'View in Public Evidence ↗'})));
+ assert.deepEqual(calls[1],{url:'/api/gallery/publish',assetId:generated.generationId,source:'generated'});
+});
+test('photo upload previews locally, validates file type, and resets consent when replacing the selfie',async()=>{
+ let requests=0;globalThis.fetch=async()=>{requests++;throw new Error('Unexpected upload');};
+ const ui=render(React.createElement(DisguiseStudio,{configured:true}));
+ const input=ui.container.querySelector('input[type=file]');assert.equal(input.accept,'image/jpeg,image/png');
+ fireEvent.change(input,{target:{files:[new dom.window.File(['fixture'],'selfie.png',{type:'image/png'})]}});
+ await waitFor(()=>assert.ok(ui.getByAltText('Selfie selected for your character')));assert.equal(requests,0);
+ fireEvent.click(ui.getByRole('checkbox'));assert.equal(ui.getByRole('checkbox').checked,true);
+ fireEvent.change(input,{target:{files:[new dom.window.File(['bad'],'selfie.webp',{type:'image/webp'})]}});
+ await waitFor(()=>assert.ok(ui.getByText('Choose a JPG or PNG selfie up to 2 MB.')));
+ assert.equal(ui.getByRole('checkbox').checked,false);assert.equal(ui.queryByAltText('Selfie selected for your character'),null);assert.equal(requests,0);
+});
+test('cancelling ignores a late generation result and errors remain retryable',async()=>{
+ draft();let resolve;
+ globalThis.fetch=()=>new Promise(r=>resolve=r);
+ const ui=render(React.createElement(DisguiseStudio,{configured:true}));fireEvent.click(ui.getByRole('checkbox'));fireEvent.click(ui.getByRole('button',{name:'Give my ego a disguise ↗'}));
+ fireEvent.click(ui.getByRole('button',{name:'Cancel generation'}));
+ await act(async()=>resolve(Response.json(generated)));assert.equal(ui.queryByAltText('Your generated cartoon character'),null);
+ globalThis.fetch=async()=>Response.json({error:'Provider limit reached.'},{status:502});fireEvent.click(ui.getByRole('button',{name:'Give my ego a disguise ↗'}));
+ await waitFor(()=>assert.ok(ui.getByText('Provider limit reached.')));assert.equal(ui.getByRole('button',{name:'Give my ego a disguise ↗'}).disabled,false);
+});
+test('missing configuration prevents paid API requests',()=>{
+ draft();const ui=render(React.createElement(DisguiseStudio,{configured:false}));fireEvent.click(ui.getByRole('checkbox'));
+ assert.equal(ui.getByRole('button',{name:'Give my ego a disguise ↗'}).disabled,true);assert.ok(ui.getByText('Image generation is not configured yet.'));
+});
