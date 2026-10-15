@@ -62,7 +62,14 @@ export function GuestLanding() {
   }, [openMirror, release, stop]);
 
   return <main id="main" className={styles.landing} data-guest-landing>
-    <div className={styles.topline}><Link href="/" className={styles.wordmark} aria-label="Ego Check home">EGO<span>CHECK</span><i aria-hidden="true">✳</i></Link></div>
+    <div className={styles.topline}>
+      <Link href="/" className={styles.wordmark} aria-label="Ego Check home">
+        <svg viewBox="0 0 1440 420" fill="none" aria-hidden="true" focusable="false">
+          <text x="12" y="365" textLength="500" lengthAdjust="spacingAndGlyphs">EGO</text>
+          <text x="545" y="365" textLength="880" lengthAdjust="spacingAndGlyphs" className={styles.brandAccent}>CHECK</text>
+        </svg>
+      </Link>
+    </div>
     <section className={styles.hero}>
       <div className={styles.copy}>
         <h1>Mirror, mirror.<br />On the wall.<br /><em>Big ego.<br />Watch it fall.</em></h1>
