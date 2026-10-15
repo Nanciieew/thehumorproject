@@ -385,7 +385,11 @@ page and endpoint with temporary fixtures that are removed afterward.
 ## Ego Check — deployment and new competition features
 
 Ego Check replaces the home gallery with **Get Checked**, the consent-first
-webcam roast experience. The existing photo feed is now `/gallery` (**Public
+webcam roast experience. Signed-out visitors see a dark mirror landing page.
+Its optional preview requires local-preview acknowledgement followed by browser
+camera permission; it sends no frames to the server or Gemini, requests no audio,
+and releases the camera on Stop, page hiding, or navigation.
+Run `npm run test:guest-ui` for this guest camera lifecycle. The existing photo feed is now `/gallery` (**Public
 Evidence**); `/you-are-a-joke` redirects home. `/challenges` is **The Arena**,
 `/friends` manages friendships, and `/leaderboard` is **Hall of Shame**.
 The existing dashboard keeps its actual photo/vote/revenue calculations.

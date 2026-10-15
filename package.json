@@ -20,7 +20,8 @@
     "test:images-reference": "node --import tsx --test scripts/seedream-reference.test.mjs",
     "test:ego-db": "node --test scripts/ego-db.test.mjs",
     "test:ego-ui": "node --import tsx --test scripts/ego-ui.test.mjs",
-    "test:ego-receipts": "node --conditions=react-server --import tsx --test scripts/ego-receipts.test.mjs"
+    "test:ego-receipts": "node --conditions=react-server --import tsx --test scripts/ego-receipts.test.mjs",
+    "test:guest-ui": "node --import tsx --import ./scripts/roast-css-loader.mjs --test scripts/guest-landing-ui.test.mjs"
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "1.1.1",
