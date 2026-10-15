@@ -8,29 +8,19 @@ export function GuestLanding() {
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const generation = useRef(0);
-  const [allowed, setAllowed] = useState(false);
   const [phase, setPhase] = useState<"off" | "asking" | "on">("off");
   const [error, setError] = useState("");
 
   const release = useCallback(() => {
     generation.current++;
-    stream.current?.getTracks().forEach(track => track.stop());
+    stream.current?.getTracks().forEach(track => { track.onended = null; track.stop(); });
     stream.current = null;
     if (video.current) video.current.srcObject = null;
   }, []);
 
-  useEffect(() => {
-    const hide = () => {
-      if (document.hidden) { release(); setPhase("off"); }
-    };
-    document.addEventListener("visibilitychange", hide);
-    return () => { document.removeEventListener("visibilitychange", hide); release(); };
-  }, [release]);
+  const stop = useCallback(() => { release(); setPhase("off"); }, [release]);
 
-  function stop() { release(); setPhase("off"); }
-
-  async function openMirror() {
-    if (!allowed || phase !== "off") return;
+  const openMirror = useCallback(async () => {
     release();
     const token = generation.current;
     setPhase("asking"); setError("");
@@ -54,17 +44,29 @@ export function GuestLanding() {
       stop();
       setError(e instanceof DOMException && e.name === "NotAllowedError" ? "Camera blocked. Check your browser’s camera permissions." : "Couldn’t open the camera. You can still sign in to get roasted.");
     }
-  }
+  }, [release, stop]);
+
+  useEffect(() => {
+    let mounted = true;
+    // Defer until hydration settles; Strict Mode cleanup cancels the first setup.
+    queueMicrotask(() => { if (mounted && !document.hidden) void openMirror(); });
+    const hide = () => { if (document.hidden) stop(); };
+    document.addEventListener("visibilitychange", hide);
+    window.addEventListener("pagehide", stop);
+    return () => {
+      mounted = false;
+      document.removeEventListener("visibilitychange", hide);
+      window.removeEventListener("pagehide", stop);
+      release();
+    };
+  }, [openMirror, release, stop]);
 
   return <main id="main" className={styles.landing} data-guest-landing>
-    <div className={styles.topline}><Link href="/" className={styles.wordmark} aria-label="Ego Check home">EGO<span>CHECK</span><i aria-hidden="true">✳</i></Link><span className={styles.edition}>SELF-AWARENESS SOLD SEPARATELY.</span></div>
+    <div className={styles.topline}><Link href="/" className={styles.wordmark} aria-label="Ego Check home">EGO<span>CHECK</span><i aria-hidden="true">✳</i></Link></div>
     <section className={styles.hero}>
       <div className={styles.copy}>
-        <span className={styles.kicker}><span aria-hidden="true">✳</span> A REALITY CHECK. WITH TEETH.</span>
-        <h1>Mirror, mirror.<br />On the wall.<br /><em>You’re the<br />problem.</em></h1>
-        <p className={styles.description}>Get roasted. Drag a friend in.<br />Let the crowd finish the job.</p>
+        <h1>Mirror, mirror.<br />On the wall.<br /><em>Big ego.<br />Watch it fall.</em></h1>
         <div className={styles.actions}><Link href="/login" className={styles.primary}>Check my ego <span aria-hidden="true">↗</span></Link><Link href="/challenges" className={styles.secondary}>Watch a battle <span aria-hidden="true">→</span></Link></div>
-        <p className={styles.footnote}>Big ego. Small chance of leaving unscathed.</p>
       </div>
       <section className={styles.mirrorPanel} aria-label="Try the local mirror">
         <div className={styles.mirrorScene}>
@@ -81,13 +83,11 @@ export function GuestLanding() {
           <span className={styles.scribble} aria-hidden="true">the usual suspect ↗</span>
         </div>
         <div className={styles.mirrorControls}>
-          <label className={styles.permission}><input type="checkbox" checked={allowed} onChange={e => { setAllowed(e.target.checked); if (!e.target.checked) stop(); }} />Local camera preview. No uploads.</label>
-          <button className={styles.mirrorButton} disabled={!allowed && phase === "off"} onClick={() => { if (phase === "off") void openMirror(); else stop(); }}>{phase === "on" ? "Turn off mirror" : phase === "asking" ? "Cancel camera request" : "Try the mirror"}<span aria-hidden="true">{phase === "on" ? "×" : "↗"}</span></button>
-          <p className={styles.previewNote}>Preview only. Sign in for AI roasts.</p>
+          <p className={styles.previewNote}>Local preview only. No uploads or audio.</p>
+          <button className={styles.mirrorButton} onClick={() => { if (phase === "off") void openMirror(); else stop(); }}>{phase === "on" ? "Turn off mirror" : phase === "asking" ? "Cancel camera request" : "Try the mirror"}<span aria-hidden="true">{phase === "on" ? "×" : "↗"}</span></button>
           <p className={styles.error} role="status" aria-live="polite">{error}</p>
         </div>
       </section>
     </section>
-    <div className={styles.bottomline}><span><b>01</b> GET CHECKED</span><span aria-hidden="true">✳</span><span><b>02</b> CHALLENGE A FRIEND</span><span aria-hidden="true">✳</span><span><b>03</b> FACE THE VERDICT</span></div>
   </main>;
 }

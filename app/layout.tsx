@@ -8,7 +8,6 @@ import { profilePhotoUrl } from "@/lib/profile-photo";
 import { AccountMenu } from "./account-menu";
 import { Onboarding } from "./onboarding";
 import "./globals.css";
-import "./playful-pages.css";
 import "./ego.css";
 
 const inter = localFont({ src: "./fonts/inter.ttf", variable: "--font-inter", weight: "100 900", display: "swap" });
