@@ -62,11 +62,11 @@ export function Onboarding({ firstName, lastName, stateCode, preview = false }: 
       <h2 id="welcome-title" className="text-3xl font-bold">You’re ready for your journey!</h2>
       <p>You completed all three steps. In the real flow, this is when your profile is created and your account unlocks.</p>
       <button onClick={() => { setFinished(false); setPhotoName(""); setFirst(""); setLast(""); setError(""); setStep(0); }} className="rounded-full bg-foreground px-6 py-3 font-semibold text-background">Test again</button>
-      <Link href="/" className="block text-sm underline">Back to gallery</Link>
+      <Link href="/" className="block text-sm underline">Back to Ego Check</Link>
     </div> : <>
-    <p className="text-xs font-semibold uppercase tracking-widest opacity-60">Welcome to the Humor Project · {step + 1} / 3</p>
+    <p className="text-xs font-semibold uppercase tracking-widest opacity-60">Welcome to Ego Check · {step + 1} / 3</p>
     <div className="my-5 flex gap-2" aria-hidden="true">{[0, 1, 2].map((index) => <span key={index} className={`h-1 flex-1 rounded-full ${index <= step ? "bg-foreground" : "bg-foreground/15"}`} />)}</div>
-    <h2 ref={heading} tabIndex={-1} id="welcome-title" className="text-3xl font-bold outline-none">{["What should we call you?", "Put a face to the funny.", "Which state gets your bragging rights?"][step]}</h2>
+    <h2 ref={heading} tabIndex={-1} id="welcome-title" className="text-3xl font-bold outline-none">{["What should we call you?", "Identify the usual suspect.", "Where should we send the blame?"][step]}</h2>
     <p className="mt-3 text-sm leading-relaxed opacity-65">{["Every great joke starts with an introduction.", "Add your photo, or save your grand reveal for later.", "Plant your flag. Pick the state you’re repping in our corner of the internet."][step]}</p>
     <form noValidate ref={form} onReset={() => setPhotoName("")} action={preview ? undefined : action} onKeyDown={(event) => { if (event.key === "Enter" && step < 2 && event.target instanceof HTMLInputElement && event.target.type !== "file") { event.preventDefault(); next(); } }} onSubmit={(event) => { if (step !== 2) { event.preventDefault(); next(); } else { const stateInput = form.current!.elements.namedItem("state_code") as HTMLSelectElement; if (!isUSState(stateInput.value)) { event.preventDefault(); setError("Choose a US state to represent."); stateInput.focus(); } else if (preview) { event.preventDefault(); setFinished(true); } } }} className="mt-7 space-y-6">
       <fieldset hidden={step !== 0} disabled={pending} className={step === 0 ? "grid gap-4 sm:grid-cols-2" : "hidden"}>
@@ -82,7 +82,7 @@ export function Onboarding({ firstName, lastName, stateCode, preview = false }: 
       {(error || state.error) && <p role="alert" className="text-sm text-red-600">{error || state.error} You can go back to revise your answers.</p>}
       <div className="flex flex-wrap items-center gap-3">
         {step > 0 && <button type="button" disabled={pending} onClick={() => { setError(""); setStep(step - 1); }} className="rounded-full border border-current/20 px-4 py-3 text-sm">Back</button>}
-        {step < 2 ? <button type="button" disabled={step === 1 && !photoName} onClick={() => next()} className="flex-1 rounded-full bg-foreground px-6 py-3 font-semibold text-background disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400">Next</button> : <button disabled={pending} className="flex-1 rounded-full bg-foreground px-6 py-3 font-semibold text-background disabled:opacity-50">{pending ? "Saving…" : "start my journey!"}</button>}
+        {step < 2 ? <button type="button" disabled={step === 1 && !photoName} onClick={() => next()} className="flex-1 rounded-full bg-foreground px-6 py-3 font-semibold text-background disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 dark:disabled:bg-gray-700 dark:disabled:text-gray-400">Next</button> : <button disabled={pending} className="flex-1 rounded-full bg-foreground px-6 py-3 font-semibold text-background disabled:opacity-50">{pending ? "Saving…" : "accept accountability!"}</button>}
       </div>
       {step === 1 && <button type="button" onClick={() => next(true)} className="block w-full text-sm underline underline-offset-4">Skip for now</button>}
     </form>

@@ -9,13 +9,14 @@ import { AccountMenu } from "./account-menu";
 import { Onboarding } from "./onboarding";
 import "./globals.css";
 import "./playful-pages.css";
+import "./ego.css";
 
 const inter = localFont({ src: "./fonts/inter.ttf", variable: "--font-inter", weight: "100 900", display: "swap" });
 const anton = localFont({ src: "./fonts/anton.ttf", variable: "--font-anton", weight: "400", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Avatar Gallery | The Humor Project",
-  description: "Share avatars, discover favorites, and vote for the photos you love.",
+  title: "Ego Check | Finally, an app that sees the problem",
+  description: "Get roasted, challenge a friend, and let the crowd decide who got cooked harder.",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -34,8 +35,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           {viewer && <Sidebar><AccountMenu signedIn name={[profile?.first_name, profile?.last_name].filter(Boolean).join(" ")} initials={`${profile?.first_name?.slice(0, 1) ?? ""}${profile?.last_name?.slice(0, 1) ?? ""}`} photoUrl={photoUrl} /></Sidebar>}
           <div className="site-content">
             <AppHeader>{!viewer ? <AccountMenu signedIn={false} name="" initials="" photoUrl={null} /> : undefined}</AppHeader>
+            {!viewer && <nav className="ego-guest-nav" aria-label="Public navigation"><Link href="/">Get Checked</Link><Link href="/challenges">The Arena</Link><Link href="/gallery">Public Evidence</Link><Link href="/leaderboard">Hall of Shame</Link></nav>}
             {children}
-            <footer className="app-footer"><Link href="/">THE HUMOR PROJECT <span>© 2026</span></Link><span>A LITTLE PERSONALITY. A LOT OF POSSIBILITIES.</span><Link href={viewer ? "/profile" : "/login"}>MADE FOR YOU ↗</Link></footer>
+            <footer className="app-footer"><Link href="/">EGO CHECK <span>© 2026</span></Link><span>YOUR EGO. OUR FRONT PAGE.</span><Link href={viewer ? "/profile" : "/login"}>TAKE IT PERSONALLY ↗</Link></footer>
           </div>
         </div>
         {session && !viewer && <Onboarding firstName={profile?.first_name ?? ""} lastName={profile?.last_name ?? ""} stateCode={profile?.state_code ?? ""} />}

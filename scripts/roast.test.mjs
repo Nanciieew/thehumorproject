@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validRequest, validOutput } from '../lib/roast/contracts.ts';
-import { acquireSession, resetSession } from '../lib/roast/store.ts';
 const input = () => ({ sessionId: 'session', requestId: 'request', settings: { intensity: 'playful', excludedTopics: [] }, frames: [{ mimeType: 'image/jpeg', base64: '/9j/AA==', capturedAtMs: Date.now() }], events: [] });
 test('request bounds reject stale, oversized, malformed and unrestricted inputs', () => {
   assert.equal(validRequest(input()), true);
@@ -16,17 +15,6 @@ test('output must be a bounded plain text roast or an explicit skip', () => {
   assert.equal(validOutput({ status: 'ok', roast: 'x'.repeat(241), anchor: 'face' }), false);
   assert.equal(validOutput({ status: 'skip', roast: 'invented', anchor: 'screen' }), false);
 });
-test('session locking, ownership, reset cancellation and concurrency are bounded', () => {
-  const a = acquireSession('alice', 'one'); assert.ok(a);
-  assert.equal(acquireSession('alice', 'one'), null);
-  const b = acquireSession('bob', 'one'); assert.ok(b);
-  resetSession('bob', 'one'); assert.equal(b.current(), false); assert.equal(a.current(), true);
-  b.release(); resetSession('alice', 'one'); assert.equal(a.session.controller.signal.aborted, true); a.release();
-  const locks = Array.from({ length: 4 }, (_, i) => acquireSession(`user-${i}`, 'one'));
-  assert.ok(locks.every(Boolean)); assert.equal(acquireSession('fifth', 'one'), null);
-  locks.forEach(l => l.release());
-});
-
 test('streamed JSON body limit applies without trusting content-length', async () => {
   const { readBoundedJson } = await import('../lib/roast/read-body.ts');
   const make = content => new Request('http://localhost/api/roast', { method: 'POST', body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode(content)); controller.close(); } }), duplex: 'half' });

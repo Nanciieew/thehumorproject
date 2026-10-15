@@ -6,6 +6,6 @@ import { ColorPlay } from "./ui";
 
 export function AppHeader({ children }: { children?: ReactNode }) {
   const pathname = usePathname();
-  const title = pathname.startsWith("/you-are-a-joke") ? "LIVE / YOU ARE A JOKE" : pathname.startsWith("/image-studio") ? "CREATE / IMAGE STUDIO" : pathname.startsWith("/marketplace") ? "Marketplace" : pathname.startsWith("/my-works") ? "PERSONAL / MY DASHBOARD" : pathname.startsWith("/leaderboard") ? "COMMUNITY / LEADERBOARD" : pathname.startsWith("/profile") ? "PERSONALITY / YOUR PROFILE" : pathname.startsWith("/login") ? "WELCOME / THE HUMOR PROJECT" : "COMMUNITY / AVATAR GALLERY";
-  return <header className="app-topbar"><span className="topbar-title"><ColorPlay />{title}</span>{children ?? <span className="topbar-note">GOOD PEOPLE. GREAT PERSONALITY.</span>}</header>;
+  const title = pathname === "/" ? "EGO CHECK / GET CHECKED" : pathname.startsWith("/challenges") ? "THE ARENA / PUBLIC OPINION" : pathname.startsWith("/gallery") || pathname.startsWith("/avatars") ? "PUBLIC EVIDENCE" : pathname.startsWith("/my-works") ? "YOUR DAMAGE REPORT" : pathname.startsWith("/leaderboard") ? "HALL OF SHAME" : pathname.startsWith("/friends") ? "FRIENDS / BAD INFLUENCES" : pathname.startsWith("/profile") ? "THE USUAL SUSPECT" : "EGO CHECK";
+  return <header className="app-topbar"><span className="topbar-title"><ColorPlay />{title}</span>{children ?? <span className="topbar-note">FINALLY, AN APP THAT SEES THE PROBLEM.</span>}</header>;
 }

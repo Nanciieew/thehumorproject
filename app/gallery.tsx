@@ -49,10 +49,12 @@ function GalleryCard({ photo, signedIn, requestLogin, updateVote }: { photo: Gal
     } finally { inFlight.current = false; setBusy(false); }
   }
   return <article id={`photo-${photo.id}`} className={`gallery-card ${styles.card}`}>
-    <div className="card-image"><Image src={photo.photo_url} alt={`Avatar shared by ${photo.contributor_name}`} width={400} height={400} unoptimized /><span className="image-tag">{photo.source === "generated" ? "FROM THE STUDIO" : "JUST BE YOU"}</span></div>
+    <div className="card-image"><Image src={photo.photo_url} alt={`Avatar shared by ${photo.contributor_name}`} width={400} height={400} unoptimized /><span className="image-tag">{photo.source === "generated" ? "AI GENERATED" : "EVIDENCE ON FILE"}</span></div>
     <div className="card-info">
-      <h3 title={photo.title || photo.contributor_name}><Link className={styles.cardLink} href={`/avatars/${photo.id}`}>{photo.title || photo.contributor_name}</Link></h3><p>{photo.title ? `By ${photo.contributor_name}` : photo.source === "generated" ? "Made in Image Studio" : "Shared with the community"}</p>
-      {photo.description && <p className="work-card-description">{photo.description}</p>}
+      <h3 title={photo.title || photo.contributor_name}><Link className={styles.cardLink} href={`/avatars/${photo.id}`}>{photo.title || photo.contributor_name}</Link></h3><p>{photo.title ? `By ${photo.contributor_name}` : photo.source === "generated" ? "AI-generated image" : "Shared with the community"}</p>
+      {photo.result && <p className="battle-tally">{photo.result.outcome} · Battle votes: {photo.result.battle_votes} · Gallery upvotes: {count}</p>}
+      {photo.result && <blockquote className="work-card-description">{photo.result.roast}</blockquote>}
+      {photo.description && (!photo.result || photo.description !== photo.result.roast) && <p className="work-card-description">{photo.description}</p>}
       <div className="card-votes" aria-label="Photo voting" aria-busy={busy}>
         <button type="button" aria-label={`Upvote: ${count} ${count === 1 ? "upvote" : "upvotes"}`} aria-pressed={vote === 1} disabled={busy} onClick={() => void choose(1)} className={`vote-button ${vote === 1 ? "text-blue-600" : vote === -1 ? "text-gray-400" : ""}`}><Thumb /><span>{count}</span></button>
         <button type="button" aria-label="Downvote" aria-pressed={vote === -1} disabled={busy} onClick={() => void choose(-1)} className={`vote-button down ${vote === -1 ? "text-red-600" : vote === 1 ? "text-gray-400" : ""}`}><Thumb down /></button>
@@ -62,7 +64,7 @@ function GalleryCard({ photo, signedIn, requestLogin, updateVote }: { photo: Gal
   </article>;
 }
 
-function GalleryFeed({ sort, search, initial, signedIn, requestLogin }: { sort: GallerySort; search: string; initial?: GalleryPage; signedIn: boolean; requestLogin: () => void }) {
+function GalleryFeed({ sort, search, kind, initial, signedIn, requestLogin }: { sort: GallerySort; search: string; kind: string; initial?: GalleryPage; signedIn: boolean; requestLogin: () => void }) {
   const [items, setItems] = useState(initial?.items ?? []);
   const [cursor, setCursor] = useState(initial?.next_cursor ?? null);
   const [started, setStarted] = useState(Boolean(initial));
@@ -87,12 +89,12 @@ function GalleryFeed({ sort, search, initial, signedIn, requestLogin }: { sort: 
     inFlight.current = true; setLoading(true); setError("");
     const abort = new AbortController(); controller.current = abort;
     try {
-      const query = new URLSearchParams({ sort, search }); if (cursor) query.set("cursor", cursor);
+      const query = new URLSearchParams({ sort, search, ...(kind !== "all" ? { kind } : {}) }); if (cursor) query.set("cursor", cursor);
       let response = await fetch(`/api/gallery?${query}`, { signal: abort.signal });
       let page = await response.json();
       const reset = response.status === 409 && page.code === "GALLERY_CURSOR_EXPIRED";
       if (reset) {
-        response = await fetch(`/api/gallery?${new URLSearchParams({ sort, search })}`, { signal: abort.signal });
+        response = await fetch(`/api/gallery?${new URLSearchParams({ sort, search, ...(kind !== "all" ? { kind } : {}) })}`, { signal: abort.signal });
         page = await response.json();
       }
       if (!response.ok) throw new Error(page.error);
@@ -102,7 +104,7 @@ function GalleryFeed({ sort, search, initial, signedIn, requestLogin }: { sort: 
     } catch (error) {
       if (!abort.signal.aborted) setError(error instanceof Error && !(error instanceof TypeError) ? error.message : "Couldn’t load more photos. Please try again.");
     } finally { if (controller.current === abort) { inFlight.current = false; if (!abort.signal.aborted) setLoading(false); } }
-  }, [sort, search, cursor]);
+  }, [sort, search, kind, cursor]);
   useEffect(() => () => { controller.current?.abort(); inFlight.current = false; }, []);
   useEffect(() => {
     // Re-read the entire visible prefix so photos rising from later pages can enter it.
@@ -118,7 +120,7 @@ function GalleryFeed({ sort, search, initial, signedIn, requestLogin }: { sort: 
         let next: string | null = null;
         const refreshed = new Map<string, GalleryPhoto>();
         for (let index = 0; index < pages; index++) {
-          const query = new URLSearchParams({ sort, search });
+          const query = new URLSearchParams({ sort, search, ...(kind !== "all" ? { kind } : {}) });
           if (next) query.set("cursor", next);
           const response = await fetch(`/api/gallery?${query}`, { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(15_000)]), cache: "no-store" });
           const page: GalleryPage = await response.json();
@@ -141,7 +143,7 @@ function GalleryFeed({ sort, search, initial, signedIn, requestLogin }: { sort: 
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
     return () => { stopped = true; window.clearInterval(timer); window.removeEventListener("focus", onFocus); document.removeEventListener("visibilitychange", onFocus); };
-  }, [sort, search]);
+  }, [sort, search, kind]);
   useEffect(() => {
     if ((started && !cursor) || loading || refreshing || error || !sentinel.current) return;
     const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) void load(); }, { rootMargin: "600px" });
@@ -208,6 +210,7 @@ function UploadPhoto({ close, published }: { close: () => void; published: () =>
 }
 
 export function Gallery({ initial, userId }: { initial?: GalleryPage; userId: string | null }) {
+  const [kind, setKind] = useState("all");
   const [sort, setSort] = useState<GallerySort>("top");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -223,17 +226,18 @@ export function Gallery({ initial, userId }: { initial?: GalleryPage; userId: st
   return <main id="main" className={styles.page}>
     <header className={styles.hero}>
       <div className={styles.decorations} aria-hidden="true"><span className={styles.orbit} /><span className={styles.bubble} /><svg className={styles.star} viewBox="0 0 80 80"><path d="m40 5 9 23 25 4-19 17 5 25-20-13-21 13 5-25L5 32l25-4Z" /></svg><svg className={styles.sparkle} viewBox="0 0 60 60"><path d="M30 3c3 19 8 24 27 27-19 3-24 8-27 27C27 38 22 33 3 30 22 27 27 22 30 3Z" /></svg><span className={styles.cloud} /><span className={styles.confetti} /></div>
-      <h1 id="gallery-title" className={styles.title} aria-label="Avatar Gallery">{["AVATAR", "GALLERY"].map(word => <span className={styles.word} key={word} aria-hidden="true">{Array.from(word).map((letter, index) => <span className={styles.letter} key={index}>{letter}</span>)}</span>)}</h1>
-      <div className="hero-actions"><button aria-label="Upload photo" onClick={() => userId ? setUpload(true) : requestLogin()} className="action-button">Share your photo <span><Icon name="upload" /></span></button>{userId ? <Link href="/image-studio" className="text-button">Make something new <span aria-hidden="true">↗</span></Link> : <button onClick={requestLogin} className="text-button">Make something new <span aria-hidden="true">↗</span></button>}</div>
+      <h1 id="gallery-title" className={styles.title} aria-label="Public Evidence">{["PUBLIC", "EVIDENCE"].map(word => <span className={styles.word} key={word} aria-hidden="true">{Array.from(word).map((letter, index) => <span className={styles.letter} key={index}>{letter}</span>)}</span>)}</h1>
+      <div className="hero-actions"><button aria-label="Upload photo" onClick={() => userId ? setUpload(true) : requestLogin()} className="action-button">Share your photo <span><Icon name="upload" /></span></button></div>
     </header>
 
     <section className={`gallery-section ${styles.collection}`} aria-labelledby="gallery-title">
       <div className={styles.toolbar}>
       <div className={styles.searchRow}><label className="gallery-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></svg><input type="search" aria-label="Search by avatar name" placeholder="Search by avatar name" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} /></label></div>
+      <div className="ego-tabs" role="group" aria-label="Evidence type">{[["all","All"],["photos","Photos"],["results","Challenge Results"]].map(([value,label])=><button key={value} aria-pressed={kind===value} onClick={()=>{setKind(value);setRevision(v=>v+1);}}>{label}</button>)}</div>
       <div className={styles.filterbar}><div aria-label="Sort gallery" className={styles.filters}>{([["top", "Most votes overall", "Most votes overall"], ["month", "New this month", "New this month"], ["newest", "Newest first", "Newest first"]] as const).map(([value, label, accessibleLabel]) => <button key={value} aria-label={accessibleLabel} aria-pressed={sort === value} onClick={() => { if (sort !== value) { setSort(value); setRevision((value) => value + 1); setMessage(""); } }}><span aria-hidden="true">{value === "top" ? "★" : value === "month" ? "✿" : "✦"}</span>{label}</button>)}</div></div>
       </div>
       {message && <p role="status" className="gallery-message">{message}</p>}
-      <GalleryFeed key={`${sort}:${userId}:${revision}:${search}`} sort={sort} search={search} initial={!search && sort === "top" && revision === 0 ? initial : undefined} signedIn={Boolean(userId)} requestLogin={requestLogin} />
+      <GalleryFeed kind={kind} key={`${sort}:${userId}:${revision}:${search}`} sort={sort} search={search} initial={!search && sort === "top" && revision === 0 ? initial : undefined} signedIn={Boolean(userId)} requestLogin={requestLogin} />
     </section>
 
     {login && <LoginPrompt close={() => setLogin(false)} />}

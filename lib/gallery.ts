@@ -31,8 +31,14 @@ export async function readGallery(sort: GallerySort, cursor: string | null = nul
     if (own.error) throw new Error("Couldn’t load your votes. Please try again.");
     for (const vote of own.data) votes.set(vote.photo_id, vote.value as Vote);
   }
+  const resultMetadata = new Map<string, { battle_votes: number; outcome: string; roast: string }>();
+  if (items.length) {
+    const meta = await auth.rpc("ego_action", { p_action: "gallery_metadata", p_data: { ids: items.map(i => i.id) } });
+    if (meta.error && meta.error.code !== "PGRST202") throw new Error("Couldn’t load challenge result details.");
+    for (const row of meta.data ?? []) resultMetadata.set(row.image_id, { battle_votes: Number(row.battle_votes), outcome: row.outcome, roast: row.roast });
+  }
   return {
-    items: items.map(({ storage_path, ...item }) => ({ ...item, upvotes: Number(item.upvotes), vote: votes.get(item.id) ?? null,
+    items: items.map(({ storage_path, ...item }) => ({ ...item, result: resultMetadata.get(item.id), upvotes: Number(item.upvotes), vote: votes.get(item.id) ?? null,
       photo_url: supabase.storage.from("gallery-photos").getPublicUrl(storage_path).data.publicUrl,
     })),
     next_cursor: data.next_cursor ? Buffer.from(JSON.stringify(data.next_cursor)).toString("base64url") : null,

@@ -1,12 +1,10 @@
-import { after } from "next/server";
+import Link from "next/link";
 import { getViewer } from "@/lib/auth/profile";
-import { readGallery } from "@/lib/gallery";
-import { cleanupGalleryStaging } from "@/lib/gallery-media";
-import { Gallery } from "./gallery";
-
-export default async function Home() {
-  const viewer = await getViewer();
-  after(cleanupGalleryStaging);
-  const initial = await readGallery("top").catch(() => undefined);
-  return <Gallery initial={initial} userId={viewer?.user.id ?? null} />;
+import { RoastStudio } from "./you-are-a-joke/studio";
+import { isUuid } from "@/lib/gallery-types";
+export default async function Home({ searchParams }: { searchParams: Promise<{ challenge?: string }> }) {
+  const viewer = await getViewer(); const params = await searchParams;
+  const provider = process.env.ROAST_PROVIDER ?? "mock";
+  if (viewer) return <RoastStudio mock={provider === "mock"} configured={provider === "mock" || (provider === "gemini" && !!process.env.GEMINI_API_KEY && !!process.env.GEMINI_MODEL)} challengeId={isUuid(params.challenge) ? params.challenge : undefined} />;
+  return <main id="main" className="ego-page"><div className="ego-masthead"><span>EST. RIGHT AFTER YOUR LAST BAD DECISION</span><span>INDEPENDENT. UNNECESSARY. PERSONAL.</span></div><section className="ego-landing"><div><p className="ego-stamp">BREAKING: IT’S YOU.</p><h1>Your ego called.<br /><em>We declined.</em></h1><p className="ego-lead">Finally, an app that sees the problem. Get roasted by AI, challenge a friend, and let the crowd decide who got cooked harder.</p><Link className="ego-button" href="/login">Check my ego ↗</Link><Link className="ego-link" href="/challenges">Watch someone else get checked →</Link><p className="ego-note">Camera opens only after your consent. No microphone. Your session stays private unless you choose to share a result.</p></div><div className="ego-cover" aria-hidden="true"><span>EXCLUSIVE</span><strong>MAIN<br />CHARACTER.<br /><i>MINOR<br />ISSUE.</i></strong><small>THE CALL IS COMING FROM INSIDE YOUR EGO.</small></div></section><section className="ego-steps"><article><b>01 / GET CHECKED</b><p>Bring a face. We’ll find the angle.</p></article><article><b>02 / DRAG A FRIEND IN</b><p>A problem shared is two problems.</p></article><article><b>03 / LET THE CROWD TALK</b><p>48 hours. One verdict. Two fragile egos.</p></article></section><section className="ego-panel"><h2>Other people’s problems.</h2><div className="ego-actions"><Link href="/gallery" className="ego-button secondary">Public Evidence ↗</Link><Link href="/leaderboard" className="ego-button secondary">Hall of Shame ↗</Link></div></section></main>;
 }

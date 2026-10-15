@@ -52,12 +52,6 @@ try {
   assert.deepEqual(all.map(work => work.work_id), expected.map(work => work.id));
   assert.equal((await fetch(all.find(work => work.work_id === generation).photo_url)).status, 200);
   assert.ok(all.every(work => !("private_storage_path" in work) && !("contributor_id" in work)));
-  const studio = await request("/image-studio", a);
-  assert.equal(studio.status, 200);
-  const studioHtml = await studio.text();
-  assert.ok(studioHtml.includes('aria-label="Generate photo"'), "Signed-in Image Studio must render its generation form");
-  assert.ok(studioHtml.includes("Saved image"), "Image Studio must load saved images from the consolidated table");
-  assert.ok(!studioHtml.includes("Couldn’t load saved images"));
   assert.equal((await page(b)).items.length, 0);
   assert.equal((await request("/api/my-works")).status, 401);
   assert.equal((await request("/api/my-works", pending)).status, 401);

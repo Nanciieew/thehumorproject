@@ -1,14 +1,9 @@
-import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { getViewer } from "@/lib/auth/profile";
-import { readLeaderboard } from "@/lib/leaderboard";
-import { Leaderboard } from "./leaderboard";
-
-export const metadata: Metadata = { title: "Leaderboard | The Humor Project" };
-
+import { egoRead } from "@/lib/ego/server";
+import type { Rankings } from "@/lib/ego/types";
+import { ShameBoard } from "./shame-board";
+export const metadata = { title: "Hall of Shame | Ego Check" };
 export default async function LeaderboardPage() {
-  const viewer = await getViewer();
-  if (!viewer) redirect("/login");
-  const initial = await readLeaderboard("monthly").catch(() => null);
-  return <Leaderboard initial={initial} viewerId={viewer.user.id} />;
+  let initial: Rankings | null = null; let error = "";
+  try { initial = await egoRead<Rankings>("rankings"); } catch(e) { error = e instanceof Error ? e.message : "Rankings unavailable."; }
+  return <ShameBoard initial={initial} initialError={error}/>;
 }

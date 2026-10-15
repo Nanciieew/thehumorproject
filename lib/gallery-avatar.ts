@@ -12,8 +12,9 @@ export async function readPublicAvatar(id: string) {
   if (!data) return null;
   const creator = await supabase.from("profiles").select("first_name,last_name").eq("id", data.contributor_id).maybeSingle();
   if (creator.error) throw new Error("Couldn’t load this avatar’s creator.");
+  const result = await supabase.from("ego_gallery_results").select("battle_votes,outcome,roast").eq("image_id", id).maybeSingle();
   return {
-    id: data.id, title: data.title, description: data.description,
+    result: result.data, id: data.id, title: data.title, description: data.description,
     name: [creator.data?.first_name, creator.data?.last_name].filter(Boolean).join(" ") || "Community creator",
     photo_url: supabase.storage.from("gallery-photos").getPublicUrl(data.public_storage_path).data.publicUrl,
   };

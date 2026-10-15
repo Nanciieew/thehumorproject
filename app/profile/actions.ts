@@ -1,5 +1,7 @@
 "use server";
 
+import { cookies } from "next/headers";
+import { returnPath } from "@/lib/auth/return-path";
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -18,7 +20,8 @@ export async function saveProfile(_state: ProfileState, form: FormData): Promise
 export async function finishOnboarding(_state: ProfileState, form: FormData): Promise<ProfileState> {
   const result = await persistProfile(form, true);
   if (result.error) return result;
-  redirect("/");
+  const jar = await cookies(); const next = returnPath(jar.get("ego_return")?.value); jar.delete("ego_return");
+  redirect(next);
 }
 
 async function persistProfile(form: FormData, complete: boolean): Promise<ProfileState> {

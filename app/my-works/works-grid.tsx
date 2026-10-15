@@ -32,7 +32,7 @@ export function WorksGrid({ initial }: { initial: WorksPage }) {
     observer.observe(sentinel.current); return () => observer.disconnect();
   }, [cursor, busy, error, load]);
   return <>
-    {!items.length && <div className="gallery-empty"><p>Your collection starts here.</p><p>Create an image in Image Studio or upload a photo to the gallery.</p><Link href="/image-studio" className="action-button">Create your first work ↗</Link></div>}
+    {!items.length && <div className="gallery-empty"><p>Your collection starts here.</p><p>Upload a photo to the gallery to start your collection.</p><Link href="/gallery" className="action-button">Visit Public Evidence ↗</Link></div>}
     <ul className="gallery-grid" aria-label="My works">{items.map((work) => <li key={work.work_id} className="gallery-card">
       <Link href={`/my-works/${work.work_id}`} aria-label={`Edit ${work.title || "Untitled work"}`}>
         <div className="card-image"><Image src={work.photo_url} alt={work.title || "Untitled work"} width={400} height={400} unoptimized /><span className="image-tag">{work.photo_id ? "PUBLISHED" : "PRIVATE"}</span></div>

@@ -31,7 +31,7 @@ export function DashboardStats({ initial }: { initial: DashboardSummary | null }
     }
   }
   const cards = [
-    { label: "Revenue earned", value: summary ? dollars(summary.revenue_cents) : "—", note: "USD · after refunds", icon: "$", style: styles.revenue },
+    { label: "Revenue earned", value: summary ? dollars(summary.revenue_cents) : "—", note: "Somehow, you got paid. USD · after refunds", icon: "$", style: styles.revenue },
     { label: "Upvotes received", value: summary ? BigInt(summary.upvotes).toLocaleString("en-US") : "—", note: "Across your published avatars", icon: "↑", style: styles.votes },
     { label: "Avatars published", value: summary ? BigInt(summary.published_count).toLocaleString("en-US") : "—", note: "Private drafts are excluded", icon: "↗", style: styles.published },
   ];

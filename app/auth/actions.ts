@@ -1,5 +1,7 @@
 "use server";
 
+import { cookies } from "next/headers";
+import { returnPath } from "@/lib/auth/return-path";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -7,7 +9,9 @@ import { createAuthClient } from "@/lib/auth/server";
 
 export type FormState = { error?: string };
 
-export async function loginWithGoogle(): Promise<FormState> {
+export async function loginWithGoogle(_state: FormState, form: FormData): Promise<FormState> {
+  const next = returnPath(form.get("next"));
+  (await cookies()).set("ego_return", next, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 3600 });
   const origin = (await headers()).get("origin");
   if (!origin) return { error: "Please refresh the page and try again." };
   const auth = await createAuthClient();

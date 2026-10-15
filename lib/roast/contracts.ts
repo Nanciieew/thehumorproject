@@ -1,7 +1,7 @@
 export type Intensity = "playful" | "savage" | "profane";
 export type RoastEvent = { type: "head_tilt" | "lean_in" | "mouth_open" | "smile_change" | "reentered_frame"; observedAtMs: number };
 export type RoastRequest = { sessionId: string; requestId: string; settings: { intensity: Intensity; excludedTopics: string[] }; frames: { mimeType: "image/jpeg"; base64: string; capturedAtMs: number }[]; events: RoastEvent[] };
-export type RoastResponse = { sessionId: string; requestId: string; status: "ok" | "skip"; roast: string | null; anchor: "face" | "screen" };
+export type RoastResponse = { sessionId: string; requestId: string; status: "ok" | "skip"; roast: string | null; anchor: "face" | "screen"; receipt?: string };
 export function validRequest(b: unknown): b is RoastRequest {
   if (!b || typeof b !== "object") return false;
   const r = b as RoastRequest;

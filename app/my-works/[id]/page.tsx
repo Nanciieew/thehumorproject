@@ -5,12 +5,12 @@ import { getViewer } from "@/lib/auth/profile";
 import { readWork } from "@/lib/works";
 import { CaptionEditor } from "./caption-editor";
 
-export const metadata = { title: "Edit Work | The Humor Project" };
+export const metadata = { title: "Edit Work | Ego Check" };
 export default async function WorkPage({ params }: { params: Promise<{ id: string }> }) {
   if (!await getViewer()) redirect("/login");
   const work = await readWork((await params).id); if (!work) notFound();
   return <main id="main" className="work-detail">
-    <Link href="/my-works" className="text-button">← Back to My Dashboard</Link>
+    <Link href="/my-works" className="text-button">← Back to Your Damage Report</Link>
     <div className="work-detail-layout">
       <div className="work-detail-photo"><Image src={work.photo_url} alt={work.title || "Your work"} width={1200} height={1200} unoptimized /></div>
       <section><p className="eyebrow">{work.photo_id ? "PUBLISHED WORK" : "PRIVATE WORK"}</p><h1>Tell its story.</h1>

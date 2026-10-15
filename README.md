@@ -1,3 +1,7 @@
+# Ego Check
+
+Finally, an app that sees the problem.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
@@ -46,7 +50,7 @@ timestamp together. Existing accounts also complete this once to select a state.
 verify the session, validate every required answer, and prevent a stale welcome
 form from overwriting a completed profile. A Google session is only a pending signup until completion. The final action
 inserts the complete profile in one write; pending users cannot access Profile
-Settings, Image Studio, or its generation API. Existing incomplete profiles are
+Settings, You Are a Joke, or the image generation API. Existing incomplete profiles are
 preserved and completed by the same flow. No password
 is stored in profiles.
 
@@ -99,7 +103,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-The interface uses locally hosted Inter and Anton fonts through `next/font/local`. Their SIL Open Font Licenses are included in `app/fonts`. The main surface is glossy white, with yellow, pink, blue and moss accents. The gallery uses one responsive grid, and the sidebar includes Image Studio, the Leaderboard page and the account menu.
+The interface uses locally hosted Inter and Anton fonts through `next/font/local`. Their SIL Open Font Licenses are included in `app/fonts`. The interface uses warm paper, black ink, acid yellow and red verdict stamps. The gallery uses one responsive grid, and the sidebar links Get Checked, The Arena, Public Evidence, Your Damage Report, Hall of Shame and Friends.
 
 ## Avatar Gallery
 
@@ -203,7 +207,7 @@ Profile and onboarding photos retain their separate 2 MB limit and private bucke
 
 Generated images are downloaded from approved provider hosts, saved privately in
 `generated-images`, and recorded with their owner before success is returned.
-Image Studio reloads the latest 30 saved images. Publication uses the saved ID,
+Existing generated images remain in My Dashboard. Publication uses the saved ID,
 not a browser-supplied URL. Concurrent/repeated publications create only one
 gallery row; images remain usable after the provider's original URL expires.
 
@@ -266,7 +270,7 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
-Image Studio accepts an optional JPEG or PNG reference photo (up to 2 MB and 24 megapixels). The server validates its type and dimensions before sending it to Ark alongside the prompt. Reference photos are sent to Ark only when generating; the sample test uses its original text prompt. Run `npm run test:studio-ui` for UI submission and reference validation checks.
+The image generation API accepts an optional JPEG or PNG reference photo (up to 2 MB and 24 megapixels). The server validates its type and dimensions before sending it to Ark alongside the prompt. Reference photos are sent to Ark only when generating; the sample test uses its original text prompt. Run `npm run test:images-reference` for reference validation checks.
 
 Gallery favorites and this-week rankings reorder immediately when votes change, using upvotes descending and then creation date/ID for ties. Failed votes restore their previous counts and order. Visible pages refresh every 15 seconds while the tab is visible and on focus; this also discovers photos rising from later pages. Newest continues to sort by creation date.
 
@@ -378,54 +382,101 @@ aggregate SQL and permissions are also covered by `npm run test:leaderboard-db`.
 The live integration script `scripts/test-leaderboard.mjs` verifies the dashboard
 page and endpoint with temporary fixtures that are removed afterward.
 
-## You Are a Joke
+## Ego Check — deployment and new competition features
 
-Open `/you-are-a-joke` after signing in and completing onboarding, or use its
-sidebar link. Check the acknowledgement before **Start Experience**. The browser
-then asks for camera permission separately. No microphone is requested.
+Ego Check replaces the home gallery with **Get Checked**, the consent-first
+webcam roast experience. The existing photo feed is now `/gallery` (**Public
+Evidence**); `/you-are-a-joke` redirects home. `/challenges` is **The Arena**,
+`/friends` manages friendships, and `/leaderboard` is **Hall of Shame**.
+The existing dashboard keeps its actual photo/vote/revenue calculations.
+Marketplace and Image Studio remain removed.
 
-The default `ROAST_PROVIDER=mock` runs face tracking locally and shows clearly
-labeled scripted demo captions. It never uploads snapshots. For actual roasts,
-configure these server-only values in `.env.local` and restart Next.js:
+### Database setup (required before deployment)
+
+Apply `supabase/migrations/20261014000000_ego_check.sql` in the connected Supabase
+project's SQL Editor after the existing gallery/image migrations. It is a single
+transaction, preserves existing users/photos/votes, and creates the new
+friends/challenges/votes, shared roast sessions/limits, monthly vote activity,
+private storage bucket and service-only operations. Do not run it twice.
+
+Alternatively, put a valid `SUPABASE_ACCESS_TOKEN` in the ignored `.env.local`,
+then use:
+
+```sh
+node --env-file=.env.local scripts/ego-migrate.mjs
+node --env-file=.env.local scripts/ego-migrate.mjs --apply
+```
+
+The first command is a read-only preflight. The migration was applied manually
+in Supabase SQL Editor and verified on October 15, 2026. The connected tables,
+ranking RPC and private bucket are available. The live API test passed using
+disposable accounts and synthetic snapshots against a local app server; test
+accounts and media were removed afterward. Management-token access is separate
+from the working data API and is not needed to use the installed features.
+
+In Vercel retain the existing Supabase variables and configure:
 
 ```dotenv
 ROAST_PROVIDER=gemini
-GEMINI_API_KEY=your-key-from-google-ai-studio
+GEMINI_API_KEY=your-server-only-key
 GEMINI_MODEL=gemini-3.8-flash
+CRON_SECRET=your-long-random-secret
 ```
 
-Gemini mode requires both credentials and a model available to your account;
-missing configuration never silently falls back to mock output. The integration
-uses the Gemini Developer API's `generateContent` REST endpoint with inline JPEG
-images and structured JSON output. Confirm billing, quota and provider data
-settings in Google AI Studio before a live session. Provider terms and retention
-apply; the app does not promise that Google retains nothing.
+`CRON_SECRET` authorizes `/api/cron/ego`; `vercel.json` schedules daily cleanup.
+Create a random secret locally with `openssl rand -hex 32`, then enter it as the
+Vercel value. Never prefix secrets with `NEXT_PUBLIC_`. Roast receipt signatures
+use the existing server-only Supabase secret. Changing that secret invalidates
+unsubmitted receipts. Redeploy after updating environment variables.
 
-Local tracking runs in a classic Web Worker using the pinned MediaPipe Tasks
-Vision 1.1.1 runtime and official Face Landmarker float16 model version 1, served
-from `public/mediapipe`. No tracking assets are fetched from a CDN at runtime.
-The app sends at most three 640px / 200 KB JPEG snapshots per request, only after
-cloud consent, when one face is visible. Requests have an eight-second cooldown
-and a 12-second provider timeout. Pause and consent withdrawal stop new uploads;
-Clear resets temporary callback context; Stop, page hiding, and navigation also
-release the camera. Already transmitted images cannot be recalled.
+### Competition rules and privacy
 
-Sessions retain only up to eight accepted joke texts in server memory, expire
-after 15 idle minutes, and are owned by the signed-in user. Memory is bounded to
-500 sessions; rate limiting is 10 attempts per user per minute, one pending
-request per session, and four provider requests globally. This is a **single
-local-server prototype**. Before multi-instance/serverless production deployment,
-replace in-memory sessions and limits with a shared TTL store, verify provider
-privacy settings, and ensure hosting/monitoring never captures request bodies.
-Do not add body logging, camera analytics, or persistent frame storage.
+- Invitations expire after seven days and can be accepted by only one opponent.
+- Friends-only audiences are accepted friends of either participant. A removed
+  friendship no longer grants media access. Public battles permit guest viewing;
+  voting, friendships and entries require completed signup.
+- Both participants explicitly approve their own snapshot/caption and disclosed
+  audience. Snapshots are in-memory until that approval; no raw inference frames
+  are stored. Signed, 15-minute receipts bind the owner, caption and exact JPEG.
+- Spectators vote for **who got cooked harder**. One vote per account per battle;
+  it can be changed/removed before the 48-hour deadline. Participants cannot vote.
+- Challengers-only exchanges are private and unranked. A new audience requires
+  a new challenge and new approvals; active entries/audiences are immutable.
+- Deadline checks and transactional finalization freeze battle tallies even if
+  the cron is delayed. Ties award no winner. Only public battles with three or
+  more spectator votes qualify for rankings, with one win per opponent/week.
+- Completed participants can explicitly publish only their own result to the
+  existing gallery. Battle tallies are frozen context; gallery votes start at
+  zero and are independent. Either participant can publish or unpublish their
+  card. Their opponent's private identity, caption and snapshot are excluded.
+- Challenge captions/media expire seven days after completion, or are withdrawn
+  when cancelled. Media endpoints enforce expiry before daily cleanup runs.
+  Failed storage deletions remain in a retry queue. Separately approved gallery
+  copies remain public until unpublished; previously downloaded public copies
+  cannot be recalled.
+- Weekly rankings use Monday–Sunday and completion time in America/New_York.
+  Monthly favorites count new, currently active gallery upvotes cast this month,
+  including older cards. Repeated toggling never earns multiple monthly credits.
+  Legacy vote timestamps are unknown, so tracking begins at migration rollout.
+- Shared PostgreSQL leases enforce per-user request limits, per-session cooldowns
+  and a global provider concurrency cap across Vercel instances. Session memory
+  expires after 15 minutes and contains at most eight joke texts, never frames.
 
-Use localhost or HTTPS. Embedded pages additionally need camera permission from
-the parent Permissions Policy. If access is blocked, check browser site settings
-and OS camera settings. Modern desktop browsers with WebAssembly, workers and
-ImageBitmap are required. Tracking failures leave the preview available with a
-Retry action and prevent automated requests.
+### Verification and rollout
 
-Run `npm run test:roast` for consent/camera lifecycle, request/output validation,
-bounded-body handling, and session isolation checks. Also run `npm run lint` and
-`npm run build`. Physical camera permissions, tracking alignment and joke quality
-require a manual laptop session; automated checks do not establish those results.
+Run `npm run test:ego-db`, `npm run test:ego-ui`, `npm run test:ego-receipts`,
+`npm run test:roast`, existing gallery/dashboard tests, lint and a production
+build. Database tests use isolated PGlite; no live users or photos are required.
+After migration installation, start the app and run
+`node --conditions=react-server --env-file=.env.local --import tsx scripts/test-ego-live.mjs`
+for an API-level flow with disposable accounts and synthetic snapshots. It checks
+for the schema before creating fixtures and cleans up its users/media. Set
+`EGO_TEST_URL` for an explicitly chosen preview deployment. This does not test
+actual model quality or physical camera permissions.
+
+Use a Vercel preview and two consenting test accounts to verify login return to
+an invitation, friendship permissions, both approved entries, spectator voting,
+finalization, gallery publication, unpublishing and private-media cleanup before
+production rollout. Physical-camera behavior and live two-account verification
+are separate from automated tests. Request bodies must stay excluded from
+hosting logs/error capture.

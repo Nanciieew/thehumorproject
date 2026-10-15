@@ -81,7 +81,7 @@ try {
   assert.doesNotMatch(html, /aria-label="Main navigation"/);
   assert.doesNotMatch(html, /Open account options/);
   await assertRedirect(await fetch(base + "/profile", {headers: {cookie: cookie()}, redirect: "manual"}), "/login");
-  await assertRedirect(await fetch(base + "/image-studio", {headers: {cookie: cookie()}, redirect: "manual"}), "/login");
+  await assertRedirect(await fetch(base + "/you-are-a-joke", {headers: {cookie: cookie()}, redirect: "manual"}), "/login");
   assert.equal((await fetch(base + "/api/images", {method: "POST", headers: {origin: base, cookie: cookie(), "Content-Type": "application/json"}, body: JSON.stringify({prompt: "test"})})).status, 401);
   assert.match(html, /id="welcome-title"/);
   assert.match(html, /name="first_name"/);

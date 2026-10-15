@@ -230,7 +230,7 @@ test("avatar name search sends a trimmed query, survives sort changes and clears
 
 test("gallery has a single bubble title and avatar cards link to public descriptions while voting stays separate", () => {
   const ui = mount("user", [{...photo("one"), title: "Bubble Hero", description: "A happy little adventurer."}]);
-  assert.equal(ui.getByRole("heading", {level: 1, name: "Avatar Gallery"}).getAttribute("id"), "gallery-title");
+  assert.equal(ui.getByRole("heading", {level: 1, name: "Public Evidence"}).getAttribute("id"), "gallery-title");
   assert.equal(ui.getByRole("link", {name: "Bubble Hero"}).getAttribute("href"), "/avatars/one");
   assert.ok(ui.getByRole("button", {name: "Most votes overall"}));
   assert.ok(ui.getByRole("button", {name: "New this month"}));
@@ -253,4 +253,9 @@ test("New this month ranks by most votes, with newer publication breaking ties, 
   await waitFor(() => assert.deepEqual(ui.getAllByRole("article").map(el => el.id), ["photo-older", "photo-newer"]));
   await scroll();
   await waitFor(() => assert.deepEqual(ui.getAllByRole("article").map(el => el.id), ["photo-tied", "photo-older", "photo-newer"]));
+});
+
+test('challenge result cards show canonical roast and separate frozen battle votes from gallery upvotes',()=>{
+ const item={...photo('challenge-result',42),description:'A participant note',result:{battle_votes:18,outcome:'Got cooked harder',roast:'The approved roast.'}};
+ const ui=mount('user',[item]);assert.ok(ui.getByText(/Battle votes: 18 · Gallery upvotes: 42/));assert.ok(ui.getByText('The approved roast.'));assert.ok(ui.getByText('A participant note'));
 });

@@ -5,6 +5,7 @@ import React from 'react';
 const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://localhost:3000', pretendToBeVisual: true });
 for (const name of ['window', 'document', 'HTMLElement', 'HTMLInputElement', 'MutationObserver', 'Node', 'Event', 'MouseEvent', 'getComputedStyle', 'navigator']) Object.defineProperty(globalThis, name, { configurable: true, value: dom.window[name] });
 globalThis.requestAnimationFrame = () => 1; globalThis.cancelAnimationFrame = () => {};
+globalThis.self = dom.window;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/react');
 const { RoastStudio } = await import('../app/you-are-a-joke/studio.tsx');
@@ -13,7 +14,7 @@ afterEach(() => { cleanup(); globalThis.fetch = originalFetch; });
 const mount = (mock = true, configured = true) => render(React.createElement(RoastStudio, { mock, configured }));
 test('camera remains closed until acknowledgement and explicit start', async () => {
   let calls = 0; Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => { calls++; throw new DOMException('denied', 'NotAllowedError'); } } });
-  const ui = mount(false); const button = ui.getByRole('button', { name: /Start Experience/ });
+  const ui = mount(false); const button = ui.getByRole('button', { name: /Check my ego/ });
   assert.equal(button.disabled, true); assert.equal(calls, 0);
   fireEvent.click(ui.getByRole('checkbox')); assert.equal(calls, 0); assert.equal(button.disabled, false);
   fireEvent.click(button); await waitFor(() => assert.equal(calls, 1));
@@ -22,7 +23,7 @@ test('camera remains closed until acknowledgement and explicit start', async () 
 test('late permission after cancellation immediately stops the stream', async () => {
   let resolve; let stopped = 0;
   Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: () => new Promise(r => resolve = r) } });
-  const ui = mount(); fireEvent.click(ui.getByRole('checkbox')); fireEvent.click(ui.getByRole('button', { name: /Start Experience/ }));
+  const ui = mount(); fireEvent.click(ui.getByRole('checkbox')); fireEvent.click(ui.getByRole('button', { name: /Check my ego/ }));
   fireEvent.click(ui.getByRole('button', { name: 'Cancel camera request' }));
   resolve({ getTracks: () => [{ stop: () => stopped++ }] });
   await waitFor(() => assert.equal(stopped, 1)); assert.ok(ui.getByText(/Camera off/));
@@ -30,7 +31,7 @@ test('late permission after cancellation immediately stops the stream', async ()
 test('mock mode makes no uploads and missing configuration cannot start', () => {
   let calls = 0; globalThis.fetch = async () => { calls++; return new Response(); };
   const ui = mount(true, false); fireEvent.click(ui.getByRole('checkbox'));
-  assert.equal(ui.getByRole('button', { name: /Start Experience/ }).disabled, true);
+  assert.equal(ui.getByRole('button', { name: /Check my ego/ }).disabled, true);
   assert.ok(ui.getByText(/no camera snapshots are uploaded/)); assert.equal(calls, 0);
 });
 
@@ -52,7 +53,7 @@ async function liveHarness(mock = false) {
   const v = ui.getByLabelText('Mirrored live webcam');
   for (const [name, value] of Object.entries({ readyState: 2, videoWidth: 640, videoHeight: 480 })) Object.defineProperty(v, name, { configurable: true, value });
   fireEvent.click(ui.getByRole('checkbox'));
-  fireEvent.click(ui.getByRole('button', { name: /Start Experience/ }));
+  fireEvent.click(ui.getByRole('button', { name: /Check my ego/ }));
   await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Pause roasting' })));
   const points = Array.from({ length: 478 }, () => ({ x: .5, y: .5 })); points[263] = { x: .7, y: .4 }; points[33] = { x: .3, y: .4 };
   const faces = async count => act(async () => workers.at(-1).onmessage({ data: { type: 'result', landmarks: Array.from({ length: count }, () => points), blendshapes: [] } }));
