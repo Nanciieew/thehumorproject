@@ -359,10 +359,10 @@ and removes temporary profiles/images and never creates sale records.
 
 ## Personal dashboard
 
-The sidebar’s My Dashboard page keeps the existing `/my-works` URL and caption
-editing links. Three responsive cards show all-time USD revenue after refunds,
-upvotes on published avatars, and the count of published avatars. Private saved
-generations stay in the collection but do not count as published.
+The sidebar’s My Damage Report page keeps the existing `/my-works` URL and caption
+editing links. Two responsive cards show all-time upvotes and **Egos uploaded**
+(the count of published photos and results). Private saved generations stay in
+the collection but do not count as uploaded egos. Revenue is no longer displayed.
 
 `GET /api/dashboard` requires completed signup and always uses the authenticated
 user ID; it accepts no owner selection. The response is private/no-store and

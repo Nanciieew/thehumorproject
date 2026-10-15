@@ -4,10 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import type { DashboardSummary } from "@/lib/dashboard-types";
 import styles from "./dashboard.module.css";
 
-function dollars(cents: string) {
-  const amount = BigInt(cents);
-  return `$${(amount / BigInt(100)).toLocaleString("en-US")}.${(amount % BigInt(100)).toString().padStart(2, "0")}`;
-}
 export function DashboardStats({ initial }: { initial: DashboardSummary | null }) {
   const [summary, setSummary] = useState(initial);
   const [busy, setBusy] = useState(false);
@@ -31,9 +27,8 @@ export function DashboardStats({ initial }: { initial: DashboardSummary | null }
     }
   }
   const cards = [
-    { label: "Revenue earned", value: summary ? dollars(summary.revenue_cents) : "—", note: "USD · after refunds", icon: "$", style: styles.revenue },
-    { label: "Upvotes received", value: summary ? BigInt(summary.upvotes).toLocaleString("en-US") : "—", note: "Across your published avatars", icon: "↑", style: styles.votes },
-    { label: "Avatars published", value: summary ? BigInt(summary.published_count).toLocaleString("en-US") : "—", note: "Private drafts are excluded", icon: "↗", style: styles.published },
+    { label: "Upvotes received", value: summary ? BigInt(summary.upvotes).toLocaleString("en-US") : "—", note: "Across your uploaded egos", icon: "↑", style: styles.votes },
+    { label: "Egos uploaded", value: summary ? BigInt(summary.published_count).toLocaleString("en-US") : "—", note: "Private drafts are excluded", icon: "↗", style: styles.published },
   ];
   return <section className={styles.section} aria-labelledby="overview-title" aria-busy={busy}>
     <div className={styles.heading}><div><h2 id="overview-title">Your overview</h2><p>All-time totals</p></div><button type="button" onClick={() => void refresh()} disabled={busy}>{busy ? "Refreshing…" : error ? "Try again" : "Refresh ↻"}</button></div>
