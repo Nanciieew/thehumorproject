@@ -34,7 +34,7 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
   const busy = useRef(false);
   const running = useRef(false);
   const consentRef = useRef(false);
-  const options = useRef({ intensity: "playful" as Intensity, excludedTopics: [] as string[] });
+  const options = useRef({ intensity: "savage" as Intensity, excludedTopics: [] as string[] });
   const [consent, setConsent] = useState(false);
   const [camera, setCamera] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -44,7 +44,7 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
   const [thinking, setThinking] = useState(false);
   const [caption, setCaption] = useState("");
   const [message, setMessage] = useState("");
-  const [intensity, setIntensity] = useState<Intensity>("playful");
+  const [intensity, setIntensity] = useState<Intensity>("savage");
   const [topics, setTopics] = useState("");
   const [anchor, setAnchor] = useState<"face" | "screen">("screen");
 
