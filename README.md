@@ -385,7 +385,9 @@ page and endpoint with temporary fixtures that are removed afterward.
 ## Ego Check — deployment and new competition features
 
 Ego Check replaces the home gallery with **Get Checked**, the consent-first
-webcam roast experience. Signed-out visitors see a dark mirror landing page.
+webcam roast experience. Each click requests one roast attempt, then pauses until
+the user chooses “Hurt my feelings again.” Skips, errors, cancellation and changes
+to settings never start another attempt automatically. Signed-out visitors see a dark mirror landing page.
 The guest mirror requests browser camera permission on arrival, with a retry button
 if the browser blocks or defers the prompt. It sends no frames to the server or Gemini, requests no audio,
 and releases the camera on Stop, page hiding, or navigation.

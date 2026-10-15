@@ -44,6 +44,6 @@ export async function POST(request: Request) {
   } catch (e) {
     const name = e instanceof Error ? e.message : "";
     const timeout = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
-    return error(timeout ? "PROVIDER_TIMEOUT" : name === "QUOTA" ? "RATE_LIMITED" : "PROVIDER_UNAVAILABLE", timeout ? "The roast timed out. You can resume when ready." : name === "CONFIG" ? "Gemini credentials or model are missing. Ask the site owner to configure them." : "AI roasting is unavailable. Check quota or try again later.", timeout ? 504 : name === "QUOTA" ? 429 : 503);
+    return error(timeout ? "PROVIDER_TIMEOUT" : name === "QUOTA" ? "RATE_LIMITED" : "PROVIDER_UNAVAILABLE", timeout ? "The roast timed out. Try again when you’re ready." : name === "CONFIG" ? "Gemini credentials or model are missing. Ask the site owner to configure them." : "AI roasting is unavailable. Check quota or try again later.", timeout ? 504 : name === "QUOTA" ? 429 : 503);
   } finally { await lock.finish(null).catch(() => {}); }
 }

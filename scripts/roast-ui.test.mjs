@@ -7,7 +7,7 @@ for (const name of ['window', 'document', 'HTMLElement', 'HTMLInputElement', 'Mu
 globalThis.requestAnimationFrame = () => 1; globalThis.cancelAnimationFrame = () => {};
 globalThis.self = dom.window;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/react');
+const { render, fireEvent, waitFor, cleanup, act } = await import('@testing-library/react');
 const { RoastStudio } = await import('../app/you-are-a-joke/studio.tsx');
 const originalFetch = globalThis.fetch;
 afterEach(() => { cleanup(); globalThis.fetch = originalFetch; });
@@ -54,7 +54,7 @@ async function liveHarness(mock = false) {
   for (const [name, value] of Object.entries({ readyState: 2, videoWidth: 640, videoHeight: 480 })) Object.defineProperty(v, name, { configurable: true, value });
   fireEvent.click(ui.getByRole('checkbox'));
   fireEvent.click(ui.getByRole('button', { name: /Check my ego/ }));
-  await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Pause roasting' })));
+  await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Cancel roast' })));
   const points = Array.from({ length: 478 }, () => ({ x: .5, y: .5 })); points[263] = { x: .7, y: .4 }; points[33] = { x: .3, y: .4 };
   const faces = async count => act(async () => workers.at(-1).onmessage({ data: { type: 'result', landmarks: Array.from({ length: count }, () => points), blendshapes: [] } }));
   const tick = async time => act(async () => raf(time));
@@ -84,7 +84,7 @@ test('multiple faces prevent uploads and revoking consent keeps roasting paused'
   await faces(2); await tick(100);
   assert.equal(uploads, 0); assert.ok(ui.getByText(/One participant only/));
   fireEvent.click(ui.getByRole('checkbox')); await faces(1); await tick(200);
-  assert.equal(uploads, 0); assert.equal(ui.getByRole('button', { name: 'Resume roasting' }).disabled, true);
+  assert.equal(uploads, 0); assert.equal(ui.getByRole('button', { name: 'Hurt my feelings again ↗' }).disabled, true);
 });
 
 test('mock tracking never uploads frames and unmount stops camera tracks', async () => {
@@ -92,4 +92,97 @@ test('mock tracking never uploads frames and unmount stops camera tracks', async
   const { ui, faces, tick, stopped } = await liveHarness(true);
   await faces(1); await tick(100); assert.equal(uploads, 0);
   ui.unmount(); assert.equal(stopped(), 1);
+});
+
+test('one click produces one roast, preserves its receipt while paused, and needs another click for the next', async t => {
+  let now = Date.now(); t.mock.method(Date, 'now', () => now);
+  const sent = [], replies = [];
+  globalThis.fetch = (url, options) => {
+    if (url.endsWith('/reset')) return Promise.resolve(new Response(null, { status: 204 }));
+    assert.equal(url, '/api/roast');
+    sent.push(JSON.parse(options.body));
+    return new Promise(resolve => replies.push(resolve));
+  };
+  const { ui, faces, tick } = await liveHarness();
+  await faces(1); await tick(100); await tick(200); await tick(300);
+  assert.equal(sent.length, 1, 'an in-flight request cannot overlap another');
+  const respond = async (index, roast) => act(async () => replies[index](Response.json({
+    sessionId: sent[index].sessionId, requestId: sent[index].requestId,
+    status: 'ok', roast, anchor: 'screen', receipt: `receipt-${index}`,
+  })));
+  await respond(0, 'First roast.');
+  await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Hurt my feelings again ↗' })));
+  assert.ok(ui.getByText('First roast.', { selector: 'blockquote' }));
+  assert.ok(ui.getByText('Make my humiliation competitive ↗'));
+  assert.ok(ui.getByText(/Paused — camera is on/));
+  now += 9000; await faces(1); await tick(10000); await tick(11000);
+  assert.equal(sent.length, 1, 'elapsed cooldown and tracking cannot start another roast');
+  assert.ok(ui.getByText('Make my humiliation competitive ↗'), 'the approved-receipt preview survives the pause');
+  fireEvent.click(ui.getByRole('button', { name: 'Hurt my feelings again ↗' }));
+  assert.equal(ui.queryByText('Make my humiliation competitive ↗'), null);
+  await tick(12000); await tick(13000);
+  assert.equal(sent.length, 2);
+  assert.equal(sent[1].sessionId, sent[0].sessionId, 'follow-up requests retain server joke history');
+  await respond(1, 'Second roast.');
+  await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Hurt my feelings again ↗' })));
+  assert.equal(ui.queryByText('First roast.'), null);
+  assert.ok(ui.getByText('Second roast.', { selector: 'blockquote' }));
+});
+
+for (const outcome of ['skip', 'error']) {
+  test(`${outcome} pauses without an automatic retry`, async t => {
+    let now = Date.now(); t.mock.method(Date, 'now', () => now);
+    let uploads = 0;
+    globalThis.fetch = async (url, options) => {
+      if (url.endsWith('/reset')) return new Response(null, { status: 204 });
+      assert.equal(url, '/api/roast'); uploads++;
+      const body = JSON.parse(options.body);
+      return outcome === 'skip'
+        ? Response.json({ sessionId: body.sessionId, requestId: body.requestId, status: 'skip', roast: null, anchor: 'screen' })
+        : Response.json({ message: 'Provider unavailable.' }, { status: 503 });
+    };
+    const { ui, faces, tick } = await liveHarness();
+    await faces(1); await tick(100);
+    await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Hurt my feelings again ↗' })));
+    assert.ok(ui.getByText(outcome === 'skip' ? 'No roast came back. Try again when you’re ready.' : 'Provider unavailable.'));
+    now += 9000; await faces(1); await tick(10000); assert.equal(uploads, 1);
+    fireEvent.click(ui.getByRole('button', { name: 'Hurt my feelings again ↗' }));
+    await tick(11000); await waitFor(() => assert.equal(uploads, 2));
+    await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Hurt my feelings again ↗' })));
+  });
+}
+
+test('losing a face during a request cancels the round and returning cannot trigger another', async t => {
+  let now = Date.now(); t.mock.method(Date, 'now', () => now);
+  let resolve, sent, signal, uploads = 0;
+  globalThis.fetch = (url, options) => {
+    if (url.endsWith('/reset')) return Promise.resolve(new Response(null, { status: 204 }));
+    assert.equal(url, '/api/roast'); uploads++; sent = JSON.parse(options.body); signal = options.signal;
+    return new Promise(r => resolve = r);
+  };
+  const { ui, faces, tick } = await liveHarness();
+  await faces(1); await tick(100); await faces(2);
+  assert.equal(signal.aborted, true);
+  await act(async () => resolve(Response.json({ sessionId: sent.sessionId, requestId: sent.requestId, status: 'ok', roast: 'Late roast.', anchor: 'screen' })));
+  assert.equal(ui.queryByText('Late roast.'), null);
+  now += 9000; await faces(1); await tick(10000);
+  assert.equal(uploads, 1);
+  assert.ok(ui.getByRole('button', { name: 'Hurt my feelings again ↗' }));
+});
+
+test('changing settings cancels a pending round and waits for another click', async t => {
+  let now = Date.now(); t.mock.method(Date, 'now', () => now);
+  const sent = []; let signal;
+  globalThis.fetch = (url, options) => {
+    if (url.endsWith('/reset')) return Promise.resolve(new Response(null, { status: 204 }));
+    sent.push(JSON.parse(options.body)); signal = options.signal;
+    return new Promise(() => {});
+  };
+  const { ui, faces, tick } = await liveHarness();
+  await faces(1); await tick(100);
+  fireEvent.change(ui.getByLabelText('Roast intensity'), { target: { value: 'playful' } });
+  assert.equal(signal.aborted, true);
+  now += 9000; await faces(1); await tick(10000); assert.equal(sent.length, 1);
+  fireEvent.click(ui.getByRole('button', { name: 'Hurt my feelings again ↗' }));
+  await tick(11000); assert.equal(sent.length, 2); assert.equal(sent[1].settings.intensity, 'playful');
 });

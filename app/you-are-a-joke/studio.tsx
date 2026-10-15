@@ -76,6 +76,11 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
     }
   }
   function pause() { running.current = false; setEnabled(false); invalidate(); }
+  function roastAgain() {
+    if (running.current || busy.current || !consentRef.current || !workerReady.current || !stream.current) return;
+    invalidate(); setSelected(null); setShareApproved(false); setCaption(""); setMessage("");
+    running.current = true; setEnabled(true);
+  }
   function stop() {
     running.current = false; setEnabled(false); invalidate(true);
     stream.current?.getTracks().forEach(t => t.stop()); stream.current = null;
@@ -121,7 +126,7 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
         const points = data.landmarks as Point[][];
         const count = points.length; const now = Date.now();
         const old = tracking.current;
-        if (count !== old.faces) { setFaceCount(count); if (count !== 1) invalidate(); }
+        if (count !== old.faces) { setFaceCount(count); if (count !== 1) { if (request.current) pause(); else invalidate(); } }
         if (count === 1) {
           const p = points[0]; const nose = p[1];
           tracking.current = { faces: 1, x: old.faces === 1 ? old.x * .65 + nose.x * .35 : nose.x, y: old.faces === 1 ? old.y * .65 + nose.y * .35 : nose.y, at: now };
@@ -167,7 +172,7 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
           badge.current.style.left = `${(1 - track.x) * 100}%`;
           badge.current.style.top = `${Math.max(.08, track.y - .23) * 100}%`;
         }
-        if (!single && request.current) invalidate();
+        if (!single && request.current) pause();
         if (single && running.current && consentRef.current) {
           if (!mock && now - lastCapture > 800) {
             lastCapture = now;
@@ -192,7 +197,11 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
                   setSelected({ receipt: result.receipt, snapshot: body.frames[body.frames.length - 1].base64, roast: result.roast });
                   setShareApproved(false);
                 } }
-            }).catch(e => { if (token === generation.current && !controller.signal.aborted) { pause(); setMessage(e instanceof Error ? e.message : "AI roasting failed. Resume to try again."); } }).finally(() => { if (token === generation.current) { busy.current = false; request.current = null; setThinking(false); } });
+              else { setMessage("No roast came back. Try again when you’re ready."); }
+            }).catch(e => { if (token === generation.current && !controller.signal.aborted) { pause(); setMessage(e instanceof Error ? e.message : "AI roasting failed. Try again when you’re ready."); } }).finally(() => {
+              // Each click authorizes one attempt, including a skip or stale response.
+              if (token === generation.current) pause();
+            });
           }
         }
       }
@@ -208,9 +217,10 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
 
   function changeConsent(value: boolean) { consentRef.current = value; setConsent(value); if (!value) { if (starting) stop(); else pause(); } }
   function changeSettings(nextIntensity: Intensity, nextTopics: string) {
+    pause();
     setIntensity(nextIntensity); setTopics(nextTopics); options.current = { intensity: nextIntensity, excludedTopics: nextTopics.split(",").map(s => s.trim().slice(0, 80)).filter(Boolean).slice(0, 10) }; invalidate(true); setCaption("");
   }
-  const status = !camera ? starting ? "Waiting for camera permission…" : "Camera off" : !ready ? "Tracking unavailable / loading" : faceCount > 1 ? "One participant only, please" : faceCount === 0 ? "Looking for a face" : !enabled ? "Paused — camera is on" : thinking ? "Thinking…" : "Ready for your close-up";
+  const status = !camera ? starting ? "Waiting for camera permission…" : "Camera off" : !ready ? "Tracking unavailable / loading" : faceCount > 1 ? "One participant only, please" : faceCount === 0 ? "Looking for a face" : !enabled ? "Paused — camera is on" : thinking ? "Thinking…" : "Getting your roast ready…";
   return <main id="main" className={styles.page}>
     <header className="page-hero"><div><PlayfulTitle text="Get checked." /><p>Your ego called. We declined.</p></div></header>
     <div className={styles.layout}>
@@ -236,13 +246,12 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
         {!configured && <p role="alert">Live roasting is not configured. Set the Gemini credentials and model on the server.</p>}
         {!camera && !starting && <button className="action-button wide" disabled={!consent || !configured} onClick={() => void start()}>Check my ego ↗</button>}
         {starting && <button className="action-button wide" onClick={stop}>Cancel camera request</button>}
-        {camera && <><button className="action-button wide" disabled={!consent || !ready} onClick={() => { if (enabled) pause(); else { invalidate(); running.current = true; setEnabled(true); setMessage(""); } }}>{enabled ? "Pause roasting" : "Resume roasting"}</button><div className={styles.buttons}><button onClick={() => { invalidate(true); setCaption(""); }}>Clear Session</button><button onClick={stop}>Stop Camera</button></div>{!ready && <button onClick={() => { busyTracking.current = false; initializeTracking(); }}>Retry tracking</button>}</>}
+        {camera && <><button className="action-button wide" disabled={!consent || !ready} onClick={() => { if (enabled) pause(); else roastAgain(); }}>{enabled ? "Cancel roast" : "Hurt my feelings again ↗"}</button><p className={styles.note}>One roast per click.</p><div className={styles.buttons}><button onClick={() => { pause(); invalidate(true); setCaption(""); }}>Clear Session</button><button onClick={stop}>Stop Camera</button></div>{!ready && <button onClick={() => { busyTracking.current = false; initializeTracking(); }}>Retry tracking</button>}</>}
         {message && <p role="alert" className={styles.message}>{message}</p>}
         <details className="ego-details"><summary>Privacy & camera</summary><p className={styles.note}>Camera permission is separate. No microphone is used. Tracking runs locally; hiding or leaving this page stops the camera.</p>{!mock && <p className={styles.note}>Selected snapshots go to Gemini. Unchecking consent stops new uploads; images already sent cannot be recalled. This app doesn’t save session images unless you approve sharing. <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Gemini data terms ↗</a></p>}</details>
       </section>
     </div>
-    {!mock && selected && <details className="ego-panel roast-receipt"><summary>Use this roast in a challenge ↗</summary>
-      <button className="ego-button secondary" onClick={pause}>Pause & review</button>
+    {!mock && selected && <details className="ego-panel roast-receipt"><summary>Make my humiliation competitive ↗</summary>
       {/* This image is an in-memory snapshot, never a persistent browser URL. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={`data:image/jpeg;base64,${selected.snapshot}`} width="320" alt="Your selected roast snapshot, not yet shared" />
