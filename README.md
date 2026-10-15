@@ -103,7 +103,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-The interface uses locally hosted Inter and Anton fonts through `next/font/local`. Their SIL Open Font Licenses are included in `app/fonts`. The interface uses warm paper, black ink, acid yellow and red verdict stamps. The gallery uses one responsive grid, and the sidebar links Get Checked, The Arena, Public Evidence, Your Damage Report, Hall of Shame and Friends.
+The interface uses locally hosted Inter and Anton fonts through `next/font/local`. Their SIL Open Font Licenses are included in `app/fonts`. The interface uses dark ink surfaces, chrome details and acid-yellow accents. The gallery uses one responsive grid, and the sidebar links Get Checked, The Arena, Public Evidence, Hall of Shame and My Damage Report.
 
 ## Avatar Gallery
 
@@ -386,14 +386,18 @@ page and endpoint with temporary fixtures that are removed afterward.
 
 Ego Check replaces the home gallery with **Get Checked**, the consent-first
 webcam roast experience. Each click requests one roast attempt, then pauses until
-the user chooses “Hurt my feelings again.” Skips, errors, cancellation and changes
+the user chooses “Hurt my feelings again.” A completed live roast reveals the
+**Challenge a friend** button in the top-right corner of the camera display; it
+opens the snapshot preview and audience approval controls. Skips, errors, cancellation and changes
 to settings never start another attempt automatically. Signed-out visitors see a dark mirror landing page.
 The guest mirror requests browser camera permission on arrival, with a retry button
 if the browser blocks or defers the prompt. It sends no frames to the server or Gemini, requests no audio,
 and releases the camera on Stop, page hiding, or navigation.
 Run `npm run test:guest-ui` for this guest camera lifecycle. The existing photo feed is now `/gallery` (**Public
 Evidence**); `/you-are-a-joke` redirects home. `/challenges` is **The Arena**,
-`/friends` manages friendships, and `/leaderboard` is **Hall of Shame**.
+`/leaderboard` is **Hall of Shame**, followed in navigation by **My Damage Report**
+(`/my-works`). The standalone Friends page has been removed. Existing friend
+relationships remain available in the challenge picker.
 All public and signed-in pages share the dark ink, chrome and acid-yellow design.
 The existing dashboard keeps its actual photo/vote/revenue calculations.
 Marketplace and Image Studio remain removed.

@@ -9,9 +9,8 @@ const links = [
   { href: "/", label: "Get Checked", icon: "spark" as const },
   { href: "/challenges", label: "The Arena", icon: "leaderboard" as const },
   { href: "/gallery", label: "Public Evidence", icon: "grid" as const },
-  { href: "/my-works", label: "Damage Report", icon: "works" as const },
   { href: "/leaderboard", label: "Hall of Shame", icon: "leaderboard" as const },
-  { href: "/friends", label: "Friends", icon: "user" as const },
+  { href: "/my-works", label: "My Damage Report", icon: "works" as const },
 ];
 
 export function Sidebar({ children }: { children?: ReactNode }) {

@@ -11,6 +11,12 @@
 .empty p { font-size: 13px; }
 .badge { position: absolute; transform: translate(-50%, -50%); opacity: 0; background: var(--accent); color: var(--ink); padding: 8px 12px; border-radius: 10px; font-size: 11px; font-weight: 800; white-space: nowrap; pointer-events: none; transition: left 90ms linear, top 90ms linear; }
 .live { position: absolute; top: 14px; left: 14px; font-size: 10px; padding: 6px 9px; border-radius: 5px; background: var(--accent); color: var(--ink); letter-spacing: .05em; }
+.challengeButton { position:absolute;top:14px;right:14px;z-index:2;max-width:calc(100% - 28px);min-height:44px;padding:10px 14px;background:var(--accent);color:var(--ink);border:1px solid var(--ink);box-shadow:3px 3px 0 #10110c80;font-size:12px;font-weight:750;animation:challengeReveal 180ms ease-out; }
+.challengeButton:hover:not(:disabled) { background:#f4ff77; }
+.videoWrap:has(.challengeButton) .live { top:auto;bottom:14px; }
+.reviewHeading { display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px; }
+.reviewHeading h2 { margin:0; }
+@keyframes challengeReveal { from { opacity:0;transform:translateY(-6px); } to { opacity:1;transform:translateY(0); } }
 .caption { padding: 24px; min-height: 150px; background: var(--accent); color: var(--ink); }
 .caption :global(.eyebrow) { color: var(--ink); }
 .caption > p:last-child { font-size: clamp(20px, 2.2vw, 30px); line-height: 1.35; margin-top: 12px; font-weight: 650; overflow-wrap: anywhere; }
@@ -29,7 +35,7 @@
 .controls button:disabled { opacity: .45; cursor: not-allowed; }
 .message { margin-top: 16px; font-size: 13px; line-height: 1.6; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .page { padding: 20px 16px; } }
-@media (prefers-reduced-motion: reduce) { .badge { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .badge { transition: none; } .challengeButton { animation:none; } }
 .controls { padding:22px; }
 .controls h2 { font-size:24px;margin:0 0 18px; }
 .consent { padding:14px;margin:18px 0; }

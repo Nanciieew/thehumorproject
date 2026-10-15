@@ -104,7 +104,9 @@ test('one click produces one roast, preserves its receipt while paused, and need
     return new Promise(resolve => replies.push(resolve));
   };
   const { ui, faces, tick } = await liveHarness();
+  assert.equal(ui.queryByRole('button', { name: 'Challenge a friend ↗' }), null);
   await faces(1); await tick(100); await tick(200); await tick(300);
+  assert.equal(ui.queryByRole('button', { name: 'Challenge a friend ↗' }), null);
   assert.equal(sent.length, 1, 'an in-flight request cannot overlap another');
   const respond = async (index, roast) => act(async () => replies[index](Response.json({
     sessionId: sent[index].sessionId, requestId: sent[index].requestId,
@@ -113,13 +115,26 @@ test('one click produces one roast, preserves its receipt while paused, and need
   await respond(0, 'First roast.');
   await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Hurt my feelings again ↗' })));
   assert.ok(ui.getByText('First roast.', { selector: 'blockquote' }));
-  assert.ok(ui.getByText('Make my humiliation competitive ↗'));
+  assert.ok(ui.getByRole('button', { name: 'Challenge a friend ↗' }));
   assert.ok(ui.getByText(/Paused — camera is on/));
+  const challenge = ui.getByRole('button', { name: 'Challenge a friend ↗' });
+  assert.ok(ui.getByRole('region', { name: 'Camera preview' }).contains(challenge));
+  const panel = document.getElementById(challenge.getAttribute('aria-controls'));
+  assert.equal(challenge.getAttribute('aria-expanded'), 'false');
+  assert.equal(panel.hidden, true);
+  fireEvent.click(challenge);
+  assert.equal(challenge.getAttribute('aria-expanded'), 'true');
+  assert.equal(panel.hidden, false); assert.equal(document.activeElement, panel);
+  assert.equal(ui.getByAltText('Your selected roast snapshot, not yet shared').getAttribute('src'), 'data:image/jpeg;base64,/9j/AA==');
+  fireEvent.click(ui.getByRole('button', { name: 'Close challenge options' }));
+  assert.equal(panel.hidden, true); assert.equal(document.activeElement, challenge);
+  fireEvent.click(challenge);
   now += 9000; await faces(1); await tick(10000); await tick(11000);
   assert.equal(sent.length, 1, 'elapsed cooldown and tracking cannot start another roast');
-  assert.ok(ui.getByText('Make my humiliation competitive ↗'), 'the approved-receipt preview survives the pause');
+  assert.ok(ui.getByRole('button', { name: 'Challenge a friend ↗' }), 'the challenge action survives the pause');
   fireEvent.click(ui.getByRole('button', { name: 'Hurt my feelings again ↗' }));
-  assert.equal(ui.queryByText('Make my humiliation competitive ↗'), null);
+  assert.equal(ui.queryByRole('button', { name: 'Challenge a friend ↗' }), null);
+  assert.equal(document.getElementById(panel.id), null);
   await tick(12000); await tick(13000);
   assert.equal(sent.length, 2);
   assert.equal(sent[1].sessionId, sent[0].sessionId, 'follow-up requests retain server joke history');
@@ -144,6 +159,7 @@ for (const outcome of ['skip', 'error']) {
     const { ui, faces, tick } = await liveHarness();
     await faces(1); await tick(100);
     await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Hurt my feelings again ↗' })));
+    assert.equal(ui.queryByRole('button', { name: 'Challenge a friend ↗' }), null);
     assert.ok(ui.getByText(outcome === 'skip' ? 'No roast came back. Try again when you’re ready.' : 'Provider unavailable.'));
     now += 9000; await faces(1); await tick(10000); assert.equal(uploads, 1);
     fireEvent.click(ui.getByRole('button', { name: 'Hurt my feelings again ↗' }));
