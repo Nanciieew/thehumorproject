@@ -45,9 +45,26 @@ try{
  assert.equal((await action(a,'battle',{id})).creatorVotes,3);
  const rank=await action(v1,'rankings');assert.ok(rank.weekly.some(p=>p.id===a.id&&p.wins===1));assert.ok(rank.monthly.some(p=>p.id===imageId&&p.votes===1));
  assert.equal((await request(`/api/challenges/${id}/publish`,a,{unpublish:true})).status,200);
+ const soloBody={approved:true,receipt:signReceipt(a.id,'Standalone fixture roast.',snapshot),snapshot};
+ const beforeSolo=await action(a,'summary');
+ assert.equal((await request('/api/roast/publish',null,soloBody)).status,401);
+ assert.equal((await request('/api/roast/publish',a,{...soloBody,approved:false})).status,400);
+ assert.equal((await request('/api/roast/publish',b,soloBody)).status,400);
+ const soloResponses=await Promise.all([request('/api/roast/publish',a,soloBody),request('/api/roast/publish',a,soloBody)]);
+ for(const r of soloResponses)assert.equal(r.status,200,await r.clone().text());
+ const soloIds=await Promise.all(soloResponses.map(r=>r.json()));assert.equal(soloIds[0].photoId,soloIds[1].photoId);
+ const soloId=soloIds[0].photoId;
+ const soloRow=check(await admin.from('images').select('description,public_storage_path').eq('id',soloId).single());publicPaths.push(soloRow.public_storage_path);
+ assert.equal(soloRow.description,'Standalone fixture roast.');
+ const feedResponse=await request('/api/gallery?sort=newest',null);assert.equal(feedResponse.status,200);
+ const soloCard=(await feedResponse.json()).items.find(p=>p.id===soloId);assert.ok(soloCard);assert.equal(soloCard.upvotes,0);assert.equal(soloCard.description,'Standalone fixture roast.');
+ const soloVote=await request('/api/gallery/vote',v1,{photoId:soloId,value:1});assert.equal(soloVote.status,200);assert.equal((await soloVote.json()).upvotes,1);
+ assert.equal((await action(a,'summary')).active,beforeSolo.active,'solo publication must not create a battle');
+ console.log('PASS: solo roast approval, receipt ownership, concurrent idempotency, public gallery display, voting and independent battle totals.');
  console.log('PASS: friend acceptance, approved entries, authorized media, spectator voting, finalization, publication, independent gallery votes and rankings.');
 }finally{
  if(paths.length)await admin.storage.from('challenge-entries').remove(paths);
- if(publicPaths.length)await admin.storage.from('gallery-photos').remove(publicPaths);
+ for(const a of users){const listed=await admin.storage.from('gallery-photos').list(a.id,{limit:100});if(!listed.error)for(const file of listed.data)publicPaths.push(`${a.id}/${file.name}`);}
+ if(publicPaths.length)check(await admin.storage.from('gallery-photos').remove([...new Set(publicPaths)]));
  for(const a of users)check(await admin.auth.admin.deleteUser(a.id));
 }

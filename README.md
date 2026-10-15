@@ -388,7 +388,11 @@ Ego Check replaces the home gallery with **Get Checked**, the consent-first
 webcam roast experience. Each click requests one roast attempt, then pauses until
 the user chooses “Hurt my feelings again.” A completed live roast reveals the
 **Challenge a friend** button in the top-right corner of the camera display; it
-opens the snapshot preview and audience approval controls. Skips, errors, cancellation and changes
+opens the snapshot preview and audience approval controls. **Publish my ego**,
+beside it, publishes a solo snapshot and verified roast to Public Evidence after
+separate public-sharing approval. Solo gallery cards start with zero votes, need
+no opponent, and do not count as active battles. Retries reuse the same card.
+Run `npm run test:roast-publication` for receipt and publication concurrency checks. Skips, errors, cancellation and changes
 to settings never start another attempt automatically. Signed-out visitors see a dark mirror landing page.
 The guest mirror requests browser camera permission on arrival, with a retry button
 if the browser blocks or defers the prompt. It sends no frames to the server or Gemini, requests no audio,

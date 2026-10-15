@@ -209,9 +209,9 @@ function UploadPhoto({ close, published }: { close: () => void; published: () =>
   </dialog>;
 }
 
-export function Gallery({ initial, userId }: { initial?: GalleryPage; userId: string | null }) {
+export function Gallery({ initial, userId, initialSort = "top" }: { initial?: GalleryPage; userId: string | null; initialSort?: GallerySort }) {
   const [kind, setKind] = useState("all");
-  const [sort, setSort] = useState<GallerySort>("top");
+  const [sort, setSort] = useState<GallerySort>(initialSort);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   useEffect(() => {
@@ -237,7 +237,7 @@ export function Gallery({ initial, userId }: { initial?: GalleryPage; userId: st
       <div className={styles.filterbar}><div aria-label="Sort gallery" className={styles.filters}>{([["top", "Most votes overall", "Most votes overall"], ["month", "New this month", "New this month"], ["newest", "Newest first", "Newest first"]] as const).map(([value, label, accessibleLabel]) => <button key={value} aria-label={accessibleLabel} aria-pressed={sort === value} onClick={() => { if (sort !== value) { setSort(value); setRevision((value) => value + 1); setMessage(""); } }}><span aria-hidden="true">{value === "top" ? "★" : value === "month" ? "✿" : "✦"}</span>{label}</button>)}</div></div>
       </div>
       {message && <p role="status" className="gallery-message">{message}</p>}
-      <GalleryFeed kind={kind} key={`${sort}:${userId}:${revision}:${search}`} sort={sort} search={search} initial={!search && sort === "top" && revision === 0 ? initial : undefined} signedIn={Boolean(userId)} requestLogin={requestLogin} />
+      <GalleryFeed kind={kind} key={`${sort}:${userId}:${revision}:${search}`} sort={sort} search={search} initial={!search && sort === initialSort && revision === 0 ? initial : undefined} signedIn={Boolean(userId)} requestLogin={requestLogin} />
     </section>
 
     {login && <LoginPrompt close={() => setLogin(false)} />}

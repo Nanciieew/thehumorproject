@@ -18,6 +18,7 @@
     "leaderboard:admin": "node --env-file=.env.local scripts/leaderboard-admin.mjs",
     "test:roast": "node --import tsx --import ./scripts/roast-css-loader.mjs --test scripts/roast.test.mjs scripts/roast-ui.test.mjs && node --conditions=react-server --import tsx --test scripts/roast-provider.test.mjs",
     "test:images-reference": "node --import tsx --test scripts/seedream-reference.test.mjs",
+    "test:roast-publication": "node --conditions=react-server --import tsx --test scripts/roast-publication.test.mjs",
     "test:ego-db": "node --test scripts/ego-db.test.mjs",
     "test:ego-ui": "node --import tsx --test scripts/ego-ui.test.mjs",
     "test:ego-receipts": "node --conditions=react-server --import tsx --test scripts/ego-receipts.test.mjs",

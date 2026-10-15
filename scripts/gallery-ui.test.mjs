@@ -259,3 +259,10 @@ test('challenge result cards show canonical roast and separate frozen battle vot
  const item={...photo('challenge-result',42),description:'A participant note',result:{battle_votes:18,outcome:'Got cooked harder',roast:'The approved roast.'}};
  const ui=mount('user',[item]);assert.ok(ui.getByText(/Battle votes: 18 · Gallery upvotes: 42/));assert.ok(ui.getByText('The approved roast.'));assert.ok(ui.getByText('A participant note'));
 });
+
+
+test("publication links can open Newest first with server-rendered cards and ordinary voting", () => {
+ const ui=render(React.createElement(Gallery,{userId:"voter",initialSort:"newest",initial:{items:[{...photo("solo",0),title:"Ego checked.",description:"A verified solo roast."}],next_cursor:null}}));
+ assert.equal(ui.getByRole("button",{name:"Newest first"}).getAttribute("aria-pressed"),"true");
+ assert.ok(ui.getByText("A verified solo roast."));assert.ok(ui.getByRole("button",{name:"Upvote: 0 upvotes"}));
+});

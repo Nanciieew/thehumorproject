@@ -9,6 +9,9 @@ globalThis.self = dom.window;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { render, fireEvent, waitFor, cleanup, act } = await import('@testing-library/react');
 const { RoastStudio } = await import('../app/you-are-a-joke/studio.tsx');
+const { PublishEgo } = await import('../app/you-are-a-joke/publish-ego.tsx');
+dom.window.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+dom.window.HTMLDialogElement.prototype.close = function () { this.open = false; };
 const originalFetch = globalThis.fetch;
 afterEach(() => { cleanup(); globalThis.fetch = originalFetch; });
 const mount = (mock = true, configured = true) => render(React.createElement(RoastStudio, { mock, configured }));
@@ -105,8 +108,10 @@ test('one click produces one roast, preserves its receipt while paused, and need
   };
   const { ui, faces, tick } = await liveHarness();
   assert.equal(ui.queryByRole('button', { name: 'Challenge a friend ↗' }), null);
+  assert.equal(ui.queryByRole('button', { name: 'Publish my ego' }), null);
   await faces(1); await tick(100); await tick(200); await tick(300);
   assert.equal(ui.queryByRole('button', { name: 'Challenge a friend ↗' }), null);
+  assert.equal(ui.queryByRole('button', { name: 'Publish my ego' }), null);
   assert.equal(sent.length, 1, 'an in-flight request cannot overlap another');
   const respond = async (index, roast) => act(async () => replies[index](Response.json({
     sessionId: sent[index].sessionId, requestId: sent[index].requestId,
@@ -119,6 +124,8 @@ test('one click produces one roast, preserves its receipt while paused, and need
   assert.ok(ui.getByText(/Paused — camera is on/));
   const challenge = ui.getByRole('button', { name: 'Challenge a friend ↗' });
   assert.ok(ui.getByRole('region', { name: 'Camera preview' }).contains(challenge));
+  const publish = ui.getByRole('button', { name: 'Publish my ego' });
+  assert.equal(challenge.nextElementSibling, publish, 'publish appears to the right of challenge');
   const panel = document.getElementById(challenge.getAttribute('aria-controls'));
   assert.equal(challenge.getAttribute('aria-expanded'), 'false');
   assert.equal(panel.hidden, true);
@@ -134,6 +141,7 @@ test('one click produces one roast, preserves its receipt while paused, and need
   assert.ok(ui.getByRole('button', { name: 'Challenge a friend ↗' }), 'the challenge action survives the pause');
   fireEvent.click(ui.getByRole('button', { name: 'Hurt my feelings again ↗' }));
   assert.equal(ui.queryByRole('button', { name: 'Challenge a friend ↗' }), null);
+  assert.equal(ui.queryByRole('button', { name: 'Publish my ego' }), null);
   assert.equal(document.getElementById(panel.id), null);
   await tick(12000); await tick(13000);
   assert.equal(sent.length, 2);
@@ -160,6 +168,7 @@ for (const outcome of ['skip', 'error']) {
     await faces(1); await tick(100);
     await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Hurt my feelings again ↗' })));
     assert.equal(ui.queryByRole('button', { name: 'Challenge a friend ↗' }), null);
+  assert.equal(ui.queryByRole('button', { name: 'Publish my ego' }), null);
     assert.ok(ui.getByText(outcome === 'skip' ? 'No roast came back. Try again when you’re ready.' : 'Provider unavailable.'));
     now += 9000; await faces(1); await tick(10000); assert.equal(uploads, 1);
     fireEvent.click(ui.getByRole('button', { name: 'Hurt my feelings again ↗' }));
@@ -201,4 +210,45 @@ test('changing settings cancels a pending round and waits for another click', as
   now += 9000; await faces(1); await tick(10000); assert.equal(sent.length, 1);
   fireEvent.click(ui.getByRole('button', { name: 'Hurt my feelings again ↗' }));
   await tick(11000); assert.equal(sent.length, 2); assert.equal(sent[1].settings.intensity, 'playful');
+});
+
+
+test('solo publication previews before explicit approval, blocks duplicate clicks, and links to voting', async () => {
+  const calls = [], busy = []; let resolve;
+  globalThis.fetch = (url, options) => { calls.push({ url, body: JSON.parse(options.body) }); return new Promise(r => resolve = r); };
+  const ui = render(React.createElement(PublishEgo, { receipt: 'receipt-fixture', snapshot: '/9j/AA==', roast: 'A solo roast.', onBusyChange: value => busy.push(value) }));
+  fireEvent.click(ui.getByRole('button', { name: 'Publish my ego' }));
+  assert.ok(ui.getByRole('dialog', { name: 'Publish my ego' }));
+  assert.ok(ui.getByText('A solo roast.')); assert.equal(calls.length, 0);
+  const confirm = ui.getByRole('button', { name: 'Publish to Public Evidence' });
+  assert.equal(confirm.disabled, true);
+  fireEvent.click(ui.getByRole('checkbox'));
+  fireEvent.click(confirm); fireEvent.click(confirm);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0], { url: '/api/roast/publish', body: { receipt: 'receipt-fixture', snapshot: '/9j/AA==', approved: true } });
+  assert.equal(ui.getByRole('button', { name: 'Cancel' }).disabled, true);
+  const photoId = '20000000-0000-4000-8000-000000000001';
+  await act(async () => resolve(Response.json({ photoId })));
+  const link = ui.getByRole('link', { name: 'View in Public Evidence ↗' });
+  assert.equal(link.getAttribute('href'), `/gallery?sort=newest#photo-${photoId}`);
+  assert.deepEqual(busy, [true, false]);
+  fireEvent.click(ui.getByRole('button', { name: 'Close' }));
+  assert.equal(ui.queryByRole('dialog'), null);
+  assert.equal(document.activeElement, ui.getByRole('link', { name: 'View my ego ↗' }));
+});
+
+test('cancelled public-sharing previews send nothing and failed publication can be retried', async () => {
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; return calls === 1 ? Response.json({ error: 'Temporary failure.' }, { status: 503 }) : Response.json({ photoId: '20000000-0000-4000-8000-000000000002' }); };
+  const ui = render(React.createElement(PublishEgo, { receipt: 'receipt-fixture', snapshot: '/9j/AA==', roast: 'A solo roast.', onBusyChange: () => {} }));
+  fireEvent.click(ui.getByRole('button', { name: 'Publish my ego' }));
+  fireEvent.click(ui.getByRole('checkbox')); fireEvent.click(ui.getByRole('button', { name: 'Cancel' }));
+  assert.equal(calls, 0);
+  fireEvent.click(ui.getByRole('button', { name: 'Publish my ego' }));
+  assert.equal(ui.getByRole('checkbox').checked, false);
+  fireEvent.click(ui.getByRole('checkbox')); fireEvent.click(ui.getByRole('button', { name: 'Publish to Public Evidence' }));
+  await waitFor(() => assert.ok(ui.getByText('Temporary failure.')));
+  fireEvent.click(ui.getByRole('button', { name: 'Publish to Public Evidence' }));
+  await waitFor(() => assert.ok(ui.getByRole('link', { name: 'View in Public Evidence ↗' })));
+  assert.equal(calls, 2);
 });
