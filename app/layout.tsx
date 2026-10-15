@@ -37,7 +37,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <AppHeader>{!viewer ? <AccountMenu signedIn={false} name="" initials="" photoUrl={null} /> : undefined}</AppHeader>
             {!viewer && <nav className="ego-guest-nav" aria-label="Public navigation"><Link href="/">Get Checked</Link><Link href="/challenges">The Arena</Link><Link href="/gallery">Public Evidence</Link><Link href="/leaderboard">Hall of Shame</Link></nav>}
             {children}
-            <footer className="app-footer"><Link href="/">EGO CHECK <span>© 2026</span></Link><span>YOUR EGO. OUR FRONT PAGE.</span><Link href={viewer ? "/profile" : "/login"}>TAKE IT PERSONALLY ↗</Link></footer>
+            <footer className="app-footer"><Link href="/">EGO CHECK <span>© 2026</span></Link><Link href={viewer ? "/profile" : "/login"}>{viewer ? "Profile" : "Sign in"}</Link></footer>
           </div>
         </div>
         {session && !viewer && <Onboarding firstName={profile?.first_name ?? ""} lastName={profile?.last_name ?? ""} stateCode={profile?.state_code ?? ""} />}

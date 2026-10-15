@@ -56,3 +56,16 @@ body { background:#fff8e8; }
 .playful-word>span::after { display:none!important; }.playful-word:nth-child(even) { color:#a92126!important; }
 .profile-form-panel,.profile-note,.login-panel,.design-dialog { border:2px solid #161613!important;border-radius:0!important;background:#fffdf4!important; }
 .arena-evidence { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:20px 0; }.arena-evidence img { width:100%;height:auto;aspect-ratio:4/3;object-fit:contain;background:#161613; }.arena-evidence blockquote { font-size:14px;line-height:1.4;margin-top:10px; }
+/* Compact copy and secondary disclosures. */
+.ego-hero { margin:8px 0 24px;padding-bottom:20px; }
+.ego-hero h1 { font-size:clamp(38px,5vw,68px);margin:12px 0; }
+.ego-panel>summary,.roast-receipt>summary { cursor:pointer;font-weight:750;font-size:18px;line-height:1.4; }
+.ego-panel:not([open]) { box-shadow:none; }
+.disclosure-content { padding-top:12px; }
+.ego-details { margin:16px 0;font-size:12px; }
+.ego-details>summary { cursor:pointer;color:#555347;font-weight:650;padding:4px 0; }
+.ego-details[open]>summary { margin-bottom:8px; }
+.ego-details p { max-width:65ch;line-height:1.65; }
+.studio-invite { margin:24px 0; }
+.app-footer { justify-content:space-between; }
+.ego-rank-table { margin-top:16px; }

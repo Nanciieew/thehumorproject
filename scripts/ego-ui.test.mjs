@@ -16,9 +16,10 @@ const battle={id:'10000000-0000-4000-8000-000000000001',creatorId:'alice',oppone
 test('challenge creator discloses audience and sends a single explicit creation action',async()=>{
  const calls=[];globalThis.fetch=async(_url,options)=>{const b=JSON.parse(options.body);calls.push(b);return Response.json(b.action==='friends'?[]:{id:battle.id});};
  const ui=render(React.createElement(ChallengeCreator));
- fireEvent.change(ui.getByLabelText('Who gets to watch?'),{target:{value:'private'}});
- fireEvent.click(ui.getByRole('button',{name:/Make it someone/}));
- await waitFor(()=>assert.ok(ui.getByText('Your invitation is ready. It expires in seven days.')));
+ fireEvent.click(ui.getByText('Challenge a friend'));
+ fireEvent.change(ui.getByLabelText('Audience'),{target:{value:'private'}});
+ fireEvent.click(ui.getByRole('button',{name:/Create challenge/}));
+ await waitFor(()=>assert.ok(ui.getByText('Invite ready · expires in 7 days.')));
  assert.deepEqual(calls.find(c=>c.action==='create').data,{visibility:'private',opponent:null});
 });
 test('spectator votes go to the battle and never to gallery voting',async()=>{
@@ -37,7 +38,7 @@ test('participants cannot self-vote; public publication requires its own approva
 });
 test('published result and gallery counters remain separate in the rankings view',()=>{
  const ui=render(React.createElement(ShameBoard,{initial:{trackingStartedAt:new Date().toISOString(),weekly:[{id:'alice',name:'Alice',wins:2,votes:18}],monthly:[{id:'photo',title:'Evidence',name:'Bob',public_storage_path:'path',votes:4,lifetime_votes:42}]},initialError:''}));
- assert.ok(ui.getByText('Battle votes'));fireEvent.click(ui.getByRole('button',{name:'This month’s evidence'}));assert.ok(ui.getByText('New upvotes'));assert.ok(ui.getByText('Lifetime upvotes'));assert.ok(ui.getByText('42'));
+ assert.ok(ui.getByText('Battle votes'));fireEvent.click(ui.getByRole('button',{name:'Monthly upvotes'}));assert.ok(ui.getByText('New upvotes'));assert.ok(ui.getByText('Lifetime upvotes'));assert.ok(ui.getByText('42'));
 });
 
 test('public arena previews show approved roast entries and link to the battle',async()=>{

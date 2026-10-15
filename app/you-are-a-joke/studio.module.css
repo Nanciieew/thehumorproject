@@ -29,3 +29,11 @@
 .message { margin-top: 16px; font-size: 13px; line-height: 1.6; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .page { padding: 20px 16px; } }
 @media (prefers-reduced-motion: reduce) { .badge { transition: none; } }
+.controls { padding:22px; }
+.controls h2 { font-size:24px;margin:0 0 18px; }
+.consent { padding:14px;margin:18px 0; }
+.consent label { margin:0;font-size:12px;font-weight:500; }
+.caption { padding:20px;min-height:0; }
+.empty h2 { font-size:22px;font-weight:400; }
+.page :global(.page-hero) { margin-bottom:24px;padding-bottom:20px; }
+.page :global(.playful-title) { font-size:clamp(38px,5vw,64px)!important; }
