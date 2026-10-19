@@ -1,8 +1,12 @@
 import type { ReactNode } from "react";
 
-type IconName = "home" | "flame" | "people" | "settings" | "marketplace" | "works" | "arrow" | "grid" | "spark" | "mask" | "user" | "leaderboard" | "logout" | "upload" | "close";
+type IconName = "quest" | "create" | "roast" | "checkboard" | "home" | "flame" | "people" | "settings" | "marketplace" | "works" | "arrow" | "grid" | "spark" | "mask" | "user" | "leaderboard" | "logout" | "upload" | "close";
 export function Icon({ name, className = "" }: { name: IconName; className?: string }) {
   const paths: Record<IconName, ReactNode> = {
+    quest: <><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M7 3v4m10-4v4M3 10h18m-13 5 3 3 5-5" /></>,
+    create: <><path d="M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6M3 17l5-5 4 4 3-3 6 6" /><circle cx="7.5" cy="8.5" r="1" fill="currentColor" stroke="none" /><path d="m18 2 1.4 3.6L23 7l-3.6 1.4L18 12l-1.4-3.6L13 7l3.6-1.4L18 2Z" /></>,
+    roast: <><path d="M12 3c5.5 0 9 3.2 9 7.5S17.5 18 12 18H9l-6 4 1.6-7C3.5 13.8 3 12.3 3 10.5 3 6.2 6.5 3 12 3Z" /><path d="m7 8 2 1-2 1m10-2-2 1 2 1m-9 3q4 4 8 0" /></>,
+    checkboard: <><path d="M7 3h12a2 2 0 0 1 2 2v12" /><rect x="3" y="6" width="15" height="15" rx="2.5" /><circle cx="10.5" cy="11.5" r="2" /><path d="M6.5 18a4 4 0 0 1 8 0" /></>,
     home: <path d="m3 10 9-8 9 8v11h-6v-7H9v7H3Z" fill="currentColor" strokeWidth="1" />,
     flame: <path d="M14 2c1 6-5 5-4 10-3-1-4-3-3-5-5 5-5 10-2 13 3 3 10 3 13-1 3-4 1-8-1-10 0 4-2 5-3 5 2-5 2-8 0-12Z" />,
     people: <><circle cx="9" cy="7" r="3" /><path d="M3 21v-3a6 6 0 0 1 12 0v3H3Zm13-17a3 3 0 0 1 0 6m2 4a5 5 0 0 1 3 5v2h-3" /></>,
