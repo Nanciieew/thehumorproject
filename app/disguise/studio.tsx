@@ -163,7 +163,7 @@ export function DisguiseStudio({ configured, userId }: { configured: boolean; us
         <section className={styles.preview} aria-label="Meme preview" aria-busy={busy}>
           {variant?.url || source ? <div className={styles.picture}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img key={variant?.url || source?.image} src={variant?.url || source?.image} alt={variant ? `AI-generated meme: ${variant.caption}` : "Your uploaded meme picture"} />
+            <img key={variant?.url || source?.image} src={variant?.url || source?.image} alt={variant ? `Meme preview: ${variant.caption}` : "Your uploaded meme picture"} />
             {busy && <div className={styles.working} role="status"><span aria-hidden="true">✳</span><p>{generating ? "Creating your memes…" : "Loading your memes…"}</p>{generating && <button onClick={() => void cancel()}>Cancel</button>}</div>}
           </div> : <div className={styles.empty} role="status"><span aria-hidden="true">✳</span><p>{busy ? "Loading your memes…" : "Your preview will appear here."}</p></div>}
           {variant && <span className={styles.previewCount}>{selected + 1} / 5</span>}

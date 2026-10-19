@@ -5,12 +5,12 @@ import sharp from 'sharp';
 process.env.NEXT_PUBLIC_SUPABASE_URL='https://fixture.supabase.co';process.env.SUPABASE_SECRET_KEY='fixture';process.env.GEMINI_API_KEY='fixture';process.env.GEMINI_MODEL='fixture-model';process.env.ARK_API_KEY='fixture';
 const {supabase}=await import('../lib/supabase.ts');
 const {generateFactoryBatch,publishFactoryBatch,readFactoryBatch,previewFactoryBatch,discardFactoryBatch,cleanupFactoryBatches,factoryPath}=await import('../lib/factory/server.ts');
-const {parseCaptions,memeImagePrompt}=await import('../lib/factory/captions.ts');
+const {parseCaptions}=await import('../lib/factory/captions.ts');
 const originalFetch=globalThis.fetch,originalFrom=supabase.from,originalStorage=supabase.storage.from;
 const tables={images:new Map(),factory_batches:new Map()};
 const objects=new Map(),removed=[],requests=[];
-let failVariant=-1,failRemove=false,modelIndex=0;
-const bytes=await sharp({create:{width:40,height:40,channels:3,background:'#aaa'}}).jpeg().toBuffer();
+let failVariant=-1,failRemove=false;
+const bytes=await sharp({create:{width:400,height:300,channels:3,background:'#aaa'}}).jpeg().toBuffer();
 const image=`data:image/jpeg;base64,${bytes.toString('base64')}`;
 const owner=randomUUID(),captions=['My last brain cell has left the chat','When the deadline starts looking back','Me pretending the Wi-Fi caused this','Monday called and I declined','That meeting could have been a nap'];
 class Query {
@@ -39,11 +39,10 @@ supabase.storage.from=bucket=>({
  async createSignedUrl(path){return{data:{signedUrl:`https://fixture.supabase.co/${bucket}/${path}`},error:null};}
 });
 beforeEach(()=>{
- for(const rows of Object.values(tables))rows.clear();objects.clear();removed.length=0;requests.length=0;failVariant=-1;failRemove=false;modelIndex=0;
+ for(const rows of Object.values(tables))rows.clear();objects.clear();removed.length=0;requests.length=0;failVariant=-1;failRemove=false;
  globalThis.fetch=async(url,options)=>{
   if(String(url).includes('generateContent')){requests.push({provider:'captions',body:JSON.parse(options.body)});return Response.json({candidates:[{content:{parts:[{text:JSON.stringify({captions})}]}}]});}
-  if(String(url).includes('/images/generations')){requests.push({provider:'image',body:JSON.parse(options.body)});return Response.json({data:[{url:`https://fixture.volces.com/${modelIndex++}.jpg`}]});}
-  return new Response(bytes,{headers:{'content-type':'image/jpeg'}});
+  throw new Error('The factory must not call an image generator or download a replacement image.');
  };
 });
 after(()=>{supabase.from=originalFrom;supabase.storage.from=originalStorage;globalThis.fetch=originalFetch;});
@@ -53,13 +52,20 @@ test('invalid input never calls either provider; malformed or duplicate caption 
  assert.equal(requests.length,0);assert.equal(tables.factory_batches.size,0);
  for(const value of [{captions:['one']},{captions:Array(5).fill('same')},{captions:[...captions.slice(0,4),'x'.repeat(181)]}])assert.throws(()=>parseCaptions(value));
 });
-test('five distinct captions produce five privately cached model images, with classic meme typography',async()=>{
+test('five captions produce five cached overlays on the unchanged original, with no image-provider calls',async()=>{
  const result=await generate();assert.equal(result.variants.length,5);assert.equal(tables.images.size,0);assert.equal(objects.size,5);
  assert.deepEqual(result.variants.map(variant=>variant.caption),captions);
  assert.equal(requests.filter(call=>call.provider==='captions').length,1);
- const outputs=requests.filter(call=>call.provider==='image');assert.equal(outputs.length,5);
- for(let index=0;index<5;index++){assert.equal(outputs[index].body.image,image);assert.match(outputs[index].body.prompt,/white Impact-style uppercase/);assert.match(outputs[index].body.prompt,/BLACK outline/);assert.ok(outputs[index].body.prompt.includes(JSON.stringify(captions[index])));}
- const repeated=await generateFactoryBatch(owner,{id:result.id,image,direction:'',approved:true});assert.equal(repeated.id,result.id);assert.equal(requests.length,6);
+ assert.equal(requests.length,1);
+ const original=await sharp(bytes).ensureAlpha().raw().toBuffer();
+ for(let index=0;index<5;index++){
+  const cached=objects.get(`generated-images/${factoryPath(owner,result.id,index)}`);
+  const decoded=await sharp(cached).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  assert.equal(decoded.info.width,400);assert.equal(decoded.info.height,300);
+  assert.deepEqual(decoded.data.subarray(0,400*200*4),original.subarray(0,400*200*4),'all pixels above the bottom caption area stay unchanged');
+ }
+
+ const repeated=await generateFactoryBatch(owner,{id:result.id,image,direction:'',approved:true});assert.equal(repeated.id,result.id);assert.equal(requests.length,1);
 });
 test('publishing keeps the selected image, deletes the other four, and retries without duplicates',async()=>{
  const batch=await generate();const selected=2;
@@ -67,9 +73,10 @@ test('publishing keeps the selected image, deletes the other four, and retries w
  assert.equal(tables.images.size,1);assert.equal(tables.images.get(batch.id).description,captions[selected]);assert.ok(tables.images.get(batch.id).published_at);
  assert.ok(objects.has(`generated-images/${factoryPath(owner,batch.id,selected)}`));
  for(const index of [0,1,3,4])assert.equal(objects.has(`generated-images/${factoryPath(owner,batch.id,index)}`),false);
+ assert.deepEqual(objects.get(`gallery-photos/${tables.images.get(batch.id).public_storage_path}`),objects.get(`generated-images/${factoryPath(owner,batch.id,selected)}`),'publication copies the exact lossless rendered bytes');
  assert.equal(objects.size,2);await publishFactoryBatch(owner,batch.id,selected);assert.equal(objects.size,2);
  await assert.rejects(publishFactoryBatch(owner,batch.id,0),/already been published/);
- assert.equal(requests.length,6);
+ assert.equal(requests.length,1);
 });
 test('cross-account reads and publications cannot reveal or delete another batch',async()=>{
  const batch=await generate(),other=randomUUID();

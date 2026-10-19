@@ -1,10 +1,11 @@
 import "server-only";
 import { supabase } from "../supabase";
 import { validateSeedreamReference } from "../seedream-reference";
-import { generateSeedreamOutput, ImageGenerationError } from "../seedream-generation";
-import { fetchGeneratedImage, normalizeGalleryImage, publishGalleryImage } from "../gallery-media";
+import { ImageGenerationError } from "../seedream-generation";
+import { publishGalleryImage } from "../gallery-media";
 import { isUuid } from "../gallery-types";
-import { generateMemeCaptions, memeImagePrompt } from "./captions";
+import { generateMemeCaptions } from "./captions";
+import { CaptionLayoutError, renderFactoryMemes } from "./render";
 import type { FactoryBatch, FactoryPreview } from "./types";
 
 const bucket = () => supabase.storage.from("generated-images");
@@ -44,7 +45,7 @@ export async function generateFactoryBatch(userId: string, input: unknown, signa
   if (typeof body.direction !== "string" || body.direction.length > 500) throw new ImageGenerationError("Use a direction up to 500 characters.");
   const image = await validateSeedreamReference(body.image);
   if (!image) throw new ImageGenerationError("Choose a still JPG or PNG up to 2 MB and 24 megapixels.");
-  if (!process.env.ARK_API_KEY || !process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) throw new ImageGenerationError("Meme generation is not configured.", 503);
+  if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) throw new ImageGenerationError("Meme generation is not configured.", 503);
   // Expire stuck jobs before the one-active-generation constraint is checked.
   const stale = await supabase.from("factory_batches").update({ state: "discarded" }).eq("user_id", userId).eq("state", "generating").lt("created_at", new Date(Date.now() - 10 * 60_000).toISOString());
   if (stale.error) throw new ImageGenerationError("Couldn’t start this batch. Please try again.", 503);
@@ -62,13 +63,22 @@ export async function generateFactoryBatch(userId: string, input: unknown, signa
   signal = signal ? AbortSignal.any([signal, AbortSignal.timeout(155_000)]) : AbortSignal.timeout(155_000);
   let finalized = false;
   try {
-    const captions = await generateMemeCaptions(image, body.direction.trim(), signal);
-    // All five model outputs are generated once, then saved in a private cache.
-    // Wait for every job before cleanup, including after a sibling fails.
+    let captions: string[] = [];
+    let images: Buffer[] = [];
+    // Ask for shorter copy if a caption cannot fit. Never shrink the font,
+    // move the caption, or alter the original to accommodate the wording.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      captions = await generateMemeCaptions(image, body.direction.trim(), signal, attempt > 0);
+      try { images = await renderFactoryMemes(image, captions, signal); break; }
+      catch (error) {
+        if (!(error instanceof CaptionLayoutError)) throw error;
+        if (attempt === 1) throw new ImageGenerationError("The captions couldn’t fit the fixed meme layout. Please try again with a shorter keyword.", 502);
+      }
+    }
+    // Cache the five finished overlays. No image-generation provider is called.
+    // Wait for every upload before cleanup, including after a sibling fails.
     const results = await Promise.allSettled(captions.map(async (caption, index) => {
-      const url = await generateSeedreamOutput(memeImagePrompt(caption), image, signal);
-      const downloaded = await fetchGeneratedImage(url, signal);
-      const bytes = await normalizeGalleryImage(downloaded.bytes, downloaded.mime, 20 * 1024 * 1024);
+      const bytes = images[index];
       if (signal?.aborted) throw new Error("Generation cancelled.");
       const path = factoryPath(userId, id, index);
       const saved = await bucket().upload(path, bytes, { contentType: "image/webp" });

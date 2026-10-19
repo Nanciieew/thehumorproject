@@ -86,7 +86,17 @@ export async function publishGalleryImage(userId: string, assetId: string, sourc
   const downloaded = await sourceBucket.download(asset.storage_path);
   if (downloaded.error) throw new Error("Upload your photo before publishing it.");
   let bytes: Buffer;
-  try { bytes = await normalizeGalleryImage(Buffer.from(await downloaded.data.arrayBuffer()), downloaded.data.type); }
+  try {
+    const original = Buffer.from(await downloaded.data.arrayBuffer());
+    const factoryMeme = generated && asset.storage_path.startsWith(`${userId}/factory/`);
+    if (factoryMeme) {
+      // Factory captions are already rendered losslessly at the upload's native
+      // resolution. Publish those exact bytes; normalization would alter them.
+      const meta = await sharp(original, { limitInputPixels: 24_000_000 }).metadata();
+      if (!original.length || original.length > MAX_GALLERY_BYTES || meta.format !== "webp" || (meta.pages ?? 1) !== 1 || !meta.width || !meta.height) throw new Error("This meme couldn’t be published. Please generate it again.");
+      bytes = original;
+    } else bytes = await normalizeGalleryImage(original, downloaded.data.type);
+  }
   catch (error) {
     if (!generated) await sourceBucket.remove([asset.storage_path]);
     throw error;

@@ -25,7 +25,7 @@ function setup({configured=true,path='/disguise'}={}){
 }
 const generateButton=ui=>ui.getByRole('button',{name:'Create meme'});
 async function generate(ui){fireEvent.click(generateButton(ui));await waitFor(()=>assert.ok(ui.getByRole('button',{name:/01\s*Caption 1/})));}
-test('Create meme opens a separate preview screen; five captions switch to matching cached model images without another call',async()=>{
+test('Create meme opens a separate preview screen; five captions switch to matching cached captioned images without another call',async()=>{
  draft();const requests=[];let resolve;
  globalThis.fetch=(url,options)=>{requests.push({url,body:JSON.parse(options.body)});return new Promise(r=>resolve=r);};
  const ui=setup();assert.equal(peekDisguiseDraft(),null);assert.equal(generateButton(ui).disabled,false);assert.equal(requests.length,0);
@@ -37,7 +37,7 @@ test('Create meme opens a separate preview screen; five captions switch to match
  await act(async()=>resolve(Response.json(preview)));
  for(let index=0;index<5;index++){
   const button=ui.getByRole('button',{name:new RegExp(`0${index+1}\\s*Caption ${index+1}`)});fireEvent.click(button);
-  assert.equal(button.getAttribute('aria-pressed'),'true');assert.equal(ui.getByAltText(`AI-generated meme: Caption ${index+1}`).getAttribute('src'),preview.variants[index].url);
+  assert.equal(button.getAttribute('aria-pressed'),'true');assert.equal(ui.getByAltText(`Meme preview: Caption ${index+1}`).getAttribute('src'),preview.variants[index].url);
  }
  assert.equal(requests.length,1,'switching captions reuses the cached images');
 });
@@ -67,7 +67,7 @@ test('cancelling discards the private batch and ignores a late model response',a
  globalThis.fetch=(url,options)=>{calls.push({url,method:options.method});return options.method==='DELETE'?Promise.resolve(Response.json({ok:true})):new Promise(r=>resolve=r);};
  const ui=setup();fireEvent.click(generateButton(ui));fireEvent.click(ui.getByRole('button',{name:'Cancel'}));
  await act(async()=>resolve(Response.json(preview)));
- assert.equal(ui.queryByAltText('AI-generated meme: Caption 1'),null);assert.equal(calls.filter(call=>call.method==='DELETE').length,1);
+ assert.equal(ui.queryByAltText('Meme preview: Caption 1'),null);assert.equal(calls.filter(call=>call.method==='DELETE').length,1);
 });
 test('publication failure allows retry of the confirmed caption and never claims cleanup succeeded early',async()=>{
  draft();let publishes=0;globalThis.fetch=async(url)=>url==='/api/factory'?Response.json(preview):++publishes===1?Response.json({error:'Cleanup pending.'},{status:503}):Response.json({photoId:id});
@@ -78,7 +78,7 @@ test('publication failure allows retry of the confirmed caption and never claims
 });
 test('cached batch restores after remount without generating again; missing configuration blocks paid requests',async()=>{
  sessionStorage.setItem('checked:factory-batch:tester',id);let calls=0;globalThis.fetch=async(url,options)=>{calls++;assert.equal(url,`/api/factory/${id}`);assert.equal(options.method,undefined);return Response.json(preview);};
- const ui=setup({path:'/disguise/preview'});await waitFor(()=>assert.ok(ui.getByAltText('AI-generated meme: Caption 1')));assert.equal(calls,1);ui.unmount();sessionStorage.clear();
+ const ui=setup({path:'/disguise/preview'});await waitFor(()=>assert.ok(ui.getByAltText('Meme preview: Caption 1')));assert.equal(calls,1);ui.unmount();sessionStorage.clear();
  draft();const missing=setup({configured:false});assert.equal(generateButton(missing).disabled,true);
 });
 test('drag-and-drop selects a picture locally and leaves keyword optional',async()=>{
