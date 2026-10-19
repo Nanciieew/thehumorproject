@@ -7,11 +7,11 @@ import { useState, type ReactNode } from "react";
 import { Icon } from "./ui";
 
 const links = [
-  { href: "/", label: "Checkly Quest", icon: "spark" as const },
-  { href: "/disguise", label: "Checked Factory", icon: "mask" as const },
-  { href: "/you-are-a-joke", label: "Get Checked", icon: "spark" as const },
-  { href: "/gallery", label: "Checked Gallery", icon: "grid" as const },
-  { href: "/my-works", label: "My Checkboard", icon: "works" as const },
+  { href: "/", label: "Checkly Quest", icon: "home" as const },
+  { href: "/disguise", label: "Checked Factory", icon: "flame" as const },
+  { href: "/you-are-a-joke", label: "Get Checked", icon: "leaderboard" as const },
+  { href: "/gallery", label: "Checked Gallery", icon: "people" as const },
+  { href: "/my-works", label: "My Checkboard", icon: "settings" as const },
 ];
 
 export function Sidebar({ children }: { children?: ReactNode }) {
@@ -25,7 +25,7 @@ export function Sidebar({ children }: { children?: ReactNode }) {
     }}
     onPointerLeave={() => setHovered(false)}>
     <div className="sidebar-heading">
-      <Link href="/" className="app-brand" aria-label="checked home" title={collapsed ? "checked" : undefined}><span className="sidebar-logo"><Image src="/brand/checked-face.png" alt="" width={32} height={32} className="sidebar-logo-face" /><Image src="/brand/checked-logo.png" alt="" width={128} height={32} className="sidebar-logo-full" /></span></Link>
+      <Link href="/" className="app-brand" aria-label="checked home" title={collapsed ? "checked" : undefined}><span className="sidebar-logo"><Image src="/brand/checked-face-filled.svg" alt="" width={32} height={32} className="sidebar-logo-face" /><Image src="/brand/checked-logo.png" alt="" width={128} height={32} className="sidebar-logo-full" /></span></Link>
       <button type="button" className="sidebar-toggle" aria-label={pinnedOpen ? "Unpin sidebar" : "Pin sidebar open"} title={pinnedOpen ? "Unpin sidebar" : "Pin sidebar open"} aria-expanded={!collapsed} aria-pressed={pinnedOpen} aria-controls="sidebar-panel" onClick={() => setPinnedOpen((value) => !value)}>
         <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M9 4v16" /><path d={collapsed ? "m13 9 3 3-3 3" : "m16 9-3 3 3 3"} /></svg>
       </button>

@@ -28,9 +28,13 @@ export function ChecklyDashboard({ userId }: { userId: string; firstName: string
     const date = shiftDay(today ?? "2000-01-03", index - 29);
     const entry = ready ? history[date] : undefined;
     const votes = Object.keys(entry?.votes ?? {}).length;
-    const level = entry?.completed || votes >= 10 ? 3 : votes >= 5 ? 2 : votes > 0 ? 1 : 0;
+    const levels = [
+      Math.ceil(Math.min(votes, 3) / 3 * 3),
+      Math.ceil(Math.min(Math.max(votes - 3, 0), 3) / 3 * 3),
+      Math.ceil(Math.min(Math.max(votes - 6, 0), 4) / 4 * 3),
+    ];
     const label = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" }).format(new Date(`${date}T12:00:00Z`));
-    return { date, level, label: `${label}: ${votes} ${votes === 1 ? "vote" : "votes"}${entry?.completed ? ", quest complete" : ""}` };
+    return { date, levels, label: `${label}: ${votes} ${votes === 1 ? "vote" : "votes"}${entry?.completed ? ", quest complete" : ""}` };
   });
   const dateLabel = today ? new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/New_York" }).format(new Date(`${today}T12:00:00Z`)) : "";
   return <main id="main" data-quest-screen="dashboard" className={styles.dashboard}>
@@ -57,9 +61,12 @@ export function ChecklyDashboard({ userId }: { userId: string; firstName: string
     </section>
     <section className={styles.activity} aria-labelledby="activity-title">
       <div className={styles.activityHeading}><h2 id="activity-title">Your activity</h2><span>Last 30 days</span></div>
-      <ol className={styles.heatmap} aria-label="Last 30 days of voting activity">{activity.map(day => <li key={day.date} data-level={day.level} aria-label={day.label} title={day.label}><span className="visually-hidden">{day.label}</span></li>)}</ol>
-      <div className={styles.legend} aria-label="Activity intensity, from fewer votes to more votes"><span>Less</span>{[0, 1, 2, 3].map(level => <i key={level} data-level={level} aria-hidden="true" />)}<span>More</span></div>
+      <div className={styles.activityGrid}>
+        <div className={styles.rowLabels} aria-hidden="true"><span>1–3</span><span>4–6</span><span>7+</span><span className={styles.mobileRow}>1–3</span><span className={styles.mobileRow}>4–6</span><span className={styles.mobileRow}>7+</span></div>
+        <ol className={styles.heatmap} aria-label="Last 30 days of voting activity">{activity.map(day => <li key={day.date} aria-label={day.label} title={day.label}>{day.levels.map((level, row) => <span key={row} data-level={level} aria-hidden="true" />)}</li>)}</ol>
+      </div>
+      <div className={styles.legend} aria-label="Daily voting levels: rows show votes 1 to 3, 4 to 6, and 7 or more; brighter cells mean more votes in that level"><span>Less</span>{[0, 1, 2, 3].map(level => <i key={level} data-level={level} aria-hidden="true" />)}<span>More</span></div>
     </section>
-    <p className={styles.storageNote}>Saved in this browser · Resets at midnight, New York time</p>
+    <p className="visually-hidden">Saved in this browser · Resets at midnight, New York time</p>
   </main>;
 }
