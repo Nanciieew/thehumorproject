@@ -67,3 +67,35 @@
  .heatmap li[aria-current="date"]+li:nth-child(5n) .dateNumber,
  .heatmap li:nth-child(5n):has(+li[aria-current="date"]) .dateNumber { visibility:hidden; }
 }
+
+.invitation { position:fixed;inset:0;margin:auto;width:min(480px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:28px 34px 24px;border:1px solid #e8f04438;border-radius:24px;background:radial-gradient(ellipse at 50% 18%,#e8f0440c,transparent 55%),#181b15;color:#f4f3eb;box-shadow:0 30px 100px #000a,inset 0 1px 0 #ffffff08;text-align:center; }
+.invitation[open] { animation:invitationPop 560ms cubic-bezier(.16,1,.3,1) both; }
+.invitation::backdrop { background:#080b07b8;backdrop-filter:blur(7px); }
+.invitation[open]::backdrop { animation:invitationBackdrop 300ms ease both; }
+.invitationEyebrow { display:flex;align-items:center;justify-content:center;gap:8px;font-size:10px;letter-spacing:.18em;font-weight:650;color:#e8f044; }
+.invitationEyebrow>span { font-size:17px; }
+.invitationArt { position:relative;width:280px;max-width:100%;height:150px;margin:14px auto 16px; }
+.memeLeft,.memeRight { position:absolute;top:15px;display:flex;flex-direction:column;justify-content:space-between;width:116px;height:124px;padding:12px;border:1px solid #ffffff30;border-radius:12px;text-align:left;box-shadow:0 12px 18px #0003; }
+.memeLeft { left:14px;background:#d9e49a;color:#242c15;transform:rotate(-14deg); }
+.memeRight { right:14px;background:#e8e4da;color:#393b35;transform:rotate(13deg); }
+.memeLeft>span,.memeRight>span { font-size:7px;letter-spacing:.12em;font-weight:750; }
+.memeLeft>strong,.memeRight>strong { font-size:36px;letter-spacing:-.08em;font-weight:800;line-height:1; }
+.memeLeft>i,.memeRight>i { align-self:flex-end;font-size:22px;font-style:normal;line-height:1; }
+.questFace { position:absolute;left:calc(50% - 47px);top:37px;width:94px;height:94px;transform:rotate(-7deg);filter:drop-shadow(0 8px 7px #0005); }
+.artSpark { position:absolute;right:15px;top:0;font-size:28px;color:#e8f044;transform:rotate(12deg); }.artSparkSmall { position:absolute;left:0;bottom:0;font-size:27px;color:#e8f044; }
+.invitation[open] .questFace { animation:faceHello 750ms cubic-bezier(.2,.8,.3,1) both; }
+.invitation h2 { font-family:var(--font-inter),sans-serif;text-transform:none;font-size:clamp(28px,4vw,36px);line-height:1.12;font-weight:650;letter-spacing:-.045em; }
+.invitation h2 em { color:#e8f044;font-style:normal; }
+.invitation>p { margin-top:14px;color:#afb5a5;font-size:13px;line-height:1.65; }
+.invitationActions { display:flex;flex-direction:column;align-items:stretch;gap:15px;margin-top:24px; }
+.invitationActions .primary { width:100%;min-height:48px;justify-content:space-between;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:700;box-shadow:0 3px 0 #8d972b; }
+.invitationActions .primary:hover { box-shadow:0 4px 16px #e8f04422; }
+.invitationActions>button { align-self:center;cursor:pointer;font-size:11px;color:#9ba18f;padding:3px 8px; }
+.invitationActions>button:hover { color:#f4f3eb; }
+.invitationActions>button:focus-visible { outline:2px solid var(--accent);outline-offset:4px;border-radius:3px; }
+@keyframes invitationPop { 0% { opacity:0;transform:translateY(26px) scale(.86) rotate(-2deg); } 65% { opacity:1;transform:translateY(-3px) scale(1.025) rotate(.4deg); } 100% { opacity:1;transform:translateY(0) scale(1) rotate(0); } }
+@keyframes faceHello { 0%,20% { opacity:0;transform:translateY(14px) scale(.65) rotate(-22deg); } 70% { opacity:1;transform:translateY(-5px) scale(1.08) rotate(3deg); } 100% { opacity:1;transform:translateY(0) scale(1) rotate(-7deg); } }
+@keyframes invitationBackdrop { from { opacity:0; } to { opacity:1; } }
+@media(max-height:600px) { .invitation { padding:20px 28px; }.invitationArt { height:128px;margin:8px auto 12px; }.memeLeft,.memeRight { top:8px;height:112px; }.questFace { top:25px; }.invitation h2 { font-size:30px; }.invitationActions { margin-top:18px;gap:12px; } }
+@media(max-width:400px) { .invitation { padding-inline:22px; }.invitationArt { width:250px; }.memeLeft { left:10px; }.memeRight { right:10px; }.invitationActions .primary { font-size:13px; } }
+@media(prefers-reduced-motion:reduce) { .invitation[open],.invitation[open]::backdrop,.invitation[open] .questFace { animation:none; } }

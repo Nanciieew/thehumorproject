@@ -123,7 +123,7 @@ export function DailyQuest({ userId }: { userId: string }) {
   }, [vote]);
 
   return <main id="main" data-quest-screen="voting" className={styles.quest}>
-    <header className={styles.heading}><Link href="/" className={styles.back} aria-label="Back to Checkly Quest">←</Link><h1>Daily quest</h1><span>Vote on up to 10 memes</span></header>
+    <header className={styles.heading}><Link href="/" className={styles.back} aria-label="Back to Checkly Quest">←</Link><h1>Daily quest</h1></header>
     <p className={styles.notice} role="status" aria-live="polite">{notice}</p>
     {completed ? <section className={styles.finish} aria-labelledby="quest-complete">
       <span className={styles.badge} aria-hidden="true">✓</span>
@@ -132,8 +132,9 @@ export function DailyQuest({ userId }: { userId: string }) {
       <button className="action-button" onClick={() => { persist({ ...progress, goal: progress.ids.length + 10 }); setExhausted(false); cursor.current = null; setNotice(""); void load(); }}>Keep on going</button>
       <Link href="/" className={styles.galleryLink}>Back to my quest dashboard ↗</Link>
     </section> : empty ? <section className={styles.finish}><h2>No more memes just yet.</h2><p>Come back for new uploads, or explore Checked Gallery.</p><button className="action-button" onClick={() => { setExhausted(false); cursor.current = null; void load(); }}>Check for new memes</button><Link href="/gallery" className={styles.galleryLink}>Checked Gallery ↗</Link></section> : <>
-      <div className={styles.progress}><span>{done} / {total} rated</span><span>{busy ? "Saving…" : "Daily progress"}</span><progress aria-label="Daily quest progress" value={done} max={Math.max(1, total)} /></div>
+      <div className={styles.progress}><span>{done} / {total} rated</span><span>{busy ? "Saving…" : "Daily progress"}</span><div className={styles.progressTrack} aria-hidden="true"><span className={styles.progressFill} data-empty={done === 0} style={{ width: `${Math.min(100, done / Math.max(1, total) * 100)}%` }} /></div><progress className={styles.nativeProgress} aria-label="Daily quest progress" value={done} max={Math.max(1, total)} /></div>
       {photo && <section className={styles.deck} aria-label="Rate this meme" aria-busy={busy}>
+        <button type="button" className={`${styles.voteArrow} ${styles.leftArrow}`} aria-label="Swipe left to downvote" disabled={busy || loading} onClick={() => void vote(-1)}>←</button>
         <article key={photo.id} className={`${styles.card} ${swipe === 1 ? styles.swipeRight : swipe === -1 ? styles.swipeLeft : ""}`} onPointerDown={event => { if (!event.isPrimary || event.button !== 0) return; pointer.current = { x: event.clientX, y: event.clientY, id: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerCancel={() => { pointer.current = null; }} onPointerUp={event => {
           const start = pointer.current; pointer.current = null;
           if (!start || start.id !== event.pointerId) return;
@@ -143,6 +144,7 @@ export function DailyQuest({ userId }: { userId: string }) {
           <div className={styles.image}><Image key={photo.id} src={photo.photo_url} alt={photo.title || `Meme shared by ${photo.contributor_name}`} width={720} height={720} unoptimized draggable={false} /></div>
           <div className={styles.caption}><h2>{photo.title || "Fresh evidence"}</h2><p>By {photo.contributor_name}</p>{photo.description && <p>{photo.description}</p>}</div>
         </article>
+        <button type="button" className={`${styles.voteArrow} ${styles.rightArrow}`} aria-label="Swipe right to upvote" disabled={busy || loading} onClick={() => void vote(1)}>→</button>
         <div className={styles.controls}><button disabled={busy || loading} onClick={() => void vote(-1)} className={styles.down}>↓ Downvote</button><button disabled={busy || loading} onClick={() => void vote(1)} className={styles.up}>↑ Upvote</button></div>
         <p className={styles.hint}>Swipe or use ← / →</p>
       </section>}
