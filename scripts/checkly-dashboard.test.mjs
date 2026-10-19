@@ -9,7 +9,7 @@ globalThis.self = dom.window;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 dom.window.HTMLDialogElement.prototype.showModal = function() { this.setAttribute('open',''); };
 dom.window.HTMLDialogElement.prototype.close = function() { this.removeAttribute('open'); };
-const {render, waitFor, cleanup} = await import('@testing-library/react');
+const {render, waitFor, cleanup, within} = await import('@testing-library/react');
 const {ChecklyDashboard} = await import('../app/checkly-dashboard.tsx');
 afterEach(() => { cleanup(); localStorage.clear(); sessionStorage.clear(); window.history.replaceState(null,'','/'); });
 const day = (completed = true, votes = {}) => ({completed,votes});
@@ -44,7 +44,7 @@ test('dashboard shows all weekly checks and metrics with one direct voting actio
  await waitFor(() => assert.equal(ui.getByRole('link',{name:/Keep voting/}).getAttribute('href'),'/quest'));
  assert.equal(ui.getByText(/Upvotes given/).parentElement.querySelector('strong').textContent,'2');
  assert.equal(ui.getByText(/Downvotes given/).parentElement.querySelector('strong').textContent,'1');
- assert.equal(ui.getAllByRole('listitem').length,7);
+ assert.equal(within(ui.getByRole('list',{name:'Weekly quest completion'})).getAllByRole('listitem').length,7);
  assert.ok(ui.getAllByLabelText(/: completed/).length >= 1);
  assert.equal(ui.queryByRole('dialog'),null);
  assert.equal(ui.getAllByRole('link').length,1);
@@ -54,11 +54,29 @@ test('fresh login goes directly to the dashboard without a blocking invitation',
  const ui = render(React.createElement(ChecklyDashboard,{userId:'alice',firstName:'Alice'}));
  assert.equal(ui.queryByRole('dialog'),null);
  assert.equal(window.location.search,'');
- assert.ok(ui.getByRole('heading',{name:'Checkly Quest.'}));
+ assert.ok(ui.getByRole('heading',{name:'Checkly Quest'}));
 });
 test('dashboard starts with zero activity and gives a direct daily quest action', () => {
  const ui = render(React.createElement(ChecklyDashboard,{userId:'new',firstName:''}));
- assert.equal(ui.getByRole('link',{name:/Start daily quest/}).getAttribute('href'),'/quest');
- assert.equal(ui.getAllByRole('listitem').filter(item=>item.dataset.completed==='true').length,0);
+ assert.equal(ui.getByRole('link',{name:/Start my daily quest/}).getAttribute('href'),'/quest');
+ assert.equal(within(ui.getByRole('list',{name:'Weekly quest completion'})).getAllByRole('listitem').filter(item=>item.dataset.completed==='true').length,0);
  assert.equal(ui.getAllByText('0',{selector:'strong'}).length,4);
+});
+
+test('activity calendar reflects exactly 30 days of saved votes and completion', () => {
+ const today = questDay();
+ const yesterday = shiftDay(today,-1);
+ const votes = Object.fromEntries(Array.from({length:6},(_,i)=>[`vote-${i}`,1]));
+ localStorage.setItem('checked:quest-history:alice',JSON.stringify({[shiftDay(today,-30)]:day(true,{old:1}),[yesterday]:day(false,votes),[today]:day(true,{new:-1})}));
+ const ui = render(React.createElement(ChecklyDashboard,{userId:'alice',firstName:'Alice'}));
+ const cells = within(ui.getByRole('list',{name:'Last 30 days of voting activity'})).getAllByRole('listitem');
+ assert.equal(cells.length,30);
+ assert.equal(cells[28].dataset.level,'2');
+ assert.match(cells[28].getAttribute('aria-label'),/6 votes/);
+ assert.equal(cells[29].dataset.level,'3');
+ assert.match(cells[29].getAttribute('aria-label'),/1 vote, quest complete/);
+ assert.equal(cells.filter(cell=>cell.dataset.level==='3').length,1);
+ assert.equal(cells[0].dataset.level,'0');
+ const week=ui.getByRole('region',{name:'This week'});
+ assert.ok(within(week).getByRole('link',{name:/Keep voting/}));
 });

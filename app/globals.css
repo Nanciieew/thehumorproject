@@ -487,3 +487,6 @@ h1 em { color: var(--coral); font-style: normal; }
 .site-content > main[data-quest-screen] { flex:1;min-height:0; }
 .site-content:has(> main[data-quest-screen]) > .app-footer { display:none; }
 @media(max-height:600px) { .site-content:has(> main[data-quest-screen]) > .app-topbar { display:none; } }
+
+/* The dashboard title already identifies the page. */
+.site-content:has(> main[data-quest-screen="dashboard"]) > .app-topbar { display:none; }

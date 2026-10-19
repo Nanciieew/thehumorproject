@@ -149,7 +149,7 @@ export function DisguiseStudio({ configured, userId }: { configured: boolean; us
           <img key={variant?.url || source?.image} src={variant?.url || source?.image} width="720" height="720" alt={variant ? `AI-generated meme: ${variant.caption}` : "Your uploaded meme picture"} />
           {busy && <div className={styles.working} role="status"><span>✳</span><p>Writing five punchlines.<br />Generating five finished memes.</p><small>This can take a few minutes.</small></div>}
         </div> : <div className={styles.empty}><span aria-hidden="true">✳</span><h3>{busy ? "Five punchlines in production." : "A picture is worth five punchlines."}</h3><p role="status">{reading ? "Reading your picture…" : busy ? "Generating your memes. This can take a few minutes." : "Upload your picture to get started."}</p></div>}
-        {variant && <p className={styles.note}>AI-generated image · Bold white lettering, black outline · Caption {selected + 1} of 5</p>}
+        {variant && <p className={styles.note}>AI-generated image · Bottom caption · White lettering, black outline · Caption {selected + 1} of 5</p>}
       </section>
       <section className={styles.captions} aria-labelledby="captions-title"><div className={styles.panelHeader}><h2 id="captions-title">03 / Pick your punchline</h2><span>5 OPTIONS</span></div>
         <p className={styles.note}>{photoId ? "Your keeper is live. The four unused images were deleted." : "Every caption has its own generated image. Click to try it on."}</p>
