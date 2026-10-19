@@ -490,3 +490,9 @@ h1 em { color: var(--coral); font-style: normal; }
 
 /* The dashboard title already identifies the page. */
 .site-content:has(> main[data-quest-screen="dashboard"]) > .app-topbar { display:none; }
+
+/* Factory upload and editing are separate, viewport-sized screens. */
+.site-content:has(> main[data-factory-screen]) { display:flex;flex-direction:column;height:100dvh;min-height:0; }
+.site-content:has(> main[data-factory-screen]) > .app-topbar,
+.site-content:has(> main[data-factory-screen]) > .app-footer { display:none; }
+.site-content > main[data-factory-screen] { flex:1;min-height:0; }
