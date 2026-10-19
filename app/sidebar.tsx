@@ -7,9 +7,9 @@ import { Icon, Smile } from "./ui";
 
 const links = [
   { href: "/", label: "Checkly Quest", icon: "spark" as const },
-  { href: "/gallery", label: "Checked Gallery", icon: "grid" as const },
   { href: "/disguise", label: "Checked Factory", icon: "mask" as const },
   { href: "/you-are-a-joke", label: "Get Checked", icon: "spark" as const },
+  { href: "/gallery", label: "Checked Gallery", icon: "grid" as const },
   { href: "/my-works", label: "My Checkboard", icon: "works" as const },
 ];
 
