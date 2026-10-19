@@ -17,6 +17,7 @@ export function DailyQuest({ userId }: { userId: string }) {
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [swipe, setSwipe] = useState<1 | -1 | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const cursor = useRef<string | null>(null);
@@ -84,10 +85,12 @@ export function DailyQuest({ userId }: { userId: string }) {
 
   const vote = useCallback(async (value: 1 | -1) => {
     if (!photo || loading || completed || locked.current) return;
-    locked.current = true; setBusy(true); setError("");
+    locked.current = true; setBusy(true); setError(""); setSwipe(value);
+    const animation = new Promise<void>(resolve => window.setTimeout(resolve, window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : 380));
     try {
       const response = await fetch("/api/gallery/vote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ photoId: photo.id, value }) });
       const result = await response.json();
+      await animation;
       if (!response.ok) throw new Error(result.error || "Your vote couldn’t be saved. Please try again.");
       const next = { ...progress, ids: [...progress.ids, photo.id] };
       setProgress(next);
@@ -97,7 +100,7 @@ export function DailyQuest({ userId }: { userId: string }) {
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error && !(cause instanceof TypeError) ? cause.message : "Your vote couldn’t be saved. Please try again.");
-    } finally { locked.current = false; setBusy(false); }
+    } finally { locked.current = false; setBusy(false); setSwipe(null); }
   }, [photo, loading, completed, progress, router]);
 
   useEffect(() => {
@@ -126,7 +129,7 @@ export function DailyQuest({ userId }: { userId: string }) {
       <div className={styles.progress}><span>{done} / {total} rated</span><span>YOUR DAILY DOSE</span><progress aria-label="Daily quest progress" value={done} max={Math.max(1, total)} /></div>
       {photo && <section className={styles.deck} aria-label="Rate this meme" aria-busy={busy}>
         <button className={`${styles.arrow} ${styles.left}`} aria-label="Swipe left to downvote" disabled={busy || loading} onClick={() => void vote(-1)}>←</button>
-        <article className={styles.card} onPointerDown={event => { if (!event.isPrimary || event.button !== 0) return; pointer.current = { x: event.clientX, y: event.clientY, id: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerCancel={() => { pointer.current = null; }} onPointerUp={event => {
+        <article key={photo.id} className={`${styles.card} ${swipe === 1 ? styles.swipeRight : swipe === -1 ? styles.swipeLeft : ""}`} onPointerDown={event => { if (!event.isPrimary || event.button !== 0) return; pointer.current = { x: event.clientX, y: event.clientY, id: event.pointerId }; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerCancel={() => { pointer.current = null; }} onPointerUp={event => {
           const start = pointer.current; pointer.current = null;
           if (!start || start.id !== event.pointerId) return;
           const dx = event.clientX - start.x; const dy = event.clientY - start.y;
