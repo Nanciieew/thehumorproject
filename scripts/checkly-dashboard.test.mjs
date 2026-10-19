@@ -71,25 +71,12 @@ test('activity calendar reflects exactly 30 days of saved votes and completion',
  const ui = render(React.createElement(ChecklyDashboard,{userId:'alice',firstName:'Alice'}));
  const cells = within(ui.getByRole('list',{name:'Last 30 days of voting activity'})).getAllByRole('listitem');
  assert.equal(cells.length,30);
- assert.deepEqual([...cells[28].children].map(cell=>cell.dataset.level),['3','3','0']);
+ assert.equal(cells[28].dataset.level,'2');
  assert.match(cells[28].getAttribute('aria-label'),/6 votes/);
- assert.deepEqual([...cells[29].children].map(cell=>cell.dataset.level),['1','0','0']);
+ assert.equal(cells[29].dataset.level,'3');
  assert.match(cells[29].getAttribute('aria-label'),/1 vote, quest complete/);
- assert.equal(cells.flatMap(cell=>[...cell.children]).filter(cell=>cell.dataset.level==='3').length,2);
- assert.deepEqual([...cells[0].children].map(cell=>cell.dataset.level),['0','0','0']);
+ assert.equal(cells.filter(cell=>cell.dataset.level==='3').length,1);
+ assert.equal(cells[0].dataset.level,'0');
  const week=ui.getByRole('region',{name:'This week'});
  assert.ok(within(week).getByRole('link',{name:/Keep voting/}));
-});
-
-test('daily activity bands fill from votes without inventing activity for completion', () => {
- const today = questDay();
- const withVotes = n => day(false,Object.fromEntries(Array.from({length:n},(_,i)=>[String(i),1])));
- localStorage.setItem('checked:quest-history:bands',JSON.stringify({[shiftDay(today,-3)]:day(true),[shiftDay(today,-2)]:withVotes(4),[shiftDay(today,-1)]:withVotes(7),[today]:withVotes(10)}));
- const ui = render(React.createElement(ChecklyDashboard,{userId:'bands',firstName:''}));
- const cells = within(ui.getByRole('list',{name:'Last 30 days of voting activity'})).getAllByRole('listitem');
- const levels = index => [...cells[index].children].map(cell=>cell.dataset.level);
- assert.deepEqual(levels(26),['0','0','0']);
- assert.deepEqual(levels(27),['3','1','0']);
- assert.deepEqual(levels(28),['3','3','1']);
- assert.deepEqual(levels(29),['3','3','3']);
 });

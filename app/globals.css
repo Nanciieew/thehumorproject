@@ -490,27 +490,3 @@ h1 em { color: var(--coral); font-style: normal; }
 
 /* The dashboard title already identifies the page. */
 .site-content:has(> main[data-quest-screen="dashboard"]) > .app-topbar { display:none; }
-
-/* Navigation proportions and icons from the approved Quest design. */
-@media(min-width:721px) {
- .app-shell:has(.app-sidebar[data-collapsed="true"]) { --sidebar-width:clamp(96px,10.5vw,158px); }
- .app-sidebar { --sidebar-inset:clamp(12px,2.4vw,36px);--sidebar-top:clamp(20px,5.3vh,56px);top:var(--sidebar-top);height:calc(100dvh - 2 * var(--sidebar-top));margin:var(--sidebar-top) var(--sidebar-inset);padding:clamp(16px,2.8vh,30px) 8px 14px;--rail-slot:calc(clamp(96px,10.5vw,158px) - 2 * var(--sidebar-inset) - 18px); }
- .app-sidebar[data-collapsed="true"] { padding:clamp(16px,2.8vh,30px) 8px 14px; }
- .sidebar-heading { grid-template-rows:clamp(36px,6vh,62px);row-gap:0;position:relative; }
- .sidebar-heading .app-brand { grid-row:1; }
- .sidebar-heading .sidebar-logo { margin-left:calc((var(--rail-slot) - clamp(32px,4vw,60px)) / 2);height:clamp(32px,4vw,60px); }
- .sidebar-logo-face { width:clamp(32px,4vw,60px);height:clamp(32px,4vw,60px) !important; }
- .app-sidebar[data-collapsed="true"] .sidebar-logo { width:clamp(32px,4vw,60px); }
- .sidebar-logo-full { top:50%;transform:translateY(-50%); }
- .sidebar-toggle { position:absolute;top:-24px;left:calc((var(--rail-slot) - 24px) / 2);width:24px;height:20px;opacity:0; }
- .app-sidebar:hover .sidebar-toggle,.sidebar-toggle:focus-visible { opacity:1; }
- .app-sidebar .sidebar-links,.app-sidebar[data-collapsed="true"] .sidebar-links { margin-top:clamp(28px,4.5vh,48px);gap:clamp(14px,2.8vh,30px); }
- .app-sidebar .sidebar-links a,.app-sidebar[data-collapsed="true"] .sidebar-links a { min-height:clamp(38px,5.4vh,58px);padding:8px 0;border-radius:12px; }
- .app-sidebar .sidebar-links .ui-icon { width:clamp(18px,2vw,30px);height:clamp(18px,2vw,30px); }
- .app-sidebar .sidebar-account { border-top:0;padding-top:0; }
- .app-sidebar .account-face { width:clamp(34px,3.4vw,50px);height:clamp(34px,3.4vw,50px); }
- .app-sidebar .account-trigger,.app-sidebar[data-collapsed="true"] .account-trigger { padding:3px calc((var(--rail-slot) - clamp(34px,3.4vw,50px)) / 2); }
-}
-.app-sidebar .sidebar-links a.active { background:#e8f04430;border-color:transparent;color:var(--accent); }
-.app-sidebar[data-collapsed] .sidebar-links a { border-radius:12px; }
-.app-sidebar[data-collapsed] .sidebar-links a.active { background:#e8f04430;border-color:transparent;color:var(--accent); }
