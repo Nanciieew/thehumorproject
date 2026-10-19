@@ -62,9 +62,9 @@ export function Onboarding({ firstName, lastName, stateCode, preview = false }: 
       <h2 id="welcome-title" className="text-3xl font-bold">You’re ready for your journey!</h2>
       <p>You completed all three steps. In the real flow, this is when your profile is created and your account unlocks.</p>
       <button onClick={() => { setFinished(false); setPhotoName(""); setFirst(""); setLast(""); setError(""); setStep(0); }} className="rounded-full bg-foreground px-6 py-3 font-semibold text-background">Test again</button>
-      <Link href="/" className="block text-sm underline">Back to Ego Check</Link>
+      <Link href="/" className="block text-sm underline">Back to checked</Link>
     </div> : <>
-    <p className="text-xs font-semibold uppercase tracking-widest opacity-60">Welcome to Ego Check · {step + 1} / 3</p>
+    <p className="text-xs font-semibold uppercase tracking-widest opacity-60">Welcome to checked · {step + 1} / 3</p>
     <div className="my-5 flex gap-2" aria-hidden="true">{[0, 1, 2].map((index) => <span key={index} className={`h-1 flex-1 rounded-full ${index <= step ? "bg-foreground" : "bg-foreground/15"}`} />)}</div>
     <h2 ref={heading} tabIndex={-1} id="welcome-title" className="text-3xl font-bold outline-none">{["What should we call you?", "Identify the usual suspect.", "Where should we send the blame?"][step]}</h2>
     <p className="mt-3 text-sm leading-relaxed opacity-65">{["Every great joke starts with an introduction.", "Add your photo, or save your grand reveal for later.", "Plant your flag. Pick the state you’re repping in our corner of the internet."][step]}</p>

@@ -10,7 +10,7 @@ import Link from "next/link";
 import { DashboardStats } from "./dashboard-stats";
 import styles from "./dashboard.module.css";
 
-export const metadata = { title: "My Damage Report | Ego Check" };
+export const metadata = { title: "My Damage Report | checked" };
 export default async function MyDashboardPage() {
   if (!await getViewer()) redirect("/login");
   const [works, summary] = await Promise.all([readWorks(), readDashboard().catch(() => null)]);

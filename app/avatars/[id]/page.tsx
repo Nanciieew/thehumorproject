@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { readPublicAvatar } from "@/lib/gallery-avatar";
 import styles from "./avatar.module.css";
 
-export const metadata = { title: "Avatar Details | Ego Check" };
+export const metadata = { title: "Avatar Details | checked" };
 
 export default async function AvatarPage({ params }: { params: Promise<{ id: string }> }) {
   const avatar = await readPublicAvatar((await params).id);

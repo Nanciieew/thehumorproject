@@ -63,10 +63,9 @@ export function GuestLanding() {
 
   return <main id="main" className={styles.landing} data-guest-landing>
     <div className={styles.topline}>
-      <Link href="/" className={styles.wordmark} aria-label="Ego Check home">
+      <Link href="/" className={styles.wordmark} aria-label="checked home">
         <svg viewBox="0 0 1440 420" fill="none" aria-hidden="true" focusable="false">
-          <text x="12" y="365" textLength="500" lengthAdjust="spacingAndGlyphs">EGO</text>
-          <text x="545" y="365" textLength="880" lengthAdjust="spacingAndGlyphs" className={styles.brandAccent}>CHECK</text>
+          <text x="12" y="365" textLength="1413" lengthAdjust="spacingAndGlyphs" className={styles.brandAccent}>checked</text>
         </svg>
       </Link>
     </div>

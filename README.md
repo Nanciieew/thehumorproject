@@ -1,4 +1,4 @@
-# Ego Check
+# checked
 
 Finally, an app that sees the problem.
 
@@ -103,7 +103,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-The interface uses locally hosted Inter and Anton fonts through `next/font/local`. Their SIL Open Font Licenses are included in `app/fonts`. The interface uses dark ink surfaces, chrome details and acid-yellow accents. The gallery uses one responsive grid, and the sidebar links Get Checked, Disguise My Ego, The Arena, Public Evidence, Hall of Shame and My Damage Report.
+The interface uses locally hosted Inter and Anton fonts through `next/font/local`. Their SIL Open Font Licenses are included in `app/fonts`. The interface uses dark ink surfaces, chrome details and acid-yellow accents. The gallery uses one responsive grid, and the sidebar starts with Daily Quest and Public Evidence, followed by Get Checked, Disguise My Ego, The Arena, Hall of Shame and My Damage Report.
 
 ## Avatar Gallery
 
@@ -382,9 +382,9 @@ aggregate SQL and permissions are also covered by `npm run test:leaderboard-db`.
 The live integration script `scripts/test-leaderboard.mjs` verifies the dashboard
 page and endpoint with temporary fixtures that are removed afterward.
 
-## Ego Check — deployment and new competition features
+## checked — deployment and new competition features
 
-Ego Check replaces the home gallery with **Get Checked**, the consent-first
+checked replaces the home gallery with **Get Checked**, the consent-first
 webcam roast experience. Each click requests one roast attempt, then pauses until
 the user chooses “Hurt my feelings again.” A completed live roast reveals the
 **Challenge a friend** button in the top-right corner of the camera display; it
@@ -517,3 +517,9 @@ storage checks. `scripts/test-disguise-live.mjs` makes one real provider request
 with a synthetic illustrated face and a disposable account, then removes its
 private output and account; run with `DISGUISE_TEST_URL=http://localhost:3011 node
 --conditions=react-server --env-file=.env.local --import tsx scripts/test-disguise-live.mjs`.
+
+## Daily Quest
+
+Signed-in users land on Daily Quest at `/`. Memes follow the shared gallery’s newest-publication order. Right arrow, right swipe, and Upvote save an upvote; left arrow, left swipe, and Downvote save a downvote through `/api/gallery/vote`. Only successful saves advance progress. Each batch includes up to 10 memes, with a completion message and Keep on going to rate another batch without repeating that day’s rated memes. Browser storage retains progress per account and New York calendar day; progress is local to that browser. Public Evidence refreshes on entry after quest voting and uses the same persisted votes. The roast studio remains available at `/you-are-a-joke`, including challenge invitations.
+
+Run `npm run test:daily-quest` for voting, swipes, short feeds, continuation, retry, and progress restoration checks.

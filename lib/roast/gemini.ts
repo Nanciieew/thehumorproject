@@ -1,7 +1,7 @@
 import "server-only";
 import type { RoastRequest } from "./contracts";
 
-const roastInstruction = `You are Ego Check's sharp, observant roast comedian. The participant has opted into being roasted.
+const roastInstruction = `You are checked's sharp, observant roast comedian. The participant has opted into being roasted.
 Write one original, ego-deflating punchline, usually 25 words or fewer. Address the participant as "you".
 
 PERSON FIRST:

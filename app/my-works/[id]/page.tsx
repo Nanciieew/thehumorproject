@@ -5,7 +5,7 @@ import { getViewer } from "@/lib/auth/profile";
 import { readWork } from "@/lib/works";
 import { CaptionEditor } from "./caption-editor";
 
-export const metadata = { title: "Edit Work | Ego Check" };
+export const metadata = { title: "Edit Work | checked" };
 export default async function WorkPage({ params }: { params: Promise<{ id: string }> }) {
   if (!await getViewer()) redirect("/login");
   const work = await readWork((await params).id); if (!work) notFound();

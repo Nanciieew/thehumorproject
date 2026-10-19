@@ -5,7 +5,7 @@ import type { Battle } from "@/lib/ego/types";
 import { isUuid } from "@/lib/gallery-types";
 import { notFound } from "next/navigation";
 import { BattleView } from "./view";
-export const metadata = { title: "Battle | Ego Check" };
+export const metadata = { title: "Battle | checked" };
 export default async function BattlePage({ params }: { params: Promise<{ id: string }> }) {
   const {id}=await params; if(!isUuid(id)) notFound(); const viewer=await getViewer();
   const battle = await egoRead<Battle>("battle",{id}).catch(() => null);

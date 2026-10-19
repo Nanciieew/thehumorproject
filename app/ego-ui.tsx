@@ -9,7 +9,7 @@ export function ShareLink({ path, label = "Copy invitation" }: { path: string; l
   async function share() {
     const url = new URL(path, window.location.origin).href;
     try {
-      if (navigator.share) await navigator.share({ title: "Ego Check", text: "I got checked. Your ego is next.", url });
+      if (navigator.share) await navigator.share({ title: "checked", text: "I got checked. Your ego is next.", url });
       else { await navigator.clipboard.writeText(url); setMessage("Invitation copied."); }
     } catch (e) {
       if (!(e instanceof DOMException && e.name === "AbortError")) setMessage(`Share this link: ${url}`);

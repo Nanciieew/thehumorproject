@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   } catch { return error("INVALID_REQUEST", "Use 1–3 recent JPEG snapshots under 200 KB and 640 pixels each.", 400); }
   let lock;
   try { lock = await acquireSharedSession(viewer.user.id, body.sessionId); }
-  catch { return error("PROVIDER_UNAVAILABLE", "Shared roast storage is unavailable. Install the Ego Check database migration.", 503); }
+  catch { return error("PROVIDER_UNAVAILABLE", "Shared roast storage is unavailable. Install the checked database migration.", 503); }
   if (!lock) return error("RATE_LIMITED", "Please wait a moment before trying again.", 429);
   try {
     const signal = request.signal;

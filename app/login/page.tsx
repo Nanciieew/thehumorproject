@@ -11,9 +11,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (viewer && !error) redirect(returnPath(next));
   return (
     <main id="main" className="login-page">
-      <Link href="/" className="text-sm opacity-70 hover:underline">← Back to Ego Check</Link>
+      <Link href="/" className="text-sm opacity-70 hover:underline">← Back to checked</Link>
       <section className="login-panel">
-        <p className="eyebrow">Ego Check</p>
+        <p className="eyebrow">checked</p>
         <PlayfulTitle text="Accountability starts here." />
         <p className="mt-3 leading-relaxed opacity-70">Log in or join with your Google account. No new password to remember.</p>
         {error && <p role="alert" className="mt-5 text-sm text-red-600 dark:text-red-400">{error === "logout" ? "We couldn’t log you out. Please try again." : "Google sign-in wasn’t completed. Please try again."}</p>}

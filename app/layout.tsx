@@ -14,7 +14,7 @@ const inter = localFont({ src: "./fonts/inter.ttf", variable: "--font-inter", we
 const anton = localFont({ src: "./fonts/anton.ttf", variable: "--font-anton", weight: "400", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Ego Check | Finally, an app that sees the problem",
+  title: "checked | Finally, an app that sees the problem",
   description: "Get roasted, challenge a friend, and let the crowd decide who got cooked harder.",
 };
 
@@ -36,7 +36,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <AppHeader>{!viewer ? <AccountMenu signedIn={false} name="" initials="" photoUrl={null} /> : undefined}</AppHeader>
             {!viewer && <nav className="ego-guest-nav" aria-label="Public navigation"><Link href="/">Get Checked</Link><Link href="/challenges">The Arena</Link><Link href="/gallery">Public Evidence</Link><Link href="/leaderboard">Hall of Shame</Link></nav>}
             {children}
-            <footer className="app-footer"><Link href="/">EGO CHECK <span>© 2026</span></Link><Link href={viewer ? "/profile" : "/login"}>{viewer ? "Profile" : "Sign in"}</Link></footer>
+            <footer className="app-footer"><Link href="/">checked <span>© 2026</span></Link><Link href={viewer ? "/profile" : "/login"}>{viewer ? "Profile" : "Sign in"}</Link></footer>
           </div>
         </div>
         {session && !viewer && <Onboarding firstName={profile?.first_name ?? ""} lastName={profile?.last_name ?? ""} stateCode={profile?.state_code ?? ""} />}

@@ -5,7 +5,7 @@ export class EgoError extends Error {}
 export async function egoRead<T>(action: string, data: object = {}): Promise<T> {
   const auth = await createAuthClient();
   const result = await auth.rpc("ego_action", { p_action: action, p_data: data });
-  if (result.error) throw new EgoError(result.error.code === "42501" ? "This challenge or action is not available to your account." : result.error.code === "PGRST202" ? "Ego Check’s database update is not installed yet." : "This action couldn’t be completed. Refresh and try again.");
+  if (result.error) throw new EgoError(result.error.code === "42501" ? "This challenge or action is not available to your account." : result.error.code === "PGRST202" ? "checked’s database update is not installed yet." : "This action couldn’t be completed. Refresh and try again.");
   return result.data as T;
 }
 export async function egoServer<T>(user: string | null, action: string, data: object): Promise<T> {

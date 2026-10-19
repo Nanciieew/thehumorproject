@@ -138,6 +138,7 @@ function GalleryFeed({ sort, search, kind, initial, signedIn, requestLogin }: { 
         if (!stopped) setRefreshing(false);
       }
     };
+    try { if (sessionStorage.getItem("checked:gallery-votes-changed")) void refresh(); } catch { /* Focus refresh remains available. */ }
     const timer = window.setInterval(() => void refresh(), 15_000);
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
