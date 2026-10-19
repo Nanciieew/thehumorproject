@@ -29,7 +29,7 @@ test('ten successful votes complete a quest; keep going starts the remaining mem
   await waitFor(() => assert.ok(ui.getByRole('heading', {name:`Meme ${i}`,exact:true})));
   fireEvent.click(ui.getByRole('button',{name:'↑ Upvote'}));
  }
- await waitFor(() => assert.ok(ui.getByRole('heading',{name:/Congrats/})));
+ await waitFor(() => assert.ok(ui.getByRole('heading',{name:/Quest complete/})));
  assert.equal(calls.length,10);
  assert.equal(questSummary(readQuestHistory("tester")).completedToday,true);
  assert.equal(questSummary(readQuestHistory("tester")).upvotes,10);
@@ -44,7 +44,7 @@ test('short quests finish after all available memes and do not repeat them', asy
  fireEvent.keyDown(window,{key:'ArrowRight'});
  await waitFor(() => assert.ok(ui.getByRole('heading',{name:'Meme 1',exact:true})));
  fireEvent.keyDown(window,{key:'ArrowLeft'});
- await waitFor(() => assert.ok(ui.getByRole('heading',{name:/Congrats/})));
+ await waitFor(() => assert.ok(ui.getByRole('heading',{name:/Quest complete/})));
  assert.deepEqual(calls.map(call => call.value),[1,-1]);
  assert.equal(questSummary(readQuestHistory("tester")).completedToday,true);
  fireEvent.click(ui.getByRole('button',{name:'Keep on going'}));
@@ -62,19 +62,19 @@ test('failed votes leave the same meme and progress available for retry', async 
  assert.equal(questSummary(readQuestHistory("tester")).upvotes,0);
  assert.equal(questSummary(readQuestHistory("tester")).completedToday,false);
 });
-test('left and right arrow buttons persist opposite vote values', async () => {
+test('the two voting controls persist opposite values without duplicate arrow buttons', async () => {
  const {ui,calls} = setup(2);
  await waitFor(() => assert.ok(ui.getByRole('heading',{name:'Meme 0',exact:true})));
- fireEvent.click(ui.getByRole('button',{name:'Swipe left to downvote'}));
+ fireEvent.click(ui.getByRole('button',{name:'↓ Downvote'}));
  await waitFor(() => assert.ok(ui.getByRole('heading',{name:'Meme 1',exact:true})));
- fireEvent.click(ui.getByRole('button',{name:'Swipe right to upvote'}));
- await waitFor(() => assert.ok(ui.getByRole('heading',{name:/Congrats/})));
+ fireEvent.click(ui.getByRole('button',{name:'↑ Upvote'}));
+ await waitFor(() => assert.ok(ui.getByRole('heading',{name:/Quest complete/})));
  assert.deepEqual(calls.map(call=>call.value),[-1,1]);
 });
 test('empty feeds offer a refresh and gallery link without a false completion', async () => {
  const {ui} = setup(0);
  await waitFor(() => assert.ok(ui.getByRole('heading',{name:'No more memes just yet.'})));
- assert.equal(ui.queryByRole('heading',{name:/Congrats/}),null);
+ assert.equal(ui.queryByRole('heading',{name:/Quest complete/}),null);
  assert.equal(ui.getByRole('link',{name:/Checked Gallery/}).getAttribute('href'),'/gallery');
 });
 test('horizontal swipes save votes and vertical gestures do not', async () => {
@@ -92,7 +92,7 @@ test('horizontal swipes save votes and vertical gestures do not', async () => {
  swipe(100,5);
  await waitFor(() => assert.ok(ui.getByRole('heading',{name:'Meme 1',exact:true})));
  swipe(-100,5);
- await waitFor(() => assert.ok(ui.getByRole('heading',{name:/Congrats/})));
+ await waitFor(() => assert.ok(ui.getByRole('heading',{name:/Quest complete/})));
  assert.deepEqual(calls.map(call=>call.value),[1,-1]);
 });
 test('daily progress survives remounting without repeating the voted meme', async () => {

@@ -404,7 +404,7 @@ Evidence**); `/you-are-a-joke` redirects home. `/challenges` is **The Arena**,
 relationships remain available in the challenge picker.
 All public and signed-in pages share the dark ink, chrome and acid-yellow design.
 The existing dashboard keeps its actual photo/vote/revenue calculations.
-Marketplace and the former Image Studio remain removed. `/disguise` is the dedicated **Checked Factory** character-portrait page.
+Marketplace and the former Image Studio remain removed. `/disguise` is the **Checked Factory** meme-caption page.
 
 ### Database setup (required before deployment)
 
@@ -499,24 +499,21 @@ hosting logs/error capture.
 
 ## Checked Factory
 
-The signed-in `/disguise` page uses the existing server-only `ARK_API_KEY` and
-`doubao-seedream-5-0-flash-260915` image API. Users can upload a JPG/PNG selfie,
-choose a cartoon/anime/comic/clay style or write their own prompt, and explicitly
-consent before sending the photo to Doubao. Outputs are still character portraits,
-saved privately in My Checkboard. Publishing a generated image to Public
-Evidence requires separate approval and keeps ordinary gallery voting.
+The signed-in `/disguise` page accepts a still JPG/PNG meme picture up to 2 MB and an optional joke direction. After explicit consent, Gemini (`GEMINI_API_KEY`, `GEMINI_MODEL`) writes five distinct captions. Doubao Seedream (`ARK_API_KEY`) generates five separate finished images from the uploaded reference, each with its own caption rendered as bold white Impact-style lettering with a thick black outline. The displayed preview is the image-model output; the browser does not draw a text overlay. Model-rendered lettering may vary, so users review each image before publishing.
 
-The post-roast camera button transfers its selected snapshot through a short-lived
-browser-memory draft. Raw selfies are never written to localStorage, sessionStorage,
-URLs or the app database. Reloading the page requires choosing the photo again.
-No camera opens on the disguise page. Cancelling or leaving invalidates late results.
+The five previews are held privately in `generated-images/<user>/factory/<batch>/<index>.webp`, with owner-scoped metadata in the server-only `factory_batches` table. Switching caption choices only swaps cached previews and makes no new model request. The browser preloads those images and remembers only the batch ID in account-scoped session storage; uploaded picture data stays in browser memory until generation. A camera snapshot can still transfer from Get Checked through the existing short-lived in-memory draft.
 
-Run `npm run test:disguise`, `npm run test:images-reference`, and
-`npm run test:images-media` for UI/provider validation, reference bounds and private
-storage checks. `scripts/test-disguise-live.mjs` makes one real provider request
-with a synthetic illustrated face and a disposable account, then removes its
-private output and account; run with `DISGUISE_TEST_URL=http://localhost:3011 node
---conditions=react-server --env-file=.env.local --import tsx scripts/test-disguise-live.mjs`.
+Apply `supabase/migrations/20261019000000_factory_batches.sql` before using the factory. With a valid management token in `.env.local`, run:
+
+```sh
+node --env-file=.env.local scripts/factory-migrate.mjs --apply
+```
+
+Publication requires separate approval. An atomic batch claim fixes one caption, creates one private `images` record, and publishes it through the existing gallery pipeline. After publication, the other four previews are deleted; only the keeper appears in My Checkboard. Duplicate publication and cleanup retries reuse the same image ID. Cleanup failure remains visible and retryable, including after restoring a batch. One active generation per account prevents overlapping generation jobs. If any image fails, all partial outputs are removed after the other jobs settle.
+
+Previews expire after 24 hours. The existing authenticated daily maintenance cron retries expired/abandoned cache deletion and preserves private originals of already published memes. Starting another batch discards the previous previews. Cancelling invalidates late UI results, aborts the generation request, and asks the server to discard its batch.
+
+Run `npm run test:factory` for UI, provider orchestration, account isolation, selection races, failed generation, cleanup retries, and database privacy checks. These tests use fixtures and do not incur provider charges. The older `test:disguise` and legacy single-image API remain available for regression checks; `scripts/test-disguise-live.mjs` exercises only that legacy API.
 
 ## Checkly Quest
 

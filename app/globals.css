@@ -480,3 +480,10 @@ h1 em { color: var(--coral); font-style: normal; }
 .app-sidebar[data-collapsed="true"] .sidebar-logo { width: 32px; }
 .app-sidebar[data-collapsed="true"] .sidebar-logo-face { opacity: 1; }
 .app-sidebar[data-collapsed="true"] .sidebar-logo-full { opacity: 0; }
+
+/* Quest screens share a viewport-sized workspace instead of repeating site chrome. */
+.site-content:has(> main[data-quest-screen]) { display:flex;flex-direction:column;height:100dvh;min-height:0; }
+.site-content:has(> main[data-quest-screen]) > .app-topbar { flex-shrink:0;height:48px; }
+.site-content > main[data-quest-screen] { flex:1;min-height:0; }
+.site-content:has(> main[data-quest-screen]) > .app-footer { display:none; }
+@media(max-height:600px) { .site-content:has(> main[data-quest-screen]) > .app-topbar { display:none; } }

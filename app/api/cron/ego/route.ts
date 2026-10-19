@@ -1,3 +1,4 @@
+import { cleanupFactoryBatches } from "@/lib/factory/server";
 import { supabase } from "@/lib/supabase";
 export async function GET(request: Request) {
   if (!process.env.CRON_SECRET || request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) return new Response(null, { status: 401 });
@@ -10,5 +11,7 @@ export async function GET(request: Request) {
     const confirmed = await supabase.from("ego_media_gc").delete().in("path", paths.slice(i, i + 100));
     if (confirmed.error) return Response.json({ error: "Cleanup confirmation failed." }, { status: 503 });
   }
+  try { await cleanupFactoryBatches(); }
+  catch { return Response.json({ error: "Factory preview cleanup failed; it will retry." }, { status: 503 }); }
   return Response.json({ ok: true, removed: paths.length });
 }

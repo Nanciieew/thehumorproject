@@ -1,121 +1,161 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { peekDisguiseDraft, clearDisguiseDraft } from "@/lib/disguise-draft";
 import { isUuid } from "@/lib/gallery-types";
+import type { FactoryPreview } from "@/lib/factory/types";
 import { PhotoInput } from "../photo-input";
 import styles from "./studio.module.css";
 
-const presets = [
-  ["3D cartoon", "3D animated-film character, oversized expressive eyes, mischievous grin, acid-yellow jacket, dark studio backdrop."],
-  ["Anime", "Hand-drawn anime protagonist, dramatic ink lines, wind-swept hair, cinematic colors and a rebellious pose."],
-  ["Comic book", "Graphic-novel antihero, bold black outlines, halftone shading, acid-yellow accents and an absurdly confident pose."],
-  ["Claymation", "Handmade clay-animation character, visible sculpted textures, expressive face and a comically oversized ego."],
-];
-type Result = { generationId: string; url: string };
-export function DisguiseStudio({ configured }: { configured: boolean }) {
+export function DisguiseStudio({ configured, userId }: { configured: boolean; userId: string }) {
   const [source, setSource] = useState<{ image: string; name: string } | null>(() => peekDisguiseDraft());
-  const [fileName, setFileName] = useState(source?.name ?? "");
-  const [prompt, setPrompt] = useState(presets[0][1]);
+  const [fileName, setFileName] = useState("");
+  const [direction, setDirection] = useState("");
   const [consent, setConsent] = useState(false);
+  const [approved, setApproved] = useState(false);
   const [reading, setReading] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [publicApproval, setPublicApproval] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [result, setResult] = useState<FactoryPreview | null>(null);
+  const [selected, setSelected] = useState(0);
   const [photoId, setPhotoId] = useState("");
-  const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
   const [publishError, setPublishError] = useState("");
-  const generation = useRef(0), fileVersion = useRef(0);
+  const [recoverable, setRecoverable] = useState(false);
   const request = useRef<AbortController | null>(null);
   const reader = useRef<FileReader | null>(null);
-  const active = useRef(false), inFlight = useRef(false), publishingRef = useRef(false);
+  const mounted = useRef(false), inFlight = useRef(false), publishingRef = useRef(false);
+  const batchId = useRef<string | null>(null), version = useRef(0);
+  const storageKey = `checked:factory-batch:${userId}`;
+  function remember(id: string | null) {
+    batchId.current = id;
+    try { if (id) sessionStorage.setItem(storageKey, id); else sessionStorage.removeItem(storageKey); } catch { /* The active batch still works without storage. */ }
+  }
+  function acceptPreview(data: FactoryPreview) {
+    if (!isUuid(data.id) || !Array.isArray(data.variants) || data.variants.length !== 5 || data.variants.some(variant => typeof variant.caption !== "string" || typeof variant.url !== "string" || (variant.url && !variant.url.startsWith("https://")))) throw new Error("The previews couldn’t be loaded. Please try again.");
+    setResult(data); setSelected(data.selected ?? 0); setConfirmed(data.selected !== null); setPhotoId(data.photoId ?? ""); setRecoverable(false);
+  }
+  const restore = useCallback(async (id: string, signal?: AbortSignal) => {
+    const token = version.current;
+    setBusy(true); setError("");
+    try {
+      const response = await fetch(`/api/factory/${id}`, { cache: "no-store", signal });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Couldn’t restore your previews.");
+      if (mounted.current && token === version.current && !signal?.aborted) acceptPreview(data);
+    } catch (cause) {
+      if (mounted.current && token === version.current && !signal?.aborted) { setError(cause instanceof Error && !(cause instanceof TypeError) ? cause.message : "Couldn’t load your previews. Please try again."); setRecoverable(true); }
+    } finally { if (mounted.current && token === version.current && !signal?.aborted) setBusy(false); }
+  }, []);
   useEffect(() => { if (source) clearDisguiseDraft(source.image); }, [source]);
   useEffect(() => {
-    active.current = true;
-    return () => { active.current = false; request.current?.abort(); reader.current?.abort(); };
-  }, []);
+    mounted.current = true;
+    const controller = new AbortController();
+    let savedId: string | null = null;
+    try { savedId = sessionStorage.getItem(storageKey); } catch { /* Browser storage is optional. */ }
+    const timer = window.setTimeout(() => {
+      if (isUuid(savedId) && !inFlight.current) { batchId.current = savedId; void restore(savedId, controller.signal); }
+    }, 0);
+    return () => { mounted.current = false; window.clearTimeout(timer); controller.abort(); request.current?.abort(); reader.current?.abort(); };
+  }, [storageKey, restore]);
+  useEffect(() => {
+    if (!result) return;
+    const previews = result.variants.filter(variant => variant.url).map(variant => {
+      const image = new window.Image(); image.src = variant.url; return image;
+    });
+    return () => { for (const image of previews) image.src = ""; };
+  }, [result]);
+  async function discard(id: string) {
+    const response = await fetch(`/api/factory/${id}`, { method: "DELETE" });
+    if (!response.ok && response.status !== 404 && response.status !== 410) {
+      const data = await response.json(); throw new Error(data.error || "Couldn’t clear the previous previews. Please retry.");
+    }
+  }
   function choosePhoto(file: File | null) {
-    const token = ++fileVersion.current; reader.current?.abort();
-    setSource(null); setConsent(false); setResult(null); setPhotoId(""); setPublicApproval(false); setError(""); setReading(false);
+    const token = ++version.current; reader.current?.abort();
+    setSource(null); setResult(null); setPhotoId(""); setConfirmed(false); setApproved(false); setConsent(false); setError(""); setReading(false);
     if (!file) return;
-    if (!["image/jpeg", "image/png"].includes(file.type) || !file.size || file.size > 2 * 1024 * 1024) { setError("Choose a JPG or PNG selfie up to 2 MB."); return; }
+    if (!["image/jpeg", "image/png"].includes(file.type) || !file.size || file.size > 2 * 1024 * 1024) { setError("Choose a JPG or PNG meme picture up to 2 MB."); return; }
     setReading(true);
     const next = new FileReader(); reader.current = next;
     next.onload = () => {
-      if (!active.current || token !== fileVersion.current) return;
+      if (!mounted.current || token !== version.current) return;
       setReading(false);
-      if (typeof next.result !== "string") { setError("Couldn’t read this photo. Choose another file."); return; }
+      if (typeof next.result !== "string") { setError("Couldn’t read that picture. Try another file."); return; }
       setSource({ image: next.result, name: file.name });
     };
-    next.onerror = () => { if (active.current && token === fileVersion.current) { setReading(false); setError("Couldn’t read this photo. Choose another file."); } };
+    next.onerror = () => { if (mounted.current && token === version.current) { setReading(false); setError("Couldn’t read that picture. Try another file."); } };
     next.readAsDataURL(file);
   }
-  function cancel() {
-    generation.current++; request.current?.abort(); request.current = null; inFlight.current = false; setBusy(false);
-    setError("Generation cancelled. Any result already completed is saved in My Checkboard.");
-  }
   async function generate() {
-    if (inFlight.current || !source || !consent || !prompt.trim() || !configured) return;
-    const token = ++generation.current; const controller = new AbortController(); request.current = controller;
-    inFlight.current = true; setBusy(true); setError(""); setResult(null); setPhotoId(""); setPublicApproval(false); setPublishError("");
+    if (!source || !consent || !configured || inFlight.current || publishingRef.current) return;
+    inFlight.current = true; setBusy(true); setGenerating(true); setError(""); setPublishError("");
+    const token = ++version.current;
+    const controller = new AbortController(); request.current = controller;
     try {
-      const response = await fetch("/api/images", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ purpose: "disguise", image: source.image, prompt: prompt.trim(), approved: true }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(180_000)]) });
+      if (batchId.current) await discard(batchId.current);
+      if (!mounted.current || token !== version.current) return;
+      setResult(null); setPhotoId(""); setConfirmed(false); setApproved(false); setRecoverable(false);
+      const id = crypto.randomUUID(); remember(id);
+      const response = await fetch("/api/factory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, image: source.image, direction: direction.trim(), approved: true }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(190_000)]) });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Couldn’t generate your character. Please try again.");
-      if (!isUuid(data.generationId) || typeof data.url !== "string" || !data.url.startsWith("https://")) throw new Error("The generated preview is unavailable. Check My Checkboard.");
-      if (active.current && token === generation.current) setResult({ generationId: data.generationId, url: data.url });
-    } catch (e) { if (active.current && token === generation.current && !controller.signal.aborted) setError(e instanceof Error && !(e instanceof TypeError) ? e.message : "Couldn’t generate your character. Please try again."); }
-    finally { if (active.current && token === generation.current) { inFlight.current = false; request.current = null; setBusy(false); } }
+      if (!response.ok) throw new Error(data.error || "Couldn’t generate your memes. Please try again.");
+      if (mounted.current && token === version.current) acceptPreview(data);
+    } catch (cause) {
+      if (mounted.current && token === version.current && !controller.signal.aborted) { setError(cause instanceof Error && !(cause instanceof TypeError) ? cause.message : "Couldn’t finish this batch. Try loading its previews before generating again."); setRecoverable(!!batchId.current); }
+    } finally { if (mounted.current && token === version.current) { inFlight.current = false; setBusy(false); setGenerating(false); request.current = null; } }
+  }
+  async function cancel() {
+    version.current++; request.current?.abort(); inFlight.current = false;
+    const id = batchId.current;
+    setBusy(false); setGenerating(false); setError("Generation cancelled.");
+    if (id) try { await discard(id); remember(null); setRecoverable(false); } catch { setError("Generation stopped here. Cached previews will expire automatically."); }
   }
   async function publish() {
-    if (!result || !publicApproval || publishingRef.current || photoId) return;
-    publishingRef.current = true; setPublishing(true); setPublishError("");
+    if (!result || !approved || publishingRef.current || photoId || busy) return;
+    publishingRef.current = true; setPublishing(true); setConfirmed(true); setPublishError("");
+    const index = selected;
     try {
-      const response = await fetch("/api/gallery/publish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assetId: result.generationId, source: "generated" }) });
+      const response = await fetch(`/api/factory/${result.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ selected: index, approved: true }) });
       const data = await response.json();
-      if (!response.ok || !isUuid(data.photoId)) throw new Error(data.error || "Couldn’t publish this character. Please try again.");
-      if (active.current) setPhotoId(data.photoId);
-    } catch (e) { if (active.current) setPublishError(e instanceof Error && !(e instanceof TypeError) ? e.message : "Couldn’t publish this character. Please try again."); }
-    finally { publishingRef.current = false; if (active.current) setPublishing(false); }
+      if (!response.ok || !isUuid(data.photoId)) throw new Error(data.error || "Couldn’t publish your meme. Please retry.");
+      if (mounted.current) {
+        setPhotoId(data.photoId);
+        setResult(previous => previous ? { ...previous, selected: index, photoId: data.photoId, variants: previous.variants.map((variant, position) => position === index ? variant : { ...variant, url: "" }) } : previous);
+        try { sessionStorage.setItem("checked:gallery-votes-changed", "1"); } catch { /* The gallery also refreshes on focus. */ }
+      }
+    } catch (cause) { if (mounted.current) setPublishError(cause instanceof Error && !(cause instanceof TypeError) ? cause.message : "Publishing could not be confirmed. Retry with this caption to finish publishing and cleanup."); }
+    finally { publishingRef.current = false; if (mounted.current) setPublishing(false); }
   }
   const locked = busy || publishing;
-  return <main id="main" className="ego-page">
-    <header className="ego-hero"><p className="eyebrow">CHECKED FACTORY</p><h1>New face.<br /><em>Same problem.</em></h1><p>Turn your selfie into a cartoon character. The ego comes free.</p></header>
-    <div className={styles.layout}>
-      <section className={`ego-panel ${styles.panel}`} aria-label="Character settings">
-        <h2>Pick your alibi.</h2>
-        <p className="ego-note">Your selfie</p>
-        {source ? <div className={styles.source}>
+  const variant = result?.variants[selected];
+  return <main id="main" className={styles.factory}>
+    <header className={styles.hero}><p className={styles.eyebrow}>CHECKED FACTORY</p><h1>Your picture.<br /><em>Five ways to get checked.</em></h1><p>Upload a meme picture. We’ll find five punchlines and make five finished memes. You pick the keeper.</p></header>
+    <section className={styles.upload} aria-labelledby="upload-title">
+      <div><h2 id="upload-title">01 / Supply the evidence</h2><PhotoInput fileName={fileName} onSelect={setFileName} onFile={choosePhoto} accept="image/jpeg,image/png" disabled={locked || reading} label="Choose meme picture" describedBy="factory-photo-help" /><p id="factory-photo-help" className={styles.note}>JPG or PNG · Up to 2 MB</p></div>
+      <div className={styles.direction}><label htmlFor="factory-direction">Give the jokes a direction <span>(optional)</span></label><input id="factory-direction" maxLength={500} placeholder="e.g. finals week, awkward dates, office life…" value={direction} disabled={locked} onChange={event => { setDirection(event.target.value); setConsent(false); }} /></div>
+      <div className={styles.generate}><label className={styles.consent}><input type="checkbox" checked={consent} disabled={!source || locked} onChange={event => setConsent(event.target.checked)} />Send this picture to Gemini for captions and Doubao for five captioned images.</label><button className={styles.primary} disabled={!configured || !source || !consent || reading || locked} onClick={() => void generate()}>{busy ? "Making your five memes…" : result ? "Generate five new memes ↗" : "Generate five memes ↗"}</button>{generating && <button className={styles.textButton} onClick={() => void cancel()}>Cancel generation</button>}</div>
+    </section>
+    {!configured && <p role="alert" className={styles.error}>Caption and image generation must both be configured.</p>}
+    {error && <div role="alert" className={styles.error}><p>{error}</p>{recoverable && !busy && <button className={styles.textButton} onClick={() => { if (batchId.current) void restore(batchId.current); }}>Load cached previews</button>}</div>}
+    <div className={styles.workspace}>
+      <section className={styles.preview} aria-label="Meme preview" aria-busy={busy}>
+        <div className={styles.panelHeader}><h2>02 / The meme</h2><span>{photoId ? "PUBLISHED" : result ? "PRIVATE PREVIEW" : "YOUR ORIGINAL"}</span></div>
+        {variant?.url || source ? <div className={styles.picture}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={source.image} width="160" height="160" alt="Selfie selected for your character" />
-          <button className="secondary-button" disabled={locked} onClick={() => { fileVersion.current++; reader.current?.abort(); setSource(null); setConsent(false); setFileName(""); }}>Remove photo</button>
-        </div> : <div className={styles.photoPlaceholder}>{reading ? "Reading your photo…" : "Your face. For reference."}</div>}
-        <PhotoInput fileName={fileName} onSelect={setFileName} onFile={choosePhoto} accept="image/jpeg,image/png" disabled={locked} label="Choose selfie" describedBy="disguise-photo-help" />
-        <p id="disguise-photo-help" className="ego-note">JPG or PNG · Up to 2 MB</p>
-        <div className={styles.presets} role="group" aria-label="Character style">{presets.map(([name, value]) => <button key={name} disabled={locked} aria-pressed={prompt === value} onClick={() => setPrompt(value)}>{name}</button>)}</div>
-        <label htmlFor="disguise-prompt">Describe your character</label>
-        <textarea id="disguise-prompt" rows={5} maxLength={4000} value={prompt} disabled={locked} onChange={e => setPrompt(e.target.value)} />
-        <label className="ego-check"><input type="checkbox" checked={consent} disabled={locked || !source} onChange={e => setConsent(e.target.checked)} />I agree to send this selfie and prompt to Doubao to generate my character.</label>
-        {!configured && <p role="alert">Image generation is not configured yet.</p>}
-        {error && <p role="alert">{error}</p>}
-        <button className="ego-button" disabled={!configured || !source || !consent || !prompt.trim() || reading || locked} onClick={() => void generate()}>{busy ? "Building your alibi…" : "Give my ego a disguise ↗"}</button>
-        {busy && <button className="ego-link" onClick={cancel}>Cancel generation</button>}
-        <p className="ego-note">The generated image saves privately to My Checkboard.</p>
+          <img key={variant?.url || source?.image} src={variant?.url || source?.image} width="720" height="720" alt={variant ? `AI-generated meme: ${variant.caption}` : "Your uploaded meme picture"} />
+          {busy && <div className={styles.working} role="status"><span>✳</span><p>Writing five punchlines.<br />Generating five finished memes.</p><small>This can take a few minutes.</small></div>}
+        </div> : <div className={styles.empty}><span aria-hidden="true">✳</span><h3>{busy ? "Five punchlines in production." : "A picture is worth five punchlines."}</h3><p role="status">{reading ? "Reading your picture…" : busy ? "Generating your memes. This can take a few minutes." : "Upload your picture to get started."}</p></div>}
+        {variant && <p className={styles.note}>AI-generated image · Bold white lettering, black outline · Caption {selected + 1} of 5</p>}
       </section>
-      <section className={`ego-panel ${styles.panel} ${styles.result}`} aria-label="Generated character" aria-busy={busy}>
-        <div className={styles.resultHeading}><h2>Your new alibi.</h2><span className="ego-stamp">{photoId ? "PUBLIC" : "PRIVATE"}</span></div>
-        {result ? <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className={styles.generated} src={result.url} width="768" height="768" alt="Your generated cartoon character" />
-          <p role="status" className="ego-note">{photoId ? "Published to Checked Gallery." : "Saved privately to My Checkboard."}</p>
-          <Link className="ego-link" href={`/my-works/${result.generationId}`}>View saved ego ↗</Link>
-          {photoId ? <Link className="ego-button" href={`/gallery?sort=newest#photo-${photoId}`}>View in Checked Gallery ↗</Link> : <details className={styles.share}><summary>Put this ego on display ↗</summary><p className="ego-note">This publishes the generated character and your profile name.</p><label className="ego-check"><input type="checkbox" checked={publicApproval} disabled={publishing} onChange={e => setPublicApproval(e.target.checked)} />I agree to publish this character to Checked Gallery.</label>{publishError && <p role="alert">{publishError}</p>}<button className="ego-button" disabled={!publicApproval || publishing} onClick={() => void publish()}>{publishing ? "Publishing…" : "Publish my disguise ↗"}</button></details>}
-        </> : <div className={styles.empty} data-busy={busy}>
-          <svg aria-hidden="true" viewBox="0 0 240 240" fill="none"><path d="M53 121C53 55 76 24 120 24s67 31 67 97c0 63-25 99-67 99s-67-36-67-99Z" stroke="currentColor" strokeWidth="2" strokeDasharray="12 8" /><path d="m63 84 57 18 57-18v55l-57-17-57 17Z" fill="currentColor" /><ellipse cx="89" cy="111" rx="9" ry="6" fill="var(--background)" /><ellipse cx="151" cy="111" rx="9" ry="6" fill="var(--background)" /><path d="M92 168c17 18 39 18 56 0" stroke="currentColor" strokeWidth="4" strokeLinecap="round" /></svg>
-          <h3>{busy ? "Identity crisis in progress." : "Suspiciously better looking."}</h3><p role="status">{busy ? "Generating your character. This can take a minute." : "Your character appears here."}</p>
-        </div>}
+      <section className={styles.captions} aria-labelledby="captions-title"><div className={styles.panelHeader}><h2 id="captions-title">03 / Pick your punchline</h2><span>5 OPTIONS</span></div>
+        <p className={styles.note}>{photoId ? "Your keeper is live. The four unused images were deleted." : "Every caption has its own generated image. Click to try it on."}</p>
+        {result ? <div className={styles.options} role="group" aria-label="Choose a caption">{result.variants.map((option, index) => <button key={index} className={styles.option} aria-pressed={selected === index} disabled={locked || confirmed || !!photoId} onClick={() => { setSelected(index); setApproved(false); }}><span className={styles.number}>{String(index + 1).padStart(2, "0")}</span><span>{option.caption}</span><span className={styles.selected} aria-hidden="true">{selected === index ? "✓" : "↗"}</span></button>)}</div> : <div className={styles.placeholders} aria-label="Captions appear after generation">{Array.from({ length: 5 }, (_, index) => <div key={index}><span>{String(index + 1).padStart(2, "0")}</span><i /><i /></div>)}</div>}
+        {result && !photoId && <div className={styles.publish}><label className={styles.consent}><input type="checkbox" checked={approved} disabled={locked} onChange={event => setApproved(event.target.checked)} />Publish this meme and my profile name to Checked Gallery. Delete the other four images.</label>{confirmed && !publishing && <p className={styles.note}>This caption is confirmed. Retry publishing to finish safely.</p>}{publishError && <p role="alert" className={styles.error}>{publishError}</p>}<button className={styles.primary} disabled={!approved || locked} onClick={() => void publish()}>{publishing ? "Publishing & clearing previews…" : confirmed ? "Retry publishing & cleanup" : "Keep this meme & publish ↗"}</button><p className={styles.note}>Previews are cached privately for 24 hours. Only your chosen meme stays in My Checkboard after publishing.</p></div>}
+        {photoId && <div className={styles.success}><p role="status">Published to Checked Gallery. Four unused previews deleted.</p><Link className={styles.primary} href={`/gallery?sort=newest#photo-${photoId}`}>See my meme ↗</Link><Link className={styles.textButton} href={`/my-works/${photoId}`}>View in My Checkboard</Link></div>}
       </section>
     </div>
   </main>;

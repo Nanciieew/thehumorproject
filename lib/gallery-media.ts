@@ -19,7 +19,7 @@ export async function normalizeGalleryImage(bytes: Buffer, mime: string, maxByte
 
 // Only called with URLs returned by the trusted generation service, never with
 // client input. Restrict redirects too, and bound the downloaded response.
-async function fetchGeneratedImage(source: string): Promise<{ bytes: Buffer; mime: string }> {
+export async function fetchGeneratedImage(source: string, signal?: AbortSignal): Promise<{ bytes: Buffer; mime: string }> {
   const allowed = ["volces.com", "volccdn.com", "byteimg.com", "volcengine.com", "ibytedtos.com"];
   let url = new URL(source);
   for (let redirect = 0; redirect < 4; redirect++) {
@@ -27,7 +27,7 @@ async function fetchGeneratedImage(source: string): Promise<{ bytes: Buffer; mim
         !allowed.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`))) {
       throw new Error("The image provider returned an unsupported download address.");
     }
-    const response = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(30_000), cache: "no-store" });
+    const response = await fetch(url, { redirect: "manual", signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000), cache: "no-store" });
     if (response.status >= 300 && response.status < 400 && response.headers.get("location")) {
       await response.body?.cancel();
       url = new URL(response.headers.get("location")!, url); continue;

@@ -9,7 +9,7 @@ globalThis.self = dom.window;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 dom.window.HTMLDialogElement.prototype.showModal = function() { this.setAttribute('open',''); };
 dom.window.HTMLDialogElement.prototype.close = function() { this.removeAttribute('open'); };
-const {render, fireEvent, waitFor, cleanup} = await import('@testing-library/react');
+const {render, waitFor, cleanup} = await import('@testing-library/react');
 const {ChecklyDashboard} = await import('../app/checkly-dashboard.tsx');
 afterEach(() => { cleanup(); localStorage.clear(); sessionStorage.clear(); window.history.replaceState(null,'','/'); });
 const day = (completed = true, votes = {}) => ({completed,votes});
@@ -37,35 +37,28 @@ test('quest votes are deduplicated, account scoped, and only completion earns a 
  assert.equal(summary.streak,1); assert.equal(summary.completedThisWeek,1);
  assert.deepEqual(readQuestHistory('bob'),{});
 });
-test('dashboard shows weekly checks and metrics and invitation links to separate voting page', async () => {
+test('dashboard shows all weekly checks and metrics with one direct voting action', async () => {
  const today = questDay();
  localStorage.setItem('checked:quest-history:alice',JSON.stringify({[shiftDay(today,-1)]:day(true,{a:1,b:1}),[today]:day(true,{c:-1})}));
  const ui = render(React.createElement(ChecklyDashboard,{userId:'alice',firstName:'Alice'}));
- await waitFor(() => assert.ok(ui.getByRole('dialog',{name:'Ready for your Checkly Quest?'})));
- assert.equal(ui.getByRole('link',{name:/Join the voting/}).getAttribute('href'),'/quest');
- assert.equal(ui.getByRole('link',{name:/Keep on going/}).getAttribute('href'),'/quest');
- assert.ok(ui.getByText('Upvotes given').parentElement.querySelector('strong').textContent === '2');
+ await waitFor(() => assert.equal(ui.getByRole('link',{name:/Keep voting/}).getAttribute('href'),'/quest'));
+ assert.equal(ui.getByText(/Upvotes given/).parentElement.querySelector('strong').textContent,'2');
+ assert.equal(ui.getByText(/Downvotes given/).parentElement.querySelector('strong').textContent,'1');
  assert.equal(ui.getAllByRole('listitem').length,7);
  assert.ok(ui.getAllByLabelText(/: completed/).length >= 1);
- fireEvent.click(ui.getByRole('button',{name:'Maybe later'}));
  assert.equal(ui.queryByRole('dialog'),null);
- ui.unmount();
- const second = render(React.createElement(ChecklyDashboard,{userId:'alice',firstName:'Alice'}));
- assert.equal(second.queryByRole('dialog'),null);
+ assert.equal(ui.getAllByRole('link').length,1);
 });
-test('fresh login opens the invitation again even after it was dismissed', () => {
- sessionStorage.setItem(`checked:quest-prompt:alice:${questDay()}`,'1');
+test('fresh login goes directly to the dashboard without a blocking invitation', () => {
  window.history.replaceState(null,'','/?welcome=quest');
  const ui = render(React.createElement(ChecklyDashboard,{userId:'alice',firstName:'Alice'}));
- assert.ok(ui.getByRole('dialog',{name:'Ready for your Checkly Quest?'}));
- assert.equal(window.location.search,'');
- fireEvent.click(ui.getByRole('button',{name:'Close quest invitation'}));
  assert.equal(ui.queryByRole('dialog'),null);
+ assert.equal(window.location.search,'');
+ assert.ok(ui.getByRole('heading',{name:'Checkly Quest.'}));
 });
 test('dashboard starts with zero activity and gives a direct daily quest action', () => {
  const ui = render(React.createElement(ChecklyDashboard,{userId:'new',firstName:''}));
- fireEvent.click(ui.getByRole('button',{name:'Maybe later'}));
- assert.equal(ui.getByRole('link',{name:/Finish my daily quest/}).getAttribute('href'),'/quest');
+ assert.equal(ui.getByRole('link',{name:/Start daily quest/}).getAttribute('href'),'/quest');
  assert.equal(ui.getAllByRole('listitem').filter(item=>item.dataset.completed==='true').length,0);
  assert.equal(ui.getAllByText('0',{selector:'strong'}).length,4);
 });

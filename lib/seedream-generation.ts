@@ -23,6 +23,15 @@ export async function generateSeedreamImage(userId: string, input: unknown, sign
   const prompt = disguise
     ? `Transform the person in the reference photo into an animated-film or illustrated character. Preserve recognizable facial features, expression and hairstyle. Create a single finished character portrait, without captions or a collage. Follow this creative direction: ${body.prompt.trim()}`
     : body.prompt.trim();
+  const url = await generateSeedreamOutput(prompt, image, signal);
+  const saved = await saveGeneratedImage(userId, url);
+  return { ...saved, model: SEEDREAM_MODEL };
+}
+
+// Raw model output is used by the factory’s private, expiring variant cache.
+export async function generateSeedreamOutput(prompt: string, image?: string, signal?: AbortSignal) {
+  const apiKey = process.env.ARK_API_KEY;
+  if (!apiKey) throw new ImageGenerationError("Image generation is not configured.", 503);
   const timeout = AbortSignal.timeout(150_000);
   const response = await fetch("https://ark.cn-beijing.volces.com/api/v3/images/generations", {
     method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -43,6 +52,5 @@ export async function generateSeedreamImage(userId: string, input: unknown, sign
   let valid = false;
   try { valid = typeof url === "string" && new URL(url).protocol === "https:"; } catch { /* Invalid provider URL. */ }
   if (!valid) throw new ImageGenerationError("The model returned no usable image. Please try again.", 502);
-  const saved = await saveGeneratedImage(userId, url);
-  return { ...saved, model: SEEDREAM_MODEL };
+  return url as string;
 }
