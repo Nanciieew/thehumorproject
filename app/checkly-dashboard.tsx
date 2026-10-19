@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { QUEST_HISTORY_EVENT, questDay, questSummary, readQuestHistory, shiftDay, type QuestHistory } from "@/lib/checkly-quest";
+import { useEffect, useState, type CSSProperties } from "react";
+import { QUEST_HISTORY_EVENT, questActivitySlots, questDay, questSummary, readQuestHistory, type QuestHistory } from "@/lib/checkly-quest";
 import styles from "./checkly-dashboard.module.css";
 
 export function ChecklyDashboard({ userId }: { userId: string; firstName: string }) {
@@ -24,13 +24,16 @@ export function ChecklyDashboard({ userId }: { userId: string; firstName: string
     return () => { window.removeEventListener(QUEST_HISTORY_EVENT, refresh); window.removeEventListener("storage", refresh); window.removeEventListener("focus", refresh); window.clearInterval(timer); };
   }, [userId]);
   const summary = questSummary(history, today ?? "2000-01-03");
-  const activity = Array.from({ length: 30 }, (_, index) => {
-    const date = shiftDay(today ?? "2000-01-03", index - 29);
-    const entry = ready ? history[date] : undefined;
-    const votes = Object.keys(entry?.votes ?? {}).length;
-    const level = entry?.completed || votes >= 10 ? 3 : votes >= 5 ? 2 : votes > 0 ? 1 : 0;
-    const label = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" }).format(new Date(`${date}T12:00:00Z`));
-    return { date, level, label: `${label}: ${votes} ${votes === 1 ? "vote" : "votes"}${entry?.completed ? ", quest complete" : ""}` };
+  const month = (today ?? "2000-01-01").slice(0, 7);
+  const [year, monthNumber] = month.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  const monthLabel = today ? new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "America/New_York" }).format(new Date(`${today}T12:00:00Z`)) : "";
+  const activity = Array.from({ length: daysInMonth }, (_, index) => {
+    const day = index + 1;
+    const date = `${month}-${String(day).padStart(2, "0")}`;
+    const completed = ready && date <= (today ?? "") && history[date]?.completed === true;
+    const label = `${monthLabel} ${day}: ${completed ? "quest complete" : "not completed"}`;
+    return { date, day, completed, label, slots: questActivitySlots(ready && date <= (today ?? "") ? history[date] : undefined) };
   });
   const dateLabel = today ? new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "America/New_York" }).format(new Date(`${today}T12:00:00Z`)) : "";
   return <main id="main" data-quest-screen="dashboard" className={styles.dashboard}>
@@ -56,9 +59,18 @@ export function ChecklyDashboard({ userId }: { userId: string; firstName: string
       </div>
     </section>
     <section className={styles.activity} aria-labelledby="activity-title">
-      <div className={styles.activityHeading}><h2 id="activity-title">Your activity</h2><span>Last 30 days</span></div>
-      <ol className={styles.heatmap} aria-label="Last 30 days of voting activity">{activity.map(day => <li key={day.date} data-level={day.level} aria-label={day.label} title={day.label}><span className="visually-hidden">{day.label}</span></li>)}</ol>
-      <div className={styles.legend} aria-label="Activity intensity, from fewer votes to more votes"><span>Less</span>{[0, 1, 2, 3].map(level => <i key={level} data-level={level} aria-hidden="true" />)}<span>More</span></div>
+      <div className={styles.activityHeading}><h2 id="activity-title">Your activity</h2><span>{monthLabel}</span></div>
+      <div className={styles.activityGrid}>
+        <div className={styles.timeLabels} aria-hidden="true"><span /><span>00–08</span><span>08–16</span><span>16–24</span></div>
+        <ol className={styles.heatmap} style={{ "--month-days": daysInMonth } as CSSProperties} aria-label="This month’s daily quests">{activity.map(day => <li key={day.date} aria-label={day.label} aria-current={day.date === today ? "date" : undefined}>
+          <span className={styles.dateNumber} aria-hidden="true">{day.day}</span>
+          {day.slots.map((count, slot) => {
+            const label = `${monthLabel} ${day.day}, ${["00:00–08:00", "08:00–16:00", "16:00–24:00"][slot]} New York time: ${count} ${count === 1 ? "vote" : "votes"}`;
+            return <span key={slot} role="img" aria-label={label} title={label} data-level={count >= 6 ? 3 : count >= 3 ? 2 : count > 0 ? 1 : 0} className={styles.activityCell} />;
+          })}
+        </li>)}</ol>
+      </div>
+      <div className={styles.activityFooter}><span>New York time</span><div className={styles.legend}><span>Less</span>{[0, 1, 2, 3].map(level => <i key={level} data-level={level} aria-hidden="true" />)}<span>More</span></div></div>
     </section>
     <p className={styles.storageNote}>Saved in this browser · Resets at midnight, New York time</p>
   </main>;

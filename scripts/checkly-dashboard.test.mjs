@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 import React from 'react';
-import { questDay, shiftDay, questSummary, recordQuestVote, completeQuestDay, readQuestHistory } from '../lib/checkly-quest.ts';
+import { questActivitySlots, questDay, shiftDay, questSummary, recordQuestVote, completeQuestDay, readQuestHistory } from '../lib/checkly-quest.ts';
 const dom = new JSDOM('<!doctype html><html><body></body></html>', { url:'http://localhost:3000' });
 for (const name of ['window','document','HTMLElement','HTMLDialogElement','MutationObserver','Node','Event','MouseEvent','getComputedStyle','localStorage','sessionStorage']) Object.defineProperty(globalThis,name,{configurable:true,value:dom.window[name]});
 globalThis.self = dom.window;
@@ -63,20 +63,50 @@ test('dashboard starts with zero activity and gives a direct daily quest action'
  assert.equal(ui.getAllByText('0',{selector:'strong'}).length,4);
 });
 
-test('activity calendar reflects exactly 30 days of saved votes and completion', () => {
+test('monthly activity uses calendar dates so today lights its matching numbered box', () => {
  const today = questDay();
- const yesterday = shiftDay(today,-1);
- const votes = Object.fromEntries(Array.from({length:6},(_,i)=>[`vote-${i}`,1]));
- localStorage.setItem('checked:quest-history:alice',JSON.stringify({[shiftDay(today,-30)]:day(true,{old:1}),[yesterday]:day(false,votes),[today]:day(true,{new:-1})}));
+ const month = today.slice(0,7);
+ const [year,monthNumber] = month.split('-').map(Number);
+ const dayNumber = Number(today.slice(-2));
+ localStorage.setItem('checked:quest-history:alice',JSON.stringify({[shiftDay(`${month}-01`,-1)]:day(true),[today]:day(true,{new:-1})}));
  const ui = render(React.createElement(ChecklyDashboard,{userId:'alice',firstName:'Alice'}));
- const cells = within(ui.getByRole('list',{name:'Last 30 days of voting activity'})).getAllByRole('listitem');
- assert.equal(cells.length,30);
- assert.equal(cells[28].dataset.level,'2');
- assert.match(cells[28].getAttribute('aria-label'),/6 votes/);
- assert.equal(cells[29].dataset.level,'3');
- assert.match(cells[29].getAttribute('aria-label'),/1 vote, quest complete/);
- assert.equal(cells.filter(cell=>cell.dataset.level==='3').length,1);
- assert.equal(cells[0].dataset.level,'0');
- const week=ui.getByRole('region',{name:'This week'});
- assert.ok(within(week).getByRole('link',{name:/Keep voting/}));
+ const cells = within(ui.getByRole('list',{name:'This month’s daily quests'})).getAllByRole('listitem');
+ assert.equal(cells.length,new Date(Date.UTC(year,monthNumber,0)).getUTCDate());
+ assert.deepEqual(cells.map(cell=>cell.querySelector('span').textContent),Array.from({length:cells.length},(_,i)=>String(i+1)));
+ assert.ok(cells.every(cell=>cell.querySelectorAll('[role=img]').length===3));
+ assert.match(cells[dayNumber-1].getAttribute('aria-label'),/quest complete/);
+ assert.equal(cells[dayNumber-1].getAttribute('aria-current'),'date');
+ assert.equal(cells.filter(cell=>/quest complete$/.test(cell.getAttribute('aria-label'))).length,1);
+ if(dayNumber<cells.length) assert.match(cells[cells.length-1].getAttribute('aria-label'),/not completed/);
+});
+
+test('successful votes keep their actual eight-hour New York window and do not duplicate', () => {
+ const times=['2026-10-19T04:00:00Z','2026-10-19T11:59:59Z','2026-10-19T12:00:00Z','2026-10-19T19:59:59Z','2026-10-19T20:00:00Z','2026-10-20T03:59:59Z'];
+ times.forEach((time,i)=>recordQuestVote('timed',String(i),1,new Date(time)));
+ recordQuestVote('timed','0',-1,new Date('2026-10-19T21:00:00Z'));
+ const entry=readQuestHistory('timed')['2026-10-19'];
+ assert.deepEqual(questActivitySlots(entry),[2,2,2]);
+ assert.equal(entry.voteTimes['0'],new Date(times[0]).toISOString());
+ recordQuestVote('timed','next',1,new Date('2026-10-20T04:00:00Z'));
+ assert.deepEqual(questActivitySlots(readQuestHistory('timed')['2026-10-20']),[1,0,0]);
+});
+test('legacy history stays readable without inventing times and DST uses local hours', () => {
+ localStorage.setItem('checked:quest-history:legacy',JSON.stringify({'2026-10-19':day(true,{old:1})}));
+ assert.deepEqual(questActivitySlots(readQuestHistory('legacy')['2026-10-19']),[0,0,0]);
+ recordQuestVote('dst','a',1,new Date('2026-11-01T05:30:00Z'));
+ recordQuestVote('dst','b',1,new Date('2026-11-01T06:30:00Z'));
+ recordQuestVote('dst','c',1,new Date('2026-11-01T13:00:00Z'));
+ assert.deepEqual(questActivitySlots(readQuestHistory('dst')['2026-11-01']),[2,1,0]);
+});
+
+test('a new vote lights only today’s actual time slot in the monthly grid', () => {
+ const now = new Date();
+ recordQuestVote('slots-ui','one',1,now);
+ const ui = render(React.createElement(ChecklyDashboard,{userId:'slots-ui',firstName:''}));
+ const cells = within(ui.getByRole('list',{name:'This month’s daily quests'})).getAllByRole('listitem');
+ const todayCell = cells[Number(questDay(now).slice(-2))-1];
+ const hour = Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',hourCycle:'h23'}).format(now));
+ const levels = [...todayCell.querySelectorAll('[role=img]')].map(cell=>cell.dataset.level);
+ assert.deepEqual(levels,[0,1,2].map(slot=>slot===Math.floor(hour/8)?'1':'0'));
+ assert.equal(cells.flatMap(cell=>[...cell.querySelectorAll('[data-level]')]).filter(cell=>cell.dataset.level!=='0').length,1);
 });

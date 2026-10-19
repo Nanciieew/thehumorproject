@@ -5,13 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { Icon } from "./ui";
+import styles from "./sidebar.module.css";
 
 const links = [
-  { href: "/", label: "Checkly Quest", icon: "spark" as const },
-  { href: "/disguise", label: "Checked Factory", icon: "mask" as const },
-  { href: "/you-are-a-joke", label: "Get Checked", icon: "spark" as const },
-  { href: "/gallery", label: "Checked Gallery", icon: "grid" as const },
-  { href: "/my-works", label: "My Checkboard", icon: "works" as const },
+  { href: "/", label: "Checkly Quest", icon: "home" as const },
+  { href: "/disguise", label: "Checked Factory", icon: "flame" as const },
+  { href: "/you-are-a-joke", label: "Get Checked", icon: "leaderboard" as const },
+  { href: "/gallery", label: "Checked Gallery", icon: "people" as const },
+  { href: "/my-works", label: "My Checkboard", icon: "settings" as const },
 ];
 
 export function Sidebar({ children }: { children?: ReactNode }) {
@@ -19,7 +20,7 @@ export function Sidebar({ children }: { children?: ReactNode }) {
   const [pinnedOpen, setPinnedOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
   const collapsed = !pinnedOpen && !hovered;
-  return <aside id="sidebar-panel" className="app-sidebar" data-collapsed={collapsed}
+  return <aside id="sidebar-panel" className={`app-sidebar ${styles.sidebar}`} data-collapsed={collapsed}
     onPointerEnter={(event) => {
       if (event.pointerType === "mouse") setHovered(true);
     }}

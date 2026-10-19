@@ -1,8 +1,12 @@
 import type { ReactNode } from "react";
 
-type IconName = "marketplace" | "works" | "arrow" | "grid" | "spark" | "mask" | "user" | "leaderboard" | "logout" | "upload" | "close";
+type IconName = "home" | "flame" | "people" | "settings" | "marketplace" | "works" | "arrow" | "grid" | "spark" | "mask" | "user" | "leaderboard" | "logout" | "upload" | "close";
 export function Icon({ name, className = "" }: { name: IconName; className?: string }) {
   const paths: Record<IconName, ReactNode> = {
+    home: <path d="m3 10 9-8 9 8v11h-6v-7H9v7H3Z" fill="currentColor" strokeWidth="1" />,
+    flame: <path d="M14 2c1 6-5 5-4 10-3-1-4-3-3-5-5 5-5 10-2 13 3 3 10 3 13-1 3-4 1-8-1-10 0 4-2 5-3 5 2-5 2-8 0-12Z" />,
+    people: <><circle cx="9" cy="7" r="3" /><path d="M3 21v-3a6 6 0 0 1 12 0v3H3Zm13-17a3 3 0 0 1 0 6m2 4a5 5 0 0 1 3 5v2h-3" /></>,
+    settings: <><path d="m10 2-.8 3-2 .9-2.8-.8-2 3.4 2.2 2.2v2.6l-2.2 2.2 2 3.4 2.8-.8 2 .9.8 3h4l.8-3 2-.9 2.8.8 2-3.4-2.2-2.2v-2.6l2.2-2.2-2-3.4-2.8.8-2-.9-.8-3Z" /><circle cx="12" cy="12" r="3.5" /></>,
     marketplace: <><path d="M4 10v11h16V10M3 10l2-7h14l2 7M3 10a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" /><path d="M9 21v-7h6v7" /></>,
     works: <><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8" cy="8" r="2" /><path d="m3 17 6-6 4 4 3-3 5 5" /></>,
     arrow: <path d="M5 19 19 5M5 5h14v14" />,

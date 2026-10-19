@@ -1,0 +1,5 @@
+.sidebar:global(.app-sidebar) :global(.sidebar-links) { gap:16px; }
+.sidebar:global(.app-sidebar) :global(.sidebar-links) a { border-radius:12px; }
+.sidebar:global(.app-sidebar) :global(.sidebar-links) :global(.ui-icon) { width:24px;height:24px;stroke-width:1.8; }
+.sidebar:global(.app-sidebar) :global(.sidebar-links) a:global(.active) { background:#e8f04426;border-color:transparent;color:var(--accent,#e8f044); }
+@media(max-height:650px) { .sidebar:global(.app-sidebar) :global(.sidebar-links) { gap:10px; } }
