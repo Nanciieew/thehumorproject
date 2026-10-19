@@ -441,7 +441,7 @@ h1 em { color: var(--coral); font-style: normal; }
 
 .app-sidebar[data-collapsed="true"] .app-brand { flex: none; }
 .app-sidebar[data-collapsed="true"] .brand-mark { width: 32px; height: 32px; }
-.app-sidebar[data-collapsed="true"] .app-brand > span,
+
 .app-sidebar[data-collapsed="true"] .nav-label,
 .app-sidebar[data-collapsed="true"] .sidebar-links a > span,
 .app-sidebar[data-collapsed="true"] .sidebar-doodle,
@@ -471,3 +471,12 @@ h1 em { color: var(--coral); font-style: normal; }
 @media (prefers-reduced-motion: reduce) {
   .app-shell, .app-sidebar, .sidebar-toggle { transition: none; }
 }
+
+/* Keep the approved face anchored while revealing the full wordmark. */
+.sidebar-heading .sidebar-logo { position: relative; display: block; width: 128px; height: 32px; margin-left: calc((var(--rail-slot) - 32px) / 2); flex-shrink: 0; }
+.sidebar-logo img { position: absolute; inset: 0; height: 32px; max-width: none; }
+.sidebar-logo-face { width: 32px; opacity: 0; }
+.sidebar-logo-full { width: 128px; }
+.app-sidebar[data-collapsed="true"] .sidebar-logo { width: 32px; }
+.app-sidebar[data-collapsed="true"] .sidebar-logo-face { opacity: 1; }
+.app-sidebar[data-collapsed="true"] .sidebar-logo-full { opacity: 0; }
