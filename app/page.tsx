@@ -1,12 +1,8 @@
 import { GuestLanding } from "./guest-landing";
 import { getViewer } from "@/lib/auth/profile";
-import { DailyQuest } from "./daily-quest";
-import { redirect } from "next/navigation";
-import { isUuid } from "@/lib/gallery-types";
+import { ChecklyDashboard } from "./checkly-dashboard";
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ challenge?: string }> }) {
+export default async function Home() {
   const viewer = await getViewer();
-  const params = await searchParams;
-  if (viewer && isUuid(params.challenge)) redirect(`/you-are-a-joke?challenge=${params.challenge}`);
-  return viewer ? <DailyQuest userId={viewer.user.id} /> : <GuestLanding />;
+  return viewer ? <ChecklyDashboard userId={viewer.user.id} firstName={viewer.profile?.first_name ?? ""} /> : <GuestLanding />;
 }

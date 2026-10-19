@@ -45,7 +45,7 @@ test('camera denial leaves navigation accessible and allows a user-initiated ret
  const ui=render(React.createElement(GuestLanding));
  await waitFor(()=>assert.ok(ui.getByText(/Camera blocked/)));
  assert.equal(ui.getByRole('link',{name:/Check my ego/}).getAttribute('href'),'/login');
- assert.equal(ui.getByRole('link',{name:/Watch a battle/}).getAttribute('href'),'/challenges');
+ assert.equal(ui.getByRole('link',{name:/Explore the gallery/}).getAttribute('href'),'/gallery');
  fireEvent.click(ui.getByRole('button',{name:'Try the mirror'}));
  await waitFor(()=>assert.ok(ui.getByRole('button',{name:'Turn off mirror'})));
  assert.equal(requests,2);assert.equal(ui.queryByText(/Camera blocked/),null);

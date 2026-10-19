@@ -10,7 +10,7 @@ export default async function AvatarPage({ params }: { params: Promise<{ id: str
   const avatar = await readPublicAvatar((await params).id);
   if (!avatar) notFound();
   return <main id="main" className={styles.page}>
-    <Link href={`/gallery#photo-${avatar.id}`} className="text-button">← Back to Public Evidence</Link>
+    <Link href={`/gallery#photo-${avatar.id}`} className="text-button">← Back to Checked Gallery</Link>
     <div className={styles.layout}>
       <div className={styles.image}><Image src={avatar.photo_url} alt={avatar.title || `Avatar by ${avatar.name}`} width={1200} height={1200} unoptimized /></div>
       <section className={styles.story}>

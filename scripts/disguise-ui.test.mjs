@@ -35,8 +35,8 @@ test('generated characters need separate public-sharing approval before gallery 
  await waitFor(()=>assert.ok(ui.getByAltText('Your generated cartoon character')));
  fireEvent.click(ui.getByText('Put this ego on display ↗'));
  const publish=ui.getByRole('button',{name:'Publish my disguise ↗'});assert.equal(publish.disabled,true);assert.equal(calls.length,1);
- fireEvent.click(ui.getByLabelText('I agree to publish this character to Public Evidence.'));fireEvent.click(publish);
- await waitFor(()=>assert.ok(ui.getByRole('link',{name:'View in Public Evidence ↗'})));
+ fireEvent.click(ui.getByLabelText('I agree to publish this character to Checked Gallery.'));fireEvent.click(publish);
+ await waitFor(()=>assert.ok(ui.getByRole('link',{name:'View in Checked Gallery ↗'})));
  assert.deepEqual(calls[1],{url:'/api/gallery/publish',assetId:generated.generationId,source:'generated'});
 });
 test('photo upload previews locally, validates file type, and resets consent when replacing the selfie',async()=>{

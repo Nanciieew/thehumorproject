@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-import { ego } from "@/lib/ego/client";
-import type { Battle } from "@/lib/ego/types";
+import { useEffect, useRef, useState } from "react";
 import type { Intensity, RoastEvent, RoastResponse } from "@/lib/roast/contracts";
 import Link from "next/link";
-import { ChallengeCreator } from "../ego-ui";
 import { PlayfulTitle } from "../playful-title";
 import styles from "./studio.module.css";
 import { PublishEgo } from "./publish-ego";
@@ -15,18 +12,9 @@ type Point = { x: number; y: number };
 type Tracking = { faces: number; x: number; y: number; at: number };
 const demos = ["This is a sample punchline. The camera has not been analyzed by AI.", "Demo comedian reporting for duty. My observational skills are currently fictional.", "Mock mode: all the audacity, none of the cloud analysis."];
 
-export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; configured: boolean; challengeId?: string }) {
-  const [battleId, setBattleId] = useState(challengeId ?? "");
+export function RoastStudio({ mock, configured }: { mock: boolean; configured: boolean }) {
   const [selected, setSelected] = useState<{ receipt: string; snapshot: string; roast: string } | null>(null);
-  const [sharing, setSharing] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [shareApproved, setShareApproved] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [audience, setAudience] = useState("");
-  const [challengeOpen, setChallengeOpen] = useState(false);
-  const challengePanelId = useId();
-  const challengePanel = useRef<HTMLElement>(null);
-  const challengeButton = useRef<HTMLButtonElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const badge = useRef<HTMLDivElement>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -55,35 +43,10 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
   const [topics, setTopics] = useState("");
   const [anchor, setAnchor] = useState<"face" | "screen">("screen");
 
-  useEffect(() => {
-    if (challengeOpen && selected) {
-      challengePanel.current?.focus({ preventScroll: true });
-      challengePanel.current?.scrollIntoView?.({ block: "nearest" });
-    }
-  }, [challengeOpen, selected]);
-
-  useEffect(() => {
-    if (!battleId) return;
-    let current = true;
-    void ego<Battle>("battle", { id: battleId }).then(b => {
-      if (current) setAudience(b.visibility === "public" ? "Anyone can view; signed-in spectators can vote." : b.visibility === "friends" ? "Accepted friends of either participant can view and vote. This battle is unranked." : "Only you and the other participant can view. No audience votes or ranked win.");
-    }).catch(() => { if (current) setAudience("This challenge is unavailable. Open its battle page to check access."); });
-    return () => { current = false; };
-  }, [battleId]);
-  async function submitEntry() {
-    if (!selected || !battleId || !shareApproved) return;
-    pause(); setSharing(true); setMessage("");
-    try {
-      const r = await fetch(`/api/challenges/${battleId}/entry`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ receipt: selected.receipt, snapshot: selected.snapshot, approved: true }) });
-      const data = await r.json(); if (!r.ok) throw new Error(data.error);
-      setSelected(null); setChallengeOpen(false); setSubmitted(true);
-    } catch(e) { setMessage(e instanceof Error ? e.message : "Couldn’t submit your entry."); }
-    finally { setSharing(false); }
-  }
   function invalidate(reset = false) {
     generation.current++; request.current?.abort(); request.current = null; busy.current = false;
     frames.current = []; events.current = []; setThinking(false);
-    if (reset) { setSelected(null); setShareApproved(false); setChallengeOpen(false); }
+    if (reset) { setSelected(null); }
     if (reset && session.current) {
       void fetch("/api/roast/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: session.current }), keepalive: true }).catch(() => {});
       session.current = crypto.randomUUID();
@@ -92,7 +55,7 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
   function pause() { running.current = false; setEnabled(false); invalidate(); }
   function roastAgain() {
     if (running.current || busy.current || !consentRef.current || !workerReady.current || !stream.current) return;
-    invalidate(); setSelected(null); setShareApproved(false); setChallengeOpen(false); setCaption(""); setMessage("");
+    invalidate(); setSelected(null); setCaption(""); setMessage("");
     running.current = true; setEnabled(true);
   }
   function stop() {
@@ -209,7 +172,6 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
               if (result.status === "ok" && typeof result.roast === "string") { setCaption(result.roast); setAnchor(result.anchor);
                 if (!mock && result.receipt && body.frames.length) {
                   setSelected({ receipt: result.receipt, snapshot: body.frames[body.frames.length - 1].base64, roast: result.roast });
-                  setShareApproved(false);
                 } }
               else { setMessage("No roast came back. Try again when you’re ready."); }
             }).catch(e => { if (token === generation.current && !controller.signal.aborted) { pause(); setMessage(e instanceof Error ? e.message : "AI roasting failed. Try again when you’re ready."); } }).finally(() => {
@@ -245,9 +207,8 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
           <div ref={badge} className={styles.badge} aria-hidden="true">✳ MAIN CHARACTER</div>
           <span className={styles.live}>{mock ? "DEMO · NO AI ANALYSIS" : "GEMINI AI"}</span>
           {!mock && selected && !enabled && !thinking && <div className={styles.resultActions}>
-            <button ref={challengeButton} className={styles.challengeButton} disabled={sharing || publishing} aria-expanded={challengeOpen} aria-controls={challengePanelId} onClick={() => { pause(); setChallengeOpen(open => !open); }}>Challenge a friend ↗</button>
             <PublishEgo key={selected.receipt} {...selected} onBusyChange={setPublishing} />
-            <Link href="/disguise" className={`${styles.challengeButton} ${styles.disguiseButton}`} aria-disabled={publishing} onClick={e => { if (publishing) { e.preventDefault(); return; } pause(); setDisguiseDraft(selected.snapshot); }}>Disguise my ego ↗</Link>
+            <Link href="/disguise" className={`${styles.challengeButton} ${styles.disguiseButton}`} aria-disabled={publishing} onClick={e => { if (publishing) { e.preventDefault(); return; } pause(); setDisguiseDraft(selected.snapshot); }}>Checked Factory ↗</Link>
           </div>}
         </div>
         <div className={caption ? styles.caption : "visually-hidden"} data-anchor={anchor}><p className="eyebrow">{mock ? "DEMO · SCRIPTED CAPTION" : "THE PUNCHLINE"}</p><p role="status" aria-live="polite">{caption}</p></div>
@@ -270,14 +231,5 @@ export function RoastStudio({ mock, configured, challengeId }: { mock: boolean; 
         <details className="ego-details"><summary>Privacy & camera</summary><p className={styles.note}>Camera permission is separate. No microphone is used. Tracking runs locally; hiding or leaving this page stops the camera.</p>{!mock && <p className={styles.note}>Selected snapshots go to Gemini. Unchecking consent stops new uploads; images already sent cannot be recalled. This app doesn’t save session images unless you approve sharing. <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Gemini data terms ↗</a></p>}</details>
       </section>
     </div>
-    {!mock && selected && <section ref={challengePanel} id={challengePanelId} className="ego-panel roast-receipt" aria-labelledby={`${challengePanelId}-title`} tabIndex={-1} hidden={!challengeOpen}>
-      <div className={styles.reviewHeading}><h2 id={`${challengePanelId}-title`}>Challenge a friend</h2><button className="secondary-button" aria-label="Close challenge options" onClick={() => { setChallengeOpen(false); challengeButton.current?.focus(); }}>Close</button></div>
-      {/* This image is an in-memory snapshot, never a persistent browser URL. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`data:image/jpeg;base64,${selected.snapshot}`} width="320" alt="Your selected roast snapshot, not yet shared" />
-      <blockquote>{selected.roast}</blockquote>
-      {!battleId ? <ChallengeCreator onCreated={setBattleId} /> : <><p><Link href={`/challenges/${battleId}`}>View challenge and audience →</Link></p><p>{audience}</p><details className="ego-details"><summary>Sharing details</summary><p className="ego-note">Approved entries are frozen. Private media expires seven days after completion; gallery publishing is a separate choice. Submit within 15 minutes of generation.</p></details><label className="ego-check"><input type="checkbox" checked={shareApproved} onChange={e => { pause(); setShareApproved(e.target.checked); }} />I approve sharing this snapshot and caption with the audience above.</label><button className="ego-button" disabled={!shareApproved || sharing || !audience} onClick={() => void submitEntry()}>{sharing ? "Submitting…" : "Submit my evidence ↗"}</button></>}
-    </section>}
-    {submitted && <section className="ego-panel"><h2>Evidence submitted.</h2><Link className="ego-button" href={`/challenges/${battleId}`}>Open the battle ↗</Link></section>}
   </main>;
 }

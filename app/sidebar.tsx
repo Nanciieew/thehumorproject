@@ -6,13 +6,11 @@ import { useState, type ReactNode } from "react";
 import { Icon, Smile } from "./ui";
 
 const links = [
-  { href: "/", label: "Daily Quest", icon: "spark" as const },
-  { href: "/gallery", label: "Public Evidence", icon: "grid" as const },
+  { href: "/", label: "Checkly Quest", icon: "spark" as const },
+  { href: "/gallery", label: "Checked Gallery", icon: "grid" as const },
+  { href: "/disguise", label: "Checked Factory", icon: "mask" as const },
   { href: "/you-are-a-joke", label: "Get Checked", icon: "spark" as const },
-  { href: "/disguise", label: "Disguise My Ego", icon: "mask" as const },
-  { href: "/challenges", label: "The Arena", icon: "leaderboard" as const },
-  { href: "/leaderboard", label: "Hall of Shame", icon: "leaderboard" as const },
-  { href: "/my-works", label: "My Damage Report", icon: "works" as const },
+  { href: "/my-works", label: "My Checkboard", icon: "works" as const },
 ];
 
 export function Sidebar({ children }: { children?: ReactNode }) {
@@ -32,7 +30,7 @@ export function Sidebar({ children }: { children?: ReactNode }) {
       </button>
     </div>
     <nav aria-label="Main navigation" className="sidebar-links">{links.map((link) => {
-      const active = link.href === "/" ? pathname === "/" : pathname === link.href || pathname.startsWith(`${link.href}/`);
+      const active = link.href === "/" ? (pathname === "/" || pathname === "/quest") : pathname === link.href || pathname.startsWith(`${link.href}/`);
       return <Link key={link.href} href={link.href} aria-label={link.label} title={collapsed ? link.label : undefined} aria-current={active ? "page" : undefined} className={active ? "active" : ""}><Icon name={link.icon} /><span>{link.label}</span><span className="nav-arrow" aria-hidden="true">↗</span></Link>;
     })}</nav>
     {children}

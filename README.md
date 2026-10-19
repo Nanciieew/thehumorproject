@@ -103,7 +103,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-The interface uses locally hosted Inter and Anton fonts through `next/font/local`. Their SIL Open Font Licenses are included in `app/fonts`. The interface uses dark ink surfaces, chrome details and acid-yellow accents. The gallery uses one responsive grid, and the sidebar starts with Daily Quest and Public Evidence, followed by Get Checked, Disguise My Ego, The Arena, Hall of Shame and My Damage Report.
+The interface uses locally hosted Inter and Anton fonts through `next/font/local`. Their SIL Open Font Licenses are included in `app/fonts`. The interface uses dark ink surfaces, chrome details and acid-yellow accents. The gallery uses one responsive grid, and the sidebar contains Checkly Quest, Checked Gallery, Checked Factory, Get Checked and My Checkboard, in that order.
 
 ## Avatar Gallery
 
@@ -359,7 +359,7 @@ and removes temporary profiles/images and never creates sale records.
 
 ## Personal dashboard
 
-The sidebar’s My Damage Report page keeps the existing `/my-works` URL and caption
+The sidebar’s My Checkboard page keeps the existing `/my-works` URL and caption
 editing links. Two responsive cards show all-time upvotes and **Egos uploaded**
 (the count of published photos and results). Private saved generations stay in
 the collection but do not count as uploaded egos. Revenue is no longer displayed.
@@ -389,7 +389,7 @@ webcam roast experience. Each click requests one roast attempt, then pauses unti
 the user chooses “Hurt my feelings again.” A completed live roast reveals the
 **Challenge a friend** button in the top-right corner of the camera display; it
 opens the snapshot preview and audience approval controls. **Publish my ego**,
-beside it, publishes a solo snapshot and verified roast to Public Evidence after
+beside it, publishes a solo snapshot and verified roast to Checked Gallery after
 separate public-sharing approval. Solo gallery cards start with zero votes, need
 no opponent, and do not count as active battles. Retries reuse the same card.
 Run `npm run test:roast-publication` for receipt and publication concurrency checks. Skips, errors, cancellation and changes
@@ -399,12 +399,12 @@ if the browser blocks or defers the prompt. It sends no frames to the server or 
 and releases the camera on Stop, page hiding, or navigation.
 Run `npm run test:guest-ui` for this guest camera lifecycle. The existing photo feed is now `/gallery` (**Public
 Evidence**); `/you-are-a-joke` redirects home. `/challenges` is **The Arena**,
-`/leaderboard` is **Hall of Shame**, followed in navigation by **My Damage Report**
+`/leaderboard` is **Hall of Shame**, followed in navigation by **My Checkboard**
 (`/my-works`). The standalone Friends page has been removed. Existing friend
 relationships remain available in the challenge picker.
 All public and signed-in pages share the dark ink, chrome and acid-yellow design.
 The existing dashboard keeps its actual photo/vote/revenue calculations.
-Marketplace and the former Image Studio remain removed. `/disguise` is the dedicated **Disguise My Ego** character-portrait page.
+Marketplace and the former Image Studio remain removed. `/disguise` is the dedicated **Checked Factory** character-portrait page.
 
 ### Database setup (required before deployment)
 
@@ -497,13 +497,13 @@ are separate from automated tests. Request bodies must stay excluded from
 hosting logs/error capture.
 
 
-## Disguise My Ego
+## Checked Factory
 
 The signed-in `/disguise` page uses the existing server-only `ARK_API_KEY` and
 `doubao-seedream-5-0-flash-260915` image API. Users can upload a JPG/PNG selfie,
 choose a cartoon/anime/comic/clay style or write their own prompt, and explicitly
 consent before sending the photo to Doubao. Outputs are still character portraits,
-saved privately in My Damage Report. Publishing a generated image to Public
+saved privately in My Checkboard. Publishing a generated image to Public
 Evidence requires separate approval and keeps ordinary gallery voting.
 
 The post-roast camera button transfers its selected snapshot through a short-lived
@@ -518,8 +518,8 @@ with a synthetic illustrated face and a disposable account, then removes its
 private output and account; run with `DISGUISE_TEST_URL=http://localhost:3011 node
 --conditions=react-server --env-file=.env.local --import tsx scripts/test-disguise-live.mjs`.
 
-## Daily Quest
+## Checkly Quest
 
-Signed-in users land on Daily Quest at `/`. Memes follow the shared gallery’s newest-publication order. Right arrow, right swipe, and Upvote save an upvote; left arrow, left swipe, and Downvote save a downvote through `/api/gallery/vote`. Only successful saves advance progress. Each batch includes up to 10 memes, with a completion message and Keep on going to rate another batch without repeating that day’s rated memes. Browser storage retains progress per account and New York calendar day; progress is local to that browser. Public Evidence refreshes on entry after quest voting and uses the same persisted votes. The roast studio remains available at `/you-are-a-joke`, including challenge invitations.
+Signed-in users land on the Checkly Quest dashboard at `/`, with a weekly completion timeline, current streak and quest upvote/downvote totals. A dismissible welcome invitation appears after login and links to the separate voting page at `/quest`. The dashboard also has a daily quest button. Completing any nonempty quest batch marks the day complete; continuing to vote does not add another completed day. The streak includes yesterday until today ends, so an unfinished current day does not prematurely reset it. Quest history is account-scoped browser storage, local to the browser; it does not sync across devices. Days use New York calendar dates. Memes follow the shared gallery’s newest-publication order. Right arrow, right swipe, and Upvote save an upvote; left arrow, left swipe, and Downvote save a downvote through `/api/gallery/vote`. Only successful saves advance progress. Each batch includes up to 10 memes, with a completion message and Keep on going to rate another batch without repeating that day’s rated memes. Browser storage retains progress per account and New York calendar day; progress is local to that browser. Checked Gallery refreshes on entry after quest voting and uses the same persisted votes. The roast studio is available at `/you-are-a-joke`. Arena, Hall of Shame and internal test pages have been removed from the app.
 
 Run `npm run test:daily-quest` for voting, swipes, short feeds, continuation, retry, and progress restoration checks.

@@ -72,7 +72,7 @@ export function GuestLanding() {
     <section className={styles.hero}>
       <div className={styles.copy}>
         <h1>Mirror, mirror.<br />On the wall.<br /><em>Big ego.<br />Watch it fall.</em></h1>
-        <div className={styles.actions}><Link href="/login" className={styles.primary}>Check my ego <span aria-hidden="true">↗</span></Link><Link href="/challenges" className={styles.secondary}>Watch a battle <span aria-hidden="true">→</span></Link></div>
+        <div className={styles.actions}><Link href="/login" className={styles.primary}>Check my ego <span aria-hidden="true">↗</span></Link><Link href="/gallery" className={styles.secondary}>Explore the gallery <span aria-hidden="true">→</span></Link></div>
       </div>
       <section className={styles.mirrorPanel} aria-label="Try the local mirror">
         <div className={styles.mirrorScene}>

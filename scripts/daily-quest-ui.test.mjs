@@ -9,6 +9,7 @@ globalThis.self = dom.window;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/react');
 const { DailyQuest } = await import('../app/daily-quest.tsx');
+const { readQuestHistory, questSummary } = await import('../lib/checkly-quest.ts');
 const originalFetch = globalThis.fetch;
 afterEach(() => { cleanup(); localStorage.clear(); globalThis.fetch = originalFetch; });
 const photo = id => ({ id:String(id), title:`Meme ${id}`, photo_url:`https://example.com/${id}.png`, contributor_name:'Tester', published_at:`2026-10-19T12:00:${String(59-id).padStart(2,'0')}Z`, vote:null, upvotes:0 });
@@ -30,6 +31,8 @@ test('ten successful votes complete a quest; keep going starts the remaining mem
  }
  await waitFor(() => assert.ok(ui.getByRole('heading',{name:/Congrats/})));
  assert.equal(calls.length,10);
+ assert.equal(questSummary(readQuestHistory("tester")).completedToday,true);
+ assert.equal(questSummary(readQuestHistory("tester")).upvotes,10);
  assert.ok(calls.every(call => call.value === 1));
  fireEvent.click(ui.getByRole('button',{name:'Keep on going'}));
  await waitFor(() => assert.ok(ui.getByRole('heading',{name:'Meme 10',exact:true})));
@@ -43,6 +46,7 @@ test('short quests finish after all available memes and do not repeat them', asy
  fireEvent.keyDown(window,{key:'ArrowLeft'});
  await waitFor(() => assert.ok(ui.getByRole('heading',{name:/Congrats/})));
  assert.deepEqual(calls.map(call => call.value),[1,-1]);
+ assert.equal(questSummary(readQuestHistory("tester")).completedToday,true);
  fireEvent.click(ui.getByRole('button',{name:'Keep on going'}));
  await waitFor(() => assert.ok(ui.getByRole('heading',{name:'No more memes just yet.'})));
  assert.equal(calls.length,2);
@@ -55,6 +59,8 @@ test('failed votes leave the same meme and progress available for retry', async 
  assert.ok(ui.getByText('0 / 2 rated'));
  assert.ok(ui.getByRole('heading',{name:'Meme 0',exact:true}));
  assert.equal(calls.length,1);
+ assert.equal(questSummary(readQuestHistory("tester")).upvotes,0);
+ assert.equal(questSummary(readQuestHistory("tester")).completedToday,false);
 });
 test('left and right arrow buttons persist opposite vote values', async () => {
  const {ui,calls} = setup(2);
@@ -69,7 +75,7 @@ test('empty feeds offer a refresh and gallery link without a false completion', 
  const {ui} = setup(0);
  await waitFor(() => assert.ok(ui.getByRole('heading',{name:'No more memes just yet.'})));
  assert.equal(ui.queryByRole('heading',{name:/Congrats/}),null);
- assert.equal(ui.getByRole('link',{name:/Public Evidence/}).getAttribute('href'),'/gallery');
+ assert.equal(ui.getByRole('link',{name:/Checked Gallery/}).getAttribute('href'),'/gallery');
 });
 test('horizontal swipes save votes and vertical gestures do not', async () => {
  const {ui,calls} = setup(2);

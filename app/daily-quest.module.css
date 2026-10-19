@@ -30,6 +30,8 @@
 .error { margin:20px auto;max-width:540px;color:#ffb2b2; }
 @media(max-width:620px) { .quest { padding-top:24px; }.deck { grid-template-columns:36px minmax(0,1fr) 36px;gap:8px; }.arrow { width:36px;height:36px;font-size:21px; }.controls { grid-column:1/-1; }.caption { padding:14px; }.image img { max-height:48vh; }.progress { margin-bottom:14px; } }
 
+.back { display:inline-block;font-size:12px;margin:18px 0 0;text-decoration:underline;text-underline-offset:4px;opacity:.7; }
+
 .card { position:relative;animation:cardArrive 220ms ease-out both; }
 .swipeRight,.swipeLeft { z-index:1;pointer-events:none;animation:cardSwipe 380ms cubic-bezier(.22,.7,.3,1) both; }
 .swipeRight { --swipe-x:24%;--swipe-rotation:7deg;--vote-glow:var(--accent,#e8f044); }

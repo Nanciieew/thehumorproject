@@ -230,7 +230,7 @@ test("avatar name search sends a trimmed query, survives sort changes and clears
 
 test("gallery has a single bubble title and avatar cards link to public descriptions while voting stays separate", () => {
   const ui = mount("user", [{...photo("one"), title: "Bubble Hero", description: "A happy little adventurer."}]);
-  assert.equal(ui.getByRole("heading", {level: 1, name: "Public Evidence"}).getAttribute("id"), "gallery-title");
+  assert.equal(ui.getByRole("heading", {level: 1, name: "Checked Gallery"}).getAttribute("id"), "gallery-title");
   assert.equal(ui.getByRole("link", {name: "Bubble Hero"}).getAttribute("href"), "/avatars/one");
   assert.ok(ui.getByRole("button", {name: "Most votes overall"}));
   assert.ok(ui.getByRole("button", {name: "New this month"}));

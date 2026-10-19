@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { GalleryPage, GalleryPhoto } from "@/lib/gallery-types";
+import { completeQuestDay, recordQuestVote } from "@/lib/checkly-quest";
 import styles from "./daily-quest.module.css";
 
 type Progress = { ids: string[]; goal: number };
@@ -74,6 +75,10 @@ export function DailyQuest({ userId }: { userId: string }) {
   const batchStart = progress.goal - 10;
   const done = Math.max(0, progress.ids.length - batchStart);
   const completed = progress.ids.length >= progress.goal || (!loading && !error && exhausted && !photo && done > 0);
+  useEffect(() => {
+    if (ready && completed && !loading && !error) completeQuestDay(userId);
+  }, [ready, completed, loading, error, userId]);
+
   const empty = !loading && !error && exhausted && !photo && !done;
   const total = exhausted ? Math.min(10, done + remaining.length) : 10;
 
@@ -95,13 +100,14 @@ export function DailyQuest({ userId }: { userId: string }) {
       const next = { ...progress, ids: [...progress.ids, photo.id] };
       setProgress(next);
       try { localStorage.setItem(storageKey.current, JSON.stringify(next)); } catch { /* Keep progress in memory. */ }
+      recordQuestVote(userId, photo.id, value);
       setNotice(value === 1 ? "Upvote saved." : "Downvote saved.");
       try { sessionStorage.setItem("checked:gallery-votes-changed", "1"); } catch { /* Gallery also refreshes on focus. */ }
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error && !(cause instanceof TypeError) ? cause.message : "Your vote couldn’t be saved. Please try again.");
     } finally { locked.current = false; setBusy(false); setSwipe(null); }
-  }, [photo, loading, completed, progress, router]);
+  }, [photo, loading, completed, progress, router, userId]);
 
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
@@ -117,15 +123,16 @@ export function DailyQuest({ userId }: { userId: string }) {
   }, [vote]);
 
   return <main id="main" className={styles.quest}>
-    <header className={styles.heading}><p className="eyebrow">A LITTLE JUDGMENT. EVERY DAY.</p><h1>Daily Quest<span>.</span></h1><p>Fresh memes. Your verdict. Newest uploads first.</p></header>
+    <header className={styles.heading}><p className="eyebrow">A LITTLE JUDGMENT. EVERY DAY.</p><Link href="/" className={styles.back}>← Quest dashboard</Link><h1>Checkly Quest<span>.</span></h1><p>Fresh memes. Your verdict. Newest uploads first.</p></header>
     <p className={styles.notice} role="status" aria-live="polite">{notice}</p>
     {completed ? <section className={styles.finish} aria-labelledby="quest-complete">
-      <span className={styles.badge} aria-hidden="true">✓</span><p className="eyebrow">DAILY QUEST COMPLETE</p>
+      <span className={styles.badge} aria-hidden="true">✓</span><p className="eyebrow">CHECKLY QUEST COMPLETE</p>
       <h2 id="quest-complete">Congrats, you’ve accomplished your quest!</h2>
-      <p>You rated {done} {done === 1 ? "meme" : "memes"}. Your votes are live in Public Evidence.</p>
+      <p>You rated {done} {done === 1 ? "meme" : "memes"}. Your votes are live in Checked Gallery.</p>
       <button className="action-button" onClick={() => { persist({ ...progress, goal: progress.ids.length + 10 }); setExhausted(false); cursor.current = null; setNotice(""); void load(); }}>Keep on going</button>
-      <Link href="/gallery" className={styles.galleryLink}>See Public Evidence ↗</Link>
-    </section> : empty ? <section className={styles.finish}><h2>No more memes just yet.</h2><p>Come back for new uploads, or explore Public Evidence.</p><button className="action-button" onClick={() => { setExhausted(false); cursor.current = null; void load(); }}>Check for new memes</button><Link href="/gallery" className={styles.galleryLink}>Public Evidence ↗</Link></section> : <>
+      <Link href="/" className={styles.galleryLink}>Back to my quest dashboard ↗</Link>
+      <Link href="/gallery" className={styles.galleryLink}>See Checked Gallery ↗</Link>
+    </section> : empty ? <section className={styles.finish}><h2>No more memes just yet.</h2><p>Come back for new uploads, or explore Checked Gallery.</p><button className="action-button" onClick={() => { setExhausted(false); cursor.current = null; void load(); }}>Check for new memes</button><Link href="/gallery" className={styles.galleryLink}>Checked Gallery ↗</Link></section> : <>
       <div className={styles.progress}><span>{done} / {total} rated</span><span>YOUR DAILY DOSE</span><progress aria-label="Daily quest progress" value={done} max={Math.max(1, total)} /></div>
       {photo && <section className={styles.deck} aria-label="Rate this meme" aria-busy={busy}>
         <button className={`${styles.arrow} ${styles.left}`} aria-label="Swipe left to downvote" disabled={busy || loading} onClick={() => void vote(-1)}>←</button>

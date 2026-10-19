@@ -51,11 +51,11 @@ export function PublishEgo({ receipt, snapshot, roast, onBusyChange }: { receipt
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img className={styles.publishSnapshot} src={`data:image/jpeg;base64,${snapshot}`} width="320" alt="Your roast snapshot for public sharing" />
       <blockquote className={styles.publishCaption}>{roast}</blockquote>
-      {photoId ? <><p role="status">Published to Public Evidence. Gallery votes start at zero.</p><Link href={href} className="ego-button">View in Public Evidence ↗</Link></> : <>
-        <p className="ego-note">Your snapshot, roast and profile name will be public. Signed-in people can vote. This doesn’t create a battle.</p>
-        <label className="ego-check"><input type="checkbox" checked={approved} disabled={busy} onChange={e => setApproved(e.target.checked)} />I agree to publish this snapshot and roast to Public Evidence.</label>
+      {photoId ? <><p role="status">Published to Checked Gallery. Gallery votes start at zero.</p><Link href={href} className="ego-button">View in Checked Gallery ↗</Link></> : <>
+        <p className="ego-note">Your snapshot, roast and profile name will be public. Signed-in people can vote.</p>
+        <label className="ego-check"><input type="checkbox" checked={approved} disabled={busy} onChange={e => setApproved(e.target.checked)} />I agree to publish this snapshot and roast to Checked Gallery.</label>
         {error && <p role="alert" className="form-error">{error}</p>}
-        <button className="ego-button" disabled={!approved || busy} onClick={() => void publish()}>{busy ? "Publishing…" : "Publish to Public Evidence"}</button>
+        <button className="ego-button" disabled={!approved || busy} onClick={() => void publish()}>{busy ? "Publishing…" : "Publish to Checked Gallery"}</button>
       </>}
       <button className="dialog-cancel" disabled={busy} onClick={close}>{photoId ? "Close" : "Cancel"}</button>
     </dialog>}
