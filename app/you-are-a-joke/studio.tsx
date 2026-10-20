@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Intensity, RoastEvent, RoastResponse } from "@/lib/roast/contracts";
-import { PlayfulTitle } from "../playful-title";
+import Image from "next/image";
 import styles from "./studio.module.css";
 import { RoastMeme } from "./roast-meme";
 import { PublishEgo } from "./publish-ego";
@@ -206,39 +206,63 @@ export function RoastStudio({ mock, configured, userId }: { mock: boolean; confi
     pause();
     setIntensity(nextIntensity); setTopics(nextTopics); options.current = { intensity: nextIntensity, direction: direction.trim(), excludedTopics: nextTopics.split(",").map(s => s.trim().slice(0, 80)).filter(Boolean).slice(0, 10) }; invalidate(true);
   }
-  const status = !camera ? starting ? "Waiting for camera permission…" : "Camera off" : !ready ? "Tracking unavailable / loading" : faceCount > 1 ? "One participant only, please" : faceCount === 0 ? "Looking for a face" : !enabled ? "Paused — camera is on" : thinking ? "Thinking…" : "Getting your roast ready…";
+  const status = !camera ? starting ? "Waiting for camera permission…" : "Camera starts when you are ready." : !ready ? "Tracking unavailable / loading" : faceCount > 1 ? "One participant only, please" : faceCount === 0 ? "Looking for a face" : !enabled ? "Paused — camera is on" : thinking ? "Thinking…" : "Getting your roast ready…";
+  const previewLabel = finished ? "Ego checked" : !camera ? starting ? "Connecting…" : "Camera off" : mock ? "Demo · no AI analysis" : "Camera on";
+  const tryAgainDisabled = !finished || publishing || !consent || !configured || (camera && (!ready || enabled));
   return <main id="main" className={styles.page}>
-    <header className="page-hero"><div><PlayfulTitle text="Get checked." /><p>Your ego called. We declined.</p></div></header>
+    <header className={styles.header}>
+      <div><h1>Get checked<span>.</span></h1><p>Your ego called. We declined.</p></div>
+      <div className={styles.decorations} aria-hidden="true">
+        <Image className={styles.glassBubbles} src="/checkboard/glass-bubbles.png" alt="" width={1829} height={860} sizes="240px" />
+        <Image className={styles.mascot} src="/checkboard/mascot.png" alt="" width={1536} height={1024} sizes="170px" />
+        <Image className={styles.sparkle} src="/checkboard/sparkle.svg" alt="" width={32} height={50} />
+      </div>
+    </header>
     <div className={styles.layout}>
       <section className={styles.stage} aria-label="Camera preview">
         <div className={styles.videoWrap} data-camera={camera}>
           <video ref={video} autoPlay muted playsInline aria-label="Mirrored live webcam" />
-          {!camera && <div className={styles.empty}><span aria-hidden="true">✳</span><h2>Your close-up awaits.</h2></div>}
+          {!camera && <div className={styles.empty}><StudioIcon name="camera" /><h2>Your close-up awaits.</h2><p>A little camera time. A little ego check.</p></div>}
           <div ref={badge} className={styles.badge} aria-hidden="true">✳ MAIN CHARACTER</div>
-          <span className={styles.live}>{mock ? "DEMO · NO AI ANALYSIS" : "GEMINI AI"}</span>
+          <span className={styles.live} data-on={camera && !finished}><i aria-hidden="true" />{previewLabel}</span>
           {!mock && selected && <RoastMeme key={selected.receipt} {...selected} onBusyChange={setPublishing} userId={userId} onGenerated={setFinished} />}
-
         </div>
-        <p className={styles.status} role="status">● {status}</p>
+        <p className={styles.status} role="status"><span aria-hidden="true">●</span> {status}</p>
       </section>
       <section className={styles.controls} aria-label="Experience controls">
         <h2>How spicy?</h2>
-        <label htmlFor="roast-intensity">Roast intensity</label><select id="roast-intensity" value={intensity} disabled={publishing} onChange={e => changeSettings(e.target.value as Intensity, topics)}><option value="playful">Playful</option><option value="savage">Savage</option><option value="profane">Profane · swearing</option></select>
-        <div className={styles.keyword}><label htmlFor="roast-direction">Keyword <span>optional</span></label><input id="roast-direction" maxLength={500} placeholder="Finals week, first dates, office life…" value={direction} disabled={publishing || enabled} onChange={event => { setDirection(event.target.value); options.current.direction = event.target.value.trim(); }} /></div>
-        <details className="ego-details"><summary>Topics to avoid</summary><label className="visually-hidden" htmlFor="roast-topics">Topics to avoid</label><input id="roast-topics" value={topics} disabled={publishing} maxLength={800} placeholder="work, dating, my room…" onChange={e => changeSettings(intensity, e.target.value)} /><p className={styles.note}>Up to 10, separated by commas.</p></details>
+        <fieldset className={styles.spice} disabled={publishing}>
+          <legend className="visually-hidden">Roast intensity</legend>
+          {(["playful", "savage", "profane"] as const).map(value => <label key={value} className={styles.spiceChoice}>
+            <input type="radio" name="roast-intensity" value={value} checked={intensity === value} onChange={() => changeSettings(value, topics)} />
+            <span>{value === "playful" ? "Playful" : value === "savage" ? "Savage" : "Profane"}</span>
+          </label>)}
+        </fieldset>
+        <div className={styles.keyword}><label htmlFor="roast-direction">Keyword <span>Optional</span></label><input id="roast-direction" maxLength={500} placeholder="Finals week, first dates, office life…" value={direction} disabled={publishing || enabled} onChange={event => { setDirection(event.target.value); options.current.direction = event.target.value.trim(); }} /></div>
+        <details className={styles.topics}><summary>Topics to avoid <StudioIcon name="chevron" /></summary><label className="visually-hidden" htmlFor="roast-topics">Topics to avoid</label><input id="roast-topics" value={topics} disabled={publishing} maxLength={800} placeholder="work, dating, my room…" onChange={e => changeSettings(intensity, e.target.value)} /><p className={styles.note}>Up to 10, separated by commas.</p></details>
         <div className={styles.consent}>
           {mock && <p>Mock mode: no camera snapshots are uploaded. Captions are scripted.</p>}
-          <label><input type="checkbox" checked={consent} onChange={e => changeConsent(e.target.checked)} />{mock ? "I understand this is a local demo with scripted captions." : "I agree to send snapshots to Gemini for AI roasts and Seedream to add the punchline."}</label>
-
+          <label><input type="checkbox" checked={consent} onChange={e => changeConsent(e.target.checked)} /><span>{mock ? "I understand this is a local demo with scripted captions." : "I agree to send snapshots to Gemini for AI roasts and Seedream to add the punchline."}</span></label>
         </div>
-        {!configured && <p role="alert">Live roasting is not configured. Set the Gemini credentials and model on the server.</p>}
-        {!camera && !starting && <button className="action-button wide" disabled={!consent || !configured} onClick={() => void start()}>Check my ego ↗</button>}
-        {starting && <button className="action-button wide" onClick={stop}>Cancel camera request</button>}
-        {camera && <button className="action-button wide" disabled={!consent || !ready || publishing} onClick={() => { if (enabled) pause(); else roastAgain(); }}>{enabled ? "Cancel roast" : "Hurt my feelings again ↗"}</button>}
-        {finished && <div className={styles.publishPanel}><PublishEgo key={finished.receipt} {...finished} onBusyChange={setPublishing} /></div>}
+        {!configured && <p role="alert" className={styles.message}>Live roasting is unavailable right now. Please try again later.</p>}
+        {!camera && !starting && <button className={styles.primary} disabled={!consent || !configured || publishing} onClick={() => void start()}>Check my ego <span aria-hidden="true">→</span></button>}
+        {starting && <button className={styles.primary} onClick={stop}>Cancel camera request</button>}
+        {camera && <button className={styles.primary} disabled={!consent || !ready || publishing} onClick={() => { if (enabled) pause(); else roastAgain(); }}>{enabled ? "Cancel roast" : "Hurt my feelings again ↗"}</button>}
         {message && <p role="alert" className={styles.message}>{message}</p>}
-
       </section>
     </div>
+    <section className={styles.resultPanel} aria-label="Your punchline">
+      <div><h2>Your punchline</h2><p>{finished ? "Your screenshot is ready to share." : selected && publishing ? "Your screenshot is taking shape." : "Your roast will appear in your screenshot."}</p></div>
+      <div className={styles.resultActions}>
+        <button className={styles.secondary} disabled={tryAgainDisabled} onClick={() => { if (camera) roastAgain(); else void start(); }}><StudioIcon name="refresh" />Try again</button>
+        {finished ? <PublishEgo key={finished.receipt} {...finished} onBusyChange={setPublishing} /> : <button className={`${styles.challengeButton} ${styles.publishButton}`} disabled><StudioIcon name="send" />Publish</button>}
+      </div>
+    </section>
   </main>;
+}
+
+function StudioIcon({ name }: { name: "camera" | "refresh" | "send" | "chevron" }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {name === "camera" ? <><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3Z" /><circle cx="12" cy="13.5" r="4" /></> : name === "refresh" ? <><path d="M20 7v5h-5M4 17v-5h5" /><path d="M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9" /></> : name === "send" ? <><path d="m22 2-7 20-4-9-9-4Z" /><path d="m22 2-11 11" /></> : <path d="m6 9 6 6 6-6" />}
+  </svg>;
 }

@@ -135,7 +135,7 @@ test('one click produces one roast, preserves its receipt while paused, and need
   await act(async () => memes[0].resolve(Response.json({ snapshot: 'Z2VuZXJhdGVk', receipt: 'meme-receipt' })));
   assert.equal(ui.getByAltText('Your checked screenshot').getAttribute('src'), 'data:image/webp;base64,Z2VuZXJhdGVk');
   const publish = ui.getByRole('button', { name: 'Publish my ego' });
-  assert.ok(ui.getByRole('region', { name: 'Experience controls' }).contains(publish));
+  assert.ok(ui.getByRole('region', { name: 'Your punchline' }).contains(publish));
   assert.equal(ui.getByRole('region', {name:'Camera preview'}).contains(publish),false);
   assert.equal(ui.queryByRole('link',{name:'Checked Factory ↗'}),null);
   assert.equal(ui.queryByText('One roast per click.'),null);
@@ -208,7 +208,7 @@ test('changing settings cancels a pending round and waits for another click', as
   };
   const { ui, faces, tick } = await liveHarness();
   await faces(1); await tick(100);
-  fireEvent.change(ui.getByLabelText('Roast intensity'), { target: { value: 'playful' } });
+  fireEvent.click(ui.getByRole('radio', { name: 'Playful' }));
   assert.equal(signal.aborted, true);
   now += 9000; await faces(1); await tick(10000); assert.equal(sent.length, 1);
   fireEvent.click(ui.getByRole('button', { name: 'Hurt my feelings again ↗' }));
