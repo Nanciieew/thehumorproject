@@ -54,3 +54,21 @@ test('EXIF orientation is honoured without cropping or scaling',async()=>{
  const [rendered]=await renderFactoryMemes(`data:image/jpeg;base64,${source.toString('base64')}`,['NOT TODAY']);
  const meta=await sharp(rendered).metadata();assert.equal(meta.width,500);assert.equal(meta.height,300);
 });
+
+
+test('long caption lines rasterize completely instead of losing glyphs after the first few letters',async()=>{
+ const width=1269,height=2825;
+ const overlay=await captionOverlay('My third Celsius kicking in during question four',width,height);
+ assert.deepEqual(overlay.lines,['MY THIRD CELSIUS KICKING IN DURING QUESTION','FOUR']);
+ const scale=width/MEME_TYPE.referenceShortEdge;
+ const firstBaseline=overlay.lastBaseline-MEME_TYPE.lineHeight*scale;
+ const top=Math.floor(firstBaseline-overlay.fontSize);
+ const band=await sharp(overlay.svg).extract({left:0,top,width,height:Math.ceil(overlay.fontSize+MEME_TYPE.strokeWidth*scale)}).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+ // The reported failure only drew "MY THIR" at the far left. Check ink
+ // across the middle and end of the actual first line, not just its text data.
+ for(const [left,right] of [[width*.35,width*.5],[width*.65,width*.8],[width*.85,width*.93]]){
+  let ink=0;
+  for(let y=0;y<band.info.height;y++)for(let x=Math.floor(left);x<Math.floor(right);x++)if(band.data[(y*width+x)*4+3]>0)ink++;
+  assert.ok(ink>100,`missing caption glyphs between ${left} and ${right}`);
+ }
+});

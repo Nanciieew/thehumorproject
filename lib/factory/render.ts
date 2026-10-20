@@ -2,7 +2,7 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { parse, type Font } from "opentype.js";
+import { parse, type Font, type Path } from "opentype.js";
 import { MAX_GALLERY_BYTES } from "../gallery-types";
 
 // A single design scale, never fitted or shrunk to suit an individual caption.
@@ -33,6 +33,21 @@ function wrapCaption(font: Font, caption: string, width: number) {
   if (lines.length > MEME_TYPE.maxLines) throw new CaptionLayoutError("This caption is too long for the fixed bottom caption area.");
   return lines;
 }
+function outlineData(outline: Path) {
+  const number = (value: number) => {
+    if (!Number.isFinite(value)) throw new CaptionLayoutError("The caption outline could not be rendered completely.");
+    return String(Math.round(value * 1000) / 1000);
+  };
+  return outline.commands.map(command => {
+    switch (command.type) {
+      case "M": case "L": return `${command.type}${number(command.x)} ${number(command.y)}`;
+      case "Q": return `Q${number(command.x1)} ${number(command.y1)} ${number(command.x)} ${number(command.y)}`;
+      case "C": return `C${number(command.x1)} ${number(command.y1)} ${number(command.x2)} ${number(command.y2)} ${number(command.x)} ${number(command.y)}`;
+      case "Z": return "Z";
+      default: throw new CaptionLayoutError("The caption outline contains an unsupported command.");
+    }
+  }).join("");
+}
 export async function captionOverlay(caption: string, width: number, height: number) {
   const font = await loadFont();
   const scale = Math.min(width, height) / MEME_TYPE.referenceShortEdge;
@@ -43,7 +58,9 @@ export async function captionOverlay(caption: string, width: number, height: num
     const bounds = font.getPath(line, 0, 0, MEME_TYPE.fontSize).getBoundingBox();
     const x = (logicalWidth - (bounds.x2 - bounds.x1)) / 2 - bounds.x1;
     const y = lastBaseline - (lines.length - 1 - index) * MEME_TYPE.lineHeight;
-    const outline = font.getPath(line, x, y, MEME_TYPE.fontSize).toPathData(3);
+    // Export coordinates ourselves: OpenType's decimal rounding turns tiny
+    // floating-point fractions into NaN, invalidating the rest of the line.
+    const outline = outlineData(font.getPath(line, x, y, MEME_TYPE.fontSize));
     return `<path d="${outline}"/>`;
   }).join("");
   // Font outlines, rather than SVG text, eliminate installed-font substitution.
