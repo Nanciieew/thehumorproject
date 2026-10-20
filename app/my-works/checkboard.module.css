@@ -60,8 +60,18 @@
 }
 @media(max-width:500px) { .mascot { width:35%;height:100px;top:45px;right:-1%; }.heroBubbles { height:130px;top:20px;right:-8%; } }
 
-.collectionSort { display:flex;align-items:center;gap:10px;margin:0 0 14px;font-size:13px;color:var(--muted); }
-.collectionSort select { padding:8px 12px;border:1px solid var(--edge);border-radius:10px;background:#182018;color:var(--foreground); }
+.collectionActions { display:flex;align-items:center;justify-content:flex-end;gap:16px;margin-left:auto; }
+.collectionSort { display:flex;align-items:center;gap:6px;margin:0;padding:8px 12px;border:1px solid #ffffff14;border-radius:16px;background:#191e15;color:#aab39e;font-size:12px; }
+.collectionSort>span { padding:0 10px 0 4px;color:#a0a895; }
+.collectionSort button { padding:10px 18px;border-radius:999px;color:#c5cbbd;background:#ffffff04;white-space:nowrap;cursor:pointer;font-size:12px; }
+.collectionSort button[aria-pressed=true] { background:var(--accent);color:#202710;font-weight:650; }
+.collectionSort button:hover:not(:disabled) { box-shadow:inset 0 0 0 1px #e8f04466; }.collectionSort button:disabled { opacity:.5;cursor:wait; }
+.collectionSort button:focus-visible { outline:2px solid var(--accent);outline-offset:3px; }
+.collectionHeading .upload { min-height:54px;padding:14px 24px;border-radius:13px;border:1px solid #f1f78a;background:var(--accent);color:#202710;font-size:15px;font-weight:700;white-space:nowrap;box-shadow:0 0 22px #e8f04414; }
+.collectionHeading .upload:hover { background:#f2f878; }.collectionHeading .upload>span { font-size:24px; }
+@media(max-width:1100px) { .collectionHeading { flex-wrap:wrap; }.collectionActions { flex-wrap:wrap;gap:12px; }.collectionHeading .upload { min-height:50px;padding:12px 18px;font-size:14px; } }
+@media(max-width:750px) { .collectionActions { width:100%;justify-content:space-between;margin-left:0; }.collectionSort { padding:7px; }.collectionSort>span { padding-inline:4px; }.collectionSort button { padding:9px 12px;font-size:11px; }.collectionHeading .upload { min-height:48px;font-size:13px;padding:11px 16px; } }
+@media(max-width:500px) { .collectionActions { align-items:stretch; }.collectionSort { flex:1;justify-content:center; }.collectionHeading .upload { justify-content:center;flex:1; } }
 .deleteMeme { display:grid;place-items:center;width:28px;height:32px;border-radius:6px;color:#aeb5a6;cursor:pointer; }
 .workVotes .deleteMeme svg { width:17px;height:17px;fill:none; }
 .deleteMeme:hover { color:#ff9d96;background:#e35d4c20; }

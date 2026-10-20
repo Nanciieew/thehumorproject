@@ -35,11 +35,11 @@ test("works load without duplicates, default to most votes, and switch to newest
   };
   const ui = render(React.createElement(WorksGrid, { initial: { items: [work("one")], next_cursor: "more" } }));
   await waitFor(() => assert.equal(calls.length, 1));
-  assert.equal(ui.getByLabelText("Show").value, "top");
+  assert.equal(ui.getByRole("button", {name:"Most upvotes"}).getAttribute("aria-pressed"), "true");
   await act(async () => { for (const observer of [...observers]) observer.callback([{ isIntersecting: true }]); });
   await waitFor(() => assert.equal(ui.getAllByRole("listitem").length, 2));
   assert.equal(ui.getByRole("link", { name: "Edit Work two" }).getAttribute("href"), "/my-works/two");
-  fireEvent.change(ui.getByLabelText("Show"), {target:{value:"newest"}});
+  fireEvent.click(ui.getByRole("button", {name:"Newest first"}));
   await waitFor(() => assert.ok(ui.getByRole("link", {name:"Edit Work newest"})));
   assert.equal(calls.at(-1).get("sort"),"newest");
 });

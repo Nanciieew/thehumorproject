@@ -3,7 +3,7 @@
 import styles from "./checkboard.module.css";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Work, WorksPage, WorksSort } from "@/lib/work-types";
 import { announceVoteChange, VOTES_CHANGED_EVENT } from "@/lib/vote-updates";
 
@@ -12,11 +12,14 @@ function VoteThumb({ down = false }: { down?: boolean }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true" style={{ transform: down ? "rotate(180deg)" : undefined }}><path d="M7 10v11H3V10h4Zm1 0 5-8h1a3 3 0 0 1 3 3l-1 4h4a2 2 0 0 1 2 2l-2 8a3 3 0 0 1-3 2H8Z" /></svg>;
 }
 
-export function WorksGrid({ initial, onTotalsChange }: { initial: WorksPage; onTotalsChange?: (totals: Totals) => void }) {
+export function WorksGrid({ initial, onTotalsChange, heading, action }: { initial: WorksPage; onTotalsChange?: (totals: Totals) => void; heading?: ReactNode; action?: ReactNode }) {
   const [sort, setSort] = useState<WorksSort>("top");
   const [deleting, setDeleting] = useState(false);
   return <>
-    <div className={styles.collectionSort}><label htmlFor="work-sort">Show</label><select id="work-sort" value={sort} disabled={deleting} onChange={event => setSort(event.target.value as WorksSort)}><option value="top">Most votes</option><option value="newest">Newest</option></select></div>
+    <div className={styles.collectionHeading}>{heading}<div className={styles.collectionActions}>
+      <div className={styles.collectionSort} role="group" aria-label="Sort uploaded memes"><span>Sort</span>{([["top", "Most upvotes"], ["newest", "Newest first"]] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={sort === value} disabled={deleting} onClick={() => setSort(value)}>{label}</button>)}</div>
+      {action}
+    </div></div>
     <WorksFeed key={sort} initial={sort === "top" ? initial : undefined} sort={sort} onTotalsChange={onTotalsChange} onDeletingChange={setDeleting} />
   </>;
 }

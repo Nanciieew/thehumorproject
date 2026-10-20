@@ -11,8 +11,9 @@ export function MyCheckboard({ userId, initial }: { userId: string; initial: Wor
   const [received, setReceived] = useState(initial.received ?? null);
   return <ChecklyDashboard userId={userId} received={received}>
     <section className={styles.collection} aria-labelledby="collection-title">
-      <div className={styles.collectionHeading}><h2 id="collection-title">Uploaded memes</h2><Link className={styles.upload} href="/disguise"><span aria-hidden="true">✳</span>Create new meme</Link></div>
-      <WorksGrid initial={initial} onTotalsChange={setReceived} />
+      <WorksGrid initial={initial} onTotalsChange={setReceived}
+        heading={<h2 id="collection-title">Uploaded memes</h2>}
+        action={<Link className={styles.upload} href="/disguise"><span aria-hidden="true">✳</span>Create New Meme</Link>} />
     </section>
   </ChecklyDashboard>;
 }
