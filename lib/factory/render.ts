@@ -8,8 +8,8 @@ import { MAX_GALLERY_BYTES } from "../gallery-types";
 // A single design scale, never fitted or shrunk to suit an individual caption.
 // Only the overlay scales to the original's resolution; the picture never does.
 export const MEME_TYPE = Object.freeze({
-  font: "Anton", referenceShortEdge: 1000, fontSize: 48,
-  lineHeight: 58, strokeWidth: 6, sideInset: 48, bottomInset: 40, maxLines: 3,
+  font: "Anton", referenceShortEdge: 1000, fontSize: 96,
+  lineHeight: 116, strokeWidth: 12, sideInset: 48, bottomInset: 40, maxLines: 2,
 });
 export class CaptionLayoutError extends Error {}
 let fontPromise: Promise<Font> | undefined;

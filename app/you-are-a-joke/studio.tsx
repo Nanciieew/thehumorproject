@@ -108,7 +108,7 @@ export function RoastStudio({ mock, configured, userId }: { mock: boolean; confi
       w.onmessage = ({ data }) => {
         if (worker.current !== w) return;
         if (data.type === "ready") { workerReady.current = true; setReady(true); setMessage(""); return; }
-        if (data.type === "error") { workerReady.current = false; busyTracking.current = false; setReady(false); pause(); setMessage("Local tracking could not load. Retry tracking or restart the experience."); return; }
+        if (data.type === "error") { workerReady.current = false; busyTracking.current = false; setReady(false); pause(); setMessage("Local tracking could not load. Refresh the page to restart."); return; }
         busyTracking.current = false;
         const points = data.landmarks as Point[][];
         const count = points.length; const now = Date.now();
@@ -134,7 +134,7 @@ export function RoastStudio({ mock, configured, userId }: { mock: boolean; confi
           if (!previous || now - previous.at > 700) previous = current;
         } else { tracking.current = { ...old, faces: count, at: now }; previous = null; frames.current = []; }
       };
-      w.onerror = () => { if (worker.current === w) { workerReady.current = false; busyTracking.current = false; setReady(false); pause(); setMessage("Local face tracking failed. Retry tracking."); } };
+      w.onerror = () => { if (worker.current === w) { workerReady.current = false; busyTracking.current = false; setReady(false); pause(); setMessage("Local face tracking failed. Refresh the page to restart."); } };
       w.postMessage({ type: "init" });
     } catch { setMessage("This browser cannot start the tracking worker. Try a current desktop browser."); pause(); }
   }
@@ -234,7 +234,7 @@ export function RoastStudio({ mock, configured, userId }: { mock: boolean; confi
         {!configured && <p role="alert">Live roasting is not configured. Set the Gemini credentials and model on the server.</p>}
         {!camera && !starting && <button className="action-button wide" disabled={!consent || !configured} onClick={() => void start()}>Check my ego ↗</button>}
         {starting && <button className="action-button wide" onClick={stop}>Cancel camera request</button>}
-        {camera && <><button className="action-button wide" disabled={!consent || !ready || publishing} onClick={() => { if (enabled) pause(); else roastAgain(); }}>{enabled ? "Cancel roast" : "Hurt my feelings again ↗"}</button>{!ready && <button onClick={() => { busyTracking.current = false; initializeTracking(); }}>Retry tracking</button>}</>}
+        {camera && <button className="action-button wide" disabled={!consent || !ready || publishing} onClick={() => { if (enabled) pause(); else roastAgain(); }}>{enabled ? "Cancel roast" : "Hurt my feelings again ↗"}</button>}
         {finished && <div className={styles.publishPanel}><PublishEgo key={finished.receipt} {...finished} onBusyChange={setPublishing} /></div>}
         {message && <p role="alert" className={styles.message}>{message}</p>}
 

@@ -58,8 +58,8 @@ test('EXIF orientation is honoured without cropping or scaling',async()=>{
 
 test('long caption lines rasterize completely instead of losing glyphs after the first few letters',async()=>{
  const width=1269,height=2825;
- const overlay=await captionOverlay('My third Celsius kicking in during question four',width,height);
- assert.deepEqual(overlay.lines,['MY THIRD CELSIUS KICKING IN DURING QUESTION','FOUR']);
+ const overlay=await captionOverlay('My third Celsius hit during class',width,height);
+ assert.deepEqual(overlay.lines,['MY THIRD CELSIUS HIT','DURING CLASS']);
  const scale=width/MEME_TYPE.referenceShortEdge;
  const firstBaseline=overlay.lastBaseline-MEME_TYPE.lineHeight*scale;
  const top=Math.floor(firstBaseline-overlay.fontSize);
@@ -71,4 +71,24 @@ test('long caption lines rasterize completely instead of losing glyphs after the
   for(let y=0;y<band.info.height;y++)for(let x=Math.floor(left);x<Math.floor(right);x++)if(band.data[(y*width+x)*4+3]>0)ink++;
   assert.ok(ink>100,`missing caption glyphs between ${left} and ${right}`);
  }
+});
+
+
+test('new caption type is twice the previous size and wraps onto two lines without shrinking',async()=>{
+ const short=await captionOverlay('NOT TODAY',1000,1000);
+ const wrapped=await captionOverlay('MY BUDGET SAID NO TO GROCERIES',1000,1000);
+ assert.equal(short.fontSize,96);
+ assert.equal(wrapped.fontSize,96);
+ assert.deepEqual(wrapped.lines,['MY BUDGET SAID NO TO','GROCERIES']);
+ assert.equal((wrapped.svg.toString().match(/<path /g)||[]).length,2);
+ const pixels=await sharp(wrapped.svg).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+ const firstTop=wrapped.lastBaseline-MEME_TYPE.lineHeight-wrapped.fontSize;
+ let firstInk=0,secondInk=0;
+ for(let y=0;y<pixels.info.height;y++)for(let x=0;x<pixels.info.width;x++){
+  if(!pixels.data[(y*pixels.info.width+x)*4+3])continue;
+  if(y>=firstTop&&y<wrapped.lastBaseline-MEME_TYPE.lineHeight)firstInk++;
+  if(y>=wrapped.lastBaseline-wrapped.fontSize&&y<wrapped.lastBaseline)secondInk++;
+ }
+ assert.ok(firstInk>1000,'the larger first line is visible');
+ assert.ok(secondInk>1000,'the larger second line is visible');
 });
