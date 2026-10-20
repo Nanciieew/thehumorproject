@@ -49,7 +49,7 @@ export function PublishEgo({ receipt, snapshot, roast, onBusyChange }: { receipt
       <h2 id="publish-ego-title">{photoId ? "Your ego is public." : "Publish my ego"}</h2>
       {/* This preview remains in browser memory until public sharing is confirmed. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className={styles.publishSnapshot} src={`data:image/jpeg;base64,${snapshot}`} width="320" alt="Your roast snapshot for public sharing" />
+      <img className={styles.publishSnapshot} src={`data:image/webp;base64,${snapshot}`} width="320" alt="Your roast snapshot for public sharing" />
       <blockquote className={styles.publishCaption}>{roast}</blockquote>
       {photoId ? <><p role="status">Published to Checked Gallery. Gallery votes start at zero.</p><Link href={href} className="ego-button">View in Checked Gallery ↗</Link></> : <>
         <p className="ego-note">Your snapshot, roast and profile name will be public. Signed-in people can vote.</p>

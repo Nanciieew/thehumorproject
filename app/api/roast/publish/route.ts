@@ -8,7 +8,7 @@ const headers = { "Cache-Control": "private, no-store" };
 export async function POST(request: Request) {
   const viewer = await galleryWriter(request); if (viewer instanceof Response) return viewer;
   try {
-    const body = await readBoundedJson(request, 300000);
+    const body = await readBoundedJson(request, 14 * 1024 * 1024);
     const photoId = await publishRoast(viewer.user.id, body);
     revalidatePath("/gallery"); revalidatePath("/my-works");
     return Response.json({ photoId }, { headers });

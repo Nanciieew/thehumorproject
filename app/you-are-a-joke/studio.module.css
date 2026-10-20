@@ -52,3 +52,11 @@
 .empty h2 { font-size:22px;font-weight:400; }
 .page :global(.page-hero) { margin-bottom:24px;padding-bottom:20px; }
 .page :global(.playful-title) { font-size:clamp(38px,5vw,64px)!important; }
+
+.memeResult { position:relative; background:var(--surface); z-index:1; }
+.memeResult > img { display:block; width:100%; height:auto; }
+.videoWrap:has(.memeResult) video { display:none; }
+.videoWrap:has(.memeResult) .badge, .videoWrap:has(.memeResult) .live { visibility:hidden; }
+.memeActions { padding:16px; }
+.memeActions p { font-size:13px; margin-bottom:12px; }
+.videoWrap:has(.memeResult) .resultActions { position:static; padding:0 16px 16px; width:100%; }

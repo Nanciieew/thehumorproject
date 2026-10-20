@@ -10,9 +10,9 @@ const {publishRoast}=await import('../lib/roast/publication.ts');
 const originalFrom=supabase.from, originalStorage=supabase.storage.from;
 const owner=randomUUID(), rows=new Map(), objects=new Map();
 let failInsert=false, lostResponse=false;
-const snapshot=(await sharp({create:{width:80,height:60,channels:3,background:'#808080'}}).jpeg().toBuffer()).toString('base64');
+const snapshot=(await sharp({create:{width:80,height:60,channels:3,background:'#808080'}}).webp().toBuffer()).toString('base64');
 const roast='Those sunglasses are doing all the personality work.';
-const input=()=>({approved:true,snapshot,receipt:signReceipt(owner,roast,snapshot),roast:'Client text must be ignored.'});
+const input=()=>({approved:true,snapshot,receipt:signReceipt(owner,roast,snapshot,"meme"),roast:'Client text must be ignored.'});
 supabase.from=table=>{
  assert.equal(table,'images');let values=null;const filters=[];
  const query={select(){return this;},eq(key,value){filters.push([key,value]);return this;},insert(row){values=row;return this;},async maybeSingle(){const row=[...rows.values()].find(r=>filters.every(([k,v])=>r[k]===v));return {data:row?{...row}:null,error:null};},async single(){
@@ -36,11 +36,11 @@ test('publication requires public approval, a real receipt and the matching owne
  await assert.rejects(publishRoast(randomUUID(),body));
  assert.equal(rows.size,0);assert.equal(objects.size,0);
 });
-test('solo publication saves the verified roast and normalized image using ordinary gallery voting',async()=>{
+test('solo publication saves the verified roast and exact generated image using ordinary gallery voting',async()=>{
  const id=await publishRoast(owner,input());const row=rows.get(id);
  assert.equal(row.description,roast);assert.equal(row.title,'Ego checked.');assert.equal(row.source,'upload');assert.equal(row.contributor_id,owner);
  assert.ok(row.published_at);assert.ok(row.public_storage_path.startsWith(`${owner}/roast-`));
- const meta=await sharp(objects.get(row.public_storage_path)).metadata();assert.equal(meta.format,'webp');assert.equal(meta.width,80);
+ const meta=await sharp(objects.get(row.public_storage_path)).metadata();assert.equal(meta.format,'webp');assert.equal(meta.width,80);assert.deepEqual(objects.get(row.public_storage_path),Buffer.from(snapshot,'base64'));
  assert.equal(row.battle_votes,undefined,'a solo card invents no battle tally');
 });
 test('retries and concurrent publication create one card without resetting its votes or removing its image',async()=>{
@@ -58,9 +58,15 @@ test('a database commit with a lost response keeps the successfully published im
  lostResponse=true;const id=await publishRoast(owner,input());
  assert.ok(objects.has(rows.get(id).public_storage_path));assert.equal(objects.size,1);
 });
-test('signed unsupported and oversized snapshots still fail media validation',async()=>{
+test('signed unsupported images still fail media validation',async()=>{
  const png=(await sharp({create:{width:20,height:20,channels:3,background:'#fff'}}).png().toBuffer()).toString('base64');
  const large=(await sharp({create:{width:641,height:20,channels:3,background:'#fff'}}).jpeg().toBuffer()).toString('base64');
- for(const frame of [png,large])await assert.rejects(publishRoast(owner,{approved:true,snapshot:frame,receipt:signReceipt(owner,roast,frame)}),/Invalid roast snapshot/);
+ for(const frame of [png,large])await assert.rejects(publishRoast(owner,{approved:true,snapshot:frame,receipt:signReceipt(owner,roast,frame,"meme")}),/Invalid generated roast meme/);
+ assert.equal(objects.size,0);
+});
+
+test('original screenshot receipts cannot bypass meme generation',async()=>{
+ const jpeg=(await sharp({create:{width:80,height:60,channels:3,background:'#808080'}}).jpeg().toBuffer()).toString('base64');
+ await assert.rejects(publishRoast(owner,{approved:true,snapshot:jpeg,receipt:signReceipt(owner,roast,jpeg)}));
  assert.equal(objects.size,0);
 });

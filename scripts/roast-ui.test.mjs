@@ -100,9 +100,10 @@ test('mock tracking never uploads frames and unmount stops camera tracks', async
 
 test('one click produces one roast, preserves its receipt while paused, and needs another click for the next', async t => {
   let now = Date.now(); t.mock.method(Date, 'now', () => now);
-  const sent = [], replies = [];
+  const sent = [], replies = [], memes = [];
   globalThis.fetch = (url, options) => {
     if (url.endsWith('/reset')) return Promise.resolve(new Response(null, { status: 204 }));
+    if (url === '/api/roast/meme') return new Promise(resolve => memes.push({ body: JSON.parse(options.body), resolve }));
     assert.equal(url, '/api/roast');
     sent.push(JSON.parse(options.body));
     return new Promise(resolve => replies.push(resolve));
@@ -122,6 +123,12 @@ test('one click produces one roast, preserves its receipt while paused, and need
   await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Hurt my feelings again ↗' })));
   assert.equal(ui.queryByRole('button', { name: 'Challenge a friend ↗' }), null);
   assert.ok(ui.getByText(/Paused — camera is on/));
+  assert.equal(memes.length, 1);
+  assert.equal(memes[0].body.receipt, 'receipt-0');
+  assert.equal(ui.getByAltText('The screenshot captured for your punchline').getAttribute('src'), 'data:image/jpeg;base64,/9j/AA==');
+  assert.equal(ui.queryByRole('button', { name: 'Publish my ego' }), null);
+  await act(async () => memes[0].resolve(Response.json({ snapshot: 'Z2VuZXJhdGVk', receipt: 'meme-receipt' })));
+  assert.equal(ui.getByAltText('Your screenshot with the punchline: First roast.').getAttribute('src'), 'data:image/webp;base64,Z2VuZXJhdGVk');
   const publish = ui.getByRole('button', { name: 'Publish my ego' });
   assert.ok(ui.getByRole('region', { name: 'Camera preview' }).contains(publish));
   const disguise = ui.getByRole('link', { name: 'Checked Factory ↗' });
@@ -244,4 +251,23 @@ test('cancelled public-sharing previews send nothing and failed publication can 
   fireEvent.click(ui.getByRole('button', { name: 'Publish to Checked Gallery' }));
   await waitFor(() => assert.ok(ui.getByRole('link', { name: 'View in Checked Gallery ↗' })));
   assert.equal(calls, 2);
+});
+
+test('meme generation failure keeps the captured screenshot and retries before enabling publication', async () => {
+  const { RoastMeme } = await import('../app/you-are-a-joke/roast-meme.tsx');
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, body: JSON.parse(options.body) });
+    return calls.length === 1 ? Response.json({ error: 'Image provider busy.' }, { status: 503 }) : Response.json({ snapshot: 'ZmluaXNoZWQ=', receipt: 'generated-receipt' });
+  };
+  const ui = render(React.createElement(RoastMeme, { receipt: 'original-receipt', snapshot: '/9j/AA==', roast: 'Your punchline.', onBusyChange: () => {} }));
+  await waitFor(() => assert.ok(ui.getByRole('alert')));
+  assert.ok(ui.getByAltText('The screenshot captured for your punchline'));
+  assert.equal(ui.queryByRole('button', { name: 'Publish my ego' }), null);
+  fireEvent.click(ui.getByRole('button', { name: 'Retry image generation' }));
+  await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Publish my ego' })));
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[1], { url: '/api/roast/meme', body: { receipt: 'original-receipt', snapshot: '/9j/AA==' } });
+  fireEvent.click(ui.getByRole('button', { name: 'Publish my ego' }));
+  assert.equal(ui.getByAltText('Your roast snapshot for public sharing').getAttribute('src'), 'data:image/webp;base64,ZmluaXNoZWQ=');
 });

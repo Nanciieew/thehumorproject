@@ -437,21 +437,6 @@ h1 em { color: var(--coral); font-style: normal; }
 .app-sidebar .account-trigger { padding: 3px calc((var(--rail-slot) - 34px) / 2); }
 .app-sidebar .account-face { width: 34px; height: 34px; font-size: 14px; }
 .app-sidebar .account-popup { border-radius: 14px; box-shadow: 0 10px 30px #20201d20; }
-.app-sidebar[data-collapsed="true"] { padding: 12px 9px; }
-
-.app-sidebar[data-collapsed="true"] .app-brand { flex: none; }
-.app-sidebar[data-collapsed="true"] .brand-mark { width: 32px; height: 32px; }
-
-.app-sidebar[data-collapsed="true"] .nav-label,
-.app-sidebar[data-collapsed="true"] .sidebar-links a > span,
-.app-sidebar[data-collapsed="true"] .sidebar-doodle,
-.app-sidebar[data-collapsed="true"] .account-text,
-.app-sidebar[data-collapsed="true"] .account-dots { display: none; }
-.app-sidebar[data-collapsed="true"] .sidebar-links { margin-top: 28px; }
-.app-sidebar[data-collapsed="true"] .sidebar-links a { gap: 0; padding: 10px 0; min-height: 44px; }
-.app-sidebar[data-collapsed="true"] .account-trigger { padding: 3px calc((var(--rail-slot) - 34px) / 2); }
-.app-sidebar[data-collapsed="true"] .account-face { width: 34px; height: 34px; font-size: 14px; }
-.app-sidebar[data-collapsed="true"] .account-popup { left: calc(100% + 18px); bottom: 0; width: 190px; max-width: calc(100vw - 100px); }
 @media (max-width: 700px) {
   .app-shell:not(.guest-shell) .site-content { margin-left: 82px; }
   .app-sidebar { --rail-slot: 44px; position: fixed; left: 10px; top: max(10px, env(safe-area-inset-top)); bottom: max(10px, env(safe-area-inset-bottom)); width: min(232px, calc(100vw - 20px)); height: auto; margin: 0; padding: 10px 8px; flex-direction: column; align-items: stretch; justify-content: flex-start; z-index: 40; }
@@ -477,9 +462,7 @@ h1 em { color: var(--coral); font-style: normal; }
 .sidebar-logo img { position: absolute; inset: 0; height: 32px; max-width: none; }
 .sidebar-logo-face { width: 32px; opacity: 0; }
 .sidebar-logo-full { width: 128px; }
-.app-sidebar[data-collapsed="true"] .sidebar-logo { width: 32px; }
-.app-sidebar[data-collapsed="true"] .sidebar-logo-face { opacity: 1; }
-.app-sidebar[data-collapsed="true"] .sidebar-logo-full { opacity: 0; }
+
 
 /* Quest screens share a viewport-sized workspace instead of repeating site chrome. */
 .site-content:has(> main[data-quest-screen]) { display:flex;flex-direction:column;height:100dvh;min-height:0; }
@@ -500,16 +483,3 @@ h1 em { color: var(--coral); font-style: normal; }
 /* Gallery follows its full-page design without the shared page-title strip. */
 .site-content:has(> main[data-gallery-screen]) > .app-topbar,
 .site-content:has(> main[data-gallery-screen]) > .app-footer { display:none; }
-@media(min-width:1151px) {
-  .app-shell:has(main[data-gallery-screen]):has(.app-sidebar[data-collapsed="true"]) { --sidebar-width:128px; }
-  .app-shell:has(main[data-gallery-screen]) .app-sidebar[data-collapsed="true"] { --rail-slot:72px;margin:55px 24px 24px;width:96px;top:55px;height:calc(100dvh - 79px);border-radius:23px; }
-  .app-shell:has(main[data-gallery-screen]) .app-sidebar[data-collapsed="true"] .sidebar-links { gap:16px; }
-  .app-shell:has(main[data-gallery-screen]) .app-sidebar[data-collapsed="true"] .sidebar-links a { min-height:65px;border-radius:17px; }
-  .app-shell:has(main[data-gallery-screen]) .app-sidebar .sidebar-links .ui-icon { width:28px;height:28px; }
-  .app-shell:has(main[data-gallery-screen]) .app-sidebar .brand-mark { width:43px;height:43px;margin-inline:auto; }
-}
-@media(min-width:1151px) {
-  .app-shell:has(main[data-gallery-screen]) .app-sidebar[data-collapsed="true"] { max-height:833px;padding-top:22px; }
-  .app-shell:has(main[data-gallery-screen]) .app-sidebar .sidebar-heading { row-gap:20px; }
-  .app-shell:has(main[data-gallery-screen]) .app-sidebar[data-collapsed="true"] .sidebar-links { margin-top:47px; }
-}

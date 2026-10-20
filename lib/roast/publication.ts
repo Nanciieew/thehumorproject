@@ -2,13 +2,14 @@ import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { supabase } from "@/lib/supabase";
+import { MAX_GALLERY_BYTES } from "@/lib/gallery-types";
 import { verifyReceipt } from "./receipt";
 
 export async function publishRoast(userId: string, input: unknown) {
   const body = input as { approved?: boolean; receipt?: string; snapshot?: string } | null;
   if (body?.approved !== true) throw new Error("Confirm public sharing first.");
-  if (typeof body.receipt !== "string" || typeof body.snapshot !== "string" || !body.snapshot.length || body.snapshot.length > 273068 || !/^[A-Za-z0-9+/]+={0,2}$/.test(body.snapshot)) throw new Error("Choose a completed live roast to publish.");
-  const roast = verifyReceipt(body.receipt, userId, body.snapshot);
+  if (typeof body.receipt !== "string" || typeof body.snapshot !== "string" || !body.snapshot.length || body.snapshot.length > Math.ceil(MAX_GALLERY_BYTES / 3) * 4 || !/^[A-Za-z0-9+/]+={0,2}$/.test(body.snapshot)) throw new Error("Choose a completed live roast to publish.");
+  const roast = verifyReceipt(body.receipt, userId, body.snapshot, "meme");
   // A receipt always maps to one gallery card, across retries and server instances.
   const hash = createHash("sha256").update(`ego-check:solo-roast:v1:${userId}:${body.receipt}`).digest();
   hash[6] = (hash[6] & 15) | 128; hash[8] = (hash[8] & 63) | 128;
@@ -19,12 +20,12 @@ export async function publishRoast(userId: string, input: unknown) {
   if (prior.error) throw new Error("Couldn’t check this publication. Please try again.");
   if (prior.data?.published_at) return id;
   const bytes = Buffer.from(body.snapshot, "base64");
-  if (bytes.length > 204800) throw new Error("Snapshot too large.");
-  const image = sharp(bytes, { limitInputPixels: 640 * 640 });
+  if (bytes.length > MAX_GALLERY_BYTES) throw new Error("Meme too large.");
+  const image = sharp(bytes, { limitInputPixels: 24_000_000 });
   const meta = await image.metadata();
-  if (meta.format !== "jpeg" || !meta.width || !meta.height || Math.max(meta.width, meta.height) > 640) throw new Error("Invalid roast snapshot.");
-  const webp = await image.rotate().webp({ quality: 80 }).toBuffer();
-  if (webp.length > 204800) throw new Error("Snapshot too large.");
+  if (meta.format !== "webp" || !meta.width || !meta.height || (meta.pages ?? 1) !== 1) throw new Error("Invalid generated roast meme.");
+  // Publish the exact signed bytes shown in the preview.
+  const webp = bytes;
   // Each attempt owns its object; a losing insert never removes a winner's media.
   const path = `${userId}/roast-${id}-${randomUUID()}.webp`;
   const bucket = supabase.storage.from("gallery-photos");

@@ -5,7 +5,7 @@ import type { Intensity, RoastEvent, RoastResponse } from "@/lib/roast/contracts
 import Link from "next/link";
 import { PlayfulTitle } from "../playful-title";
 import styles from "./studio.module.css";
-import { PublishEgo } from "./publish-ego";
+import { RoastMeme } from "./roast-meme";
 import { setDisguiseDraft } from "@/lib/disguise-draft";
 
 type Point = { x: number; y: number };
@@ -206,8 +206,8 @@ export function RoastStudio({ mock, configured }: { mock: boolean; configured: b
           {!camera && <div className={styles.empty}><span aria-hidden="true">✳</span><h2>Your close-up awaits.</h2></div>}
           <div ref={badge} className={styles.badge} aria-hidden="true">✳ MAIN CHARACTER</div>
           <span className={styles.live}>{mock ? "DEMO · NO AI ANALYSIS" : "GEMINI AI"}</span>
+          {!mock && selected && <RoastMeme key={selected.receipt} {...selected} onBusyChange={setPublishing} />}
           {!mock && selected && !enabled && !thinking && <div className={styles.resultActions}>
-            <PublishEgo key={selected.receipt} {...selected} onBusyChange={setPublishing} />
             <Link href="/disguise" className={`${styles.challengeButton} ${styles.disguiseButton}`} aria-disabled={publishing} onClick={e => { if (publishing) { e.preventDefault(); return; } pause(); setDisguiseDraft(selected.snapshot); }}>Checked Factory ↗</Link>
           </div>}
         </div>
@@ -220,7 +220,7 @@ export function RoastStudio({ mock, configured }: { mock: boolean; configured: b
         <details className="ego-details"><summary>Topics to avoid</summary><label className="visually-hidden" htmlFor="roast-topics">Topics to avoid</label><input id="roast-topics" value={topics} disabled={publishing} maxLength={800} placeholder="work, dating, my room…" onChange={e => changeSettings(intensity, e.target.value)} /><p className={styles.note}>Up to 10, separated by commas.</p></details>
         <div className={styles.consent}>
           {mock && <p>Mock mode: no camera snapshots are uploaded. Captions are scripted.</p>}
-          <label><input type="checkbox" checked={consent} onChange={e => changeConsent(e.target.checked)} />{mock ? "I understand this is a local demo with scripted captions." : "I agree to send snapshots to Gemini for AI roasts."}</label>
+          <label><input type="checkbox" checked={consent} onChange={e => changeConsent(e.target.checked)} />{mock ? "I understand this is a local demo with scripted captions." : "I agree to send snapshots to Gemini for AI roasts and Seedream to add the punchline."}</label>
 
         </div>
         {!configured && <p role="alert">Live roasting is not configured. Set the Gemini credentials and model on the server.</p>}
@@ -228,7 +228,7 @@ export function RoastStudio({ mock, configured }: { mock: boolean; configured: b
         {starting && <button className="action-button wide" onClick={stop}>Cancel camera request</button>}
         {camera && <><button className="action-button wide" disabled={!consent || !ready || publishing} onClick={() => { if (enabled) pause(); else roastAgain(); }}>{enabled ? "Cancel roast" : "Hurt my feelings again ↗"}</button><p className={styles.note}>One roast per click.</p><div className={styles.buttons}><button disabled={publishing} onClick={() => { pause(); invalidate(true); setCaption(""); }}>Clear Session</button><button onClick={stop}>Stop Camera</button></div>{!ready && <button onClick={() => { busyTracking.current = false; initializeTracking(); }}>Retry tracking</button>}</>}
         {message && <p role="alert" className={styles.message}>{message}</p>}
-        <details className="ego-details"><summary>Privacy & camera</summary><p className={styles.note}>Camera permission is separate. No microphone is used. Tracking runs locally; hiding or leaving this page stops the camera.</p>{!mock && <p className={styles.note}>Selected snapshots go to Gemini. Unchecking consent stops new uploads; images already sent cannot be recalled. This app doesn’t save session images unless you approve sharing. <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Gemini data terms ↗</a></p>}</details>
+        <details className="ego-details"><summary>Privacy & camera</summary><p className={styles.note}>Camera permission is separate. No microphone is used. Tracking runs locally; hiding or leaving this page stops the camera.</p>{!mock && <p className={styles.note}>Selected snapshots go to Gemini and Seedream. Unchecking consent stops new uploads; images already sent cannot be recalled. This app doesn’t save session images unless you approve sharing. <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Gemini data terms ↗</a></p>}</details>
       </section>
     </div>
   </main>;
