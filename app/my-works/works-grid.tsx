@@ -1,7 +1,7 @@
 "use client";
 
 import styles from "./checkboard.module.css";
-import Image from "next/image";
+import { MemeImage } from "../meme-image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Work, WorksPage, WorksSort } from "@/lib/work-types";
@@ -14,13 +14,14 @@ function VoteThumb({ down = false }: { down?: boolean }) {
 
 export function WorksGrid({ initial, onTotalsChange, heading, action }: { initial: WorksPage; onTotalsChange?: (totals: Totals) => void; heading?: ReactNode; action?: ReactNode }) {
   const [sort, setSort] = useState<WorksSort>("top");
+  const [changedSort, setChangedSort] = useState(false);
   const [deleting, setDeleting] = useState(false);
   return <>
     <div className={styles.collectionHeading}>{heading}<div className={styles.collectionActions}>
-      <div className={styles.collectionSort} role="group" aria-label="Sort uploaded memes"><span>Sort</span>{([["top", "Most upvotes"], ["newest", "Newest first"]] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={sort === value} disabled={deleting} onClick={() => setSort(value)}>{label}</button>)}</div>
+      <div className={styles.collectionSort} role="group" aria-label="Sort uploaded memes"><span>Sort</span>{([["top", "Most upvotes"], ["newest", "Newest first"]] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={sort === value} disabled={deleting} onClick={() => { if (value !== sort) { setChangedSort(true); setSort(value); } }}>{label}</button>)}</div>
       {action}
     </div></div>
-    <WorksFeed key={sort} initial={sort === "top" ? initial : undefined} sort={sort} onTotalsChange={onTotalsChange} onDeletingChange={setDeleting} />
+    <WorksFeed key={sort} initial={sort === "top" && !changedSort ? initial : undefined} sort={sort} onTotalsChange={onTotalsChange} onDeletingChange={setDeleting} />
   </>;
 }
 
@@ -78,10 +79,10 @@ function WorksFeed({ initial, sort, onTotalsChange, onDeletingChange }: { initia
     const timer = window.setInterval(update, 15_000);
     window.addEventListener("focus", update); window.addEventListener("storage", update); window.addEventListener(VOTES_CHANGED_EVENT, update);
     document.addEventListener("visibilitychange", update);
-    // Re-entering a sort also picks up changes since its initial server render.
-    update();
+    // The server already supplied a fresh first page; fetch only missing sorts.
+    if (!initial) update();
     return () => { window.clearInterval(timer); window.removeEventListener("focus", update); window.removeEventListener("storage", update); window.removeEventListener(VOTES_CHANGED_EVENT, update); document.removeEventListener("visibilitychange", update); };
-  }, [refresh]);
+  }, [refresh, initial]);
   const load = useCallback(async () => {
     if ((!cursor && started) || request.current || deletingRef.current) return;
     const controller = new AbortController(); request.current = controller; setBusy(true); setError("");
@@ -122,7 +123,7 @@ function WorksFeed({ initial, sort, onTotalsChange, onDeletingChange }: { initia
     {started && !items.length && <div className="gallery-empty"><p>Your collection starts here.</p><p>Create a meme in Checked Factory to start your collection.</p><Link href="/disguise" className="action-button">Create new meme ↗</Link></div>}
     <ul className="gallery-grid" aria-label="My works">{items.map(work => <li key={work.work_id} className="gallery-card">
       <Link href={`/my-works/${work.work_id}`} aria-label={`Edit ${work.title || "Untitled work"}`}>
-        <div className="card-image"><Image src={work.photo_url} alt={work.title || "Untitled work"} width={400} height={400} unoptimized />{!work.photo_id && <span className="image-tag">PRIVATE</span>}</div>
+        <div className="card-image"><MemeImage src={work.photo_url} alt={work.title || "Untitled work"} width={400} height={400} sizes="(max-width: 650px) 100vw, (max-width: 1150px) 50vw, 25vw" />{!work.photo_id && <span className="image-tag">PRIVATE</span>}</div>
       </Link>
       <div className={styles.workVotes}>
         <span aria-label={`${work.upvotes ?? "0"} upvotes received`}><VoteThumb />{BigInt(work.upvotes ?? "0").toLocaleString("en-US")}</span>

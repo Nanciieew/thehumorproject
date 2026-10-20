@@ -7,6 +7,6 @@ export const metadata = { title: "My Checkboard | checked" };
 export default async function MyDashboardPage() {
   const viewer = await getViewer();
   if (!viewer) redirect("/login?next=/my-works");
-  const works = await readWorks();
-  return <MyCheckboard key={JSON.stringify(works)} userId={viewer.user.id} initial={works} />;
+  const works = readWorks();
+  return <MyCheckboard userId={viewer.user.id} initial={works} />;
 }

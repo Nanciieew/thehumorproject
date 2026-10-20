@@ -4,12 +4,13 @@ process.env.NEXT_PUBLIC_SUPABASE_URL='https://fixture.supabase.co';
 process.env.SUPABASE_SECRET_KEY='fixture-key';
 const { supabase } = await import('../lib/supabase.ts');
 const { readOwnedWorks, deleteWork } = await import('../lib/works.ts');
-const originalFrom=supabase.from, originalStorage=supabase.storage.from;
-after(()=>{supabase.from=originalFrom;supabase.storage.from=originalStorage;});
+const originalFrom=supabase.from, originalStorage=supabase.storage.from, originalRpc=supabase.rpc;
+after(()=>{supabase.from=originalFrom;supabase.storage.from=originalStorage;supabase.rpc=originalRpc;});
 const owner='10000000-0000-4000-8000-000000000001';
 const id=n=>`20000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const rows=Array.from({length:35},(_,index)=>({id:id(index+1),contributor_id:owner,source:'upload',created_at:new Date(Date.UTC(2026,9,index+1)).toISOString(),published_at:new Date(Date.UTC(2026,9,index+1)).toISOString(),title:'Meme',description:'',public_storage_path:`${owner}/${index}.webp`,private_storage_path:null}));
 function fixture() {
+ supabase.rpc=async()=>({data:null,error:{code:'PGRST202'}});
  const deleted=[],media=[];
  supabase.from=table=>{
   const filters=[];let removing=false;
@@ -38,6 +39,20 @@ test('default sort ranks the entire collection by canonical votes and preserves 
  assert.equal(next.next_cursor,null);
  const newest=await readOwnedWorks(owner,null,'newest');assert.equal(newest.items[0].work_id,id(35));
  await assert.rejects(readOwnedWorks(owner,first.next_cursor,'newest'),/Invalid works cursor/);
+});
+test('database pagination returns one owner-scoped page and does not scan the collection or sign originals',async()=>{
+ const calls=[];
+ supabase.rpc=async(name,args)=>{calls.push({name,args});return {error:null,data:{items:[{...rows[0],upvotes:'9007199254740993',downvotes:'1'},{...rows[1],source:'generated',published_at:null,public_storage_path:null,private_storage_path:`${owner}/private.webp`,upvotes:'0',downvotes:'0'}],next_cursor:{sort:'top',id:id(2),time:rows[1].created_at,upvotes:'0'},received:{upvotes:'9007199254740993',downvotes:'1'}}};};
+ supabase.from=()=>{throw new Error('Must not scan all works');};
+ supabase.storage.from=()=>({getPublicUrl:path=>({data:{publicUrl:`https://fixture/${path}`}}),createSignedUrl(){throw new Error('Listings must not sign originals');}});
+ const page=await readOwnedWorks(owner);
+ assert.equal(calls.length,1);assert.equal(calls[0].name,'owned_works_page');assert.equal(calls[0].args.p_contributor_id,owner);
+ assert.equal(page.items[0].upvotes,'9007199254740993');assert.match(page.items[0].photo_url,/https:\/\/fixture/);
+ assert.equal(page.items[1].photo_url,`/api/my-works/${id(2)}/thumbnail`);
+ await readOwnedWorks(owner,page.next_cursor);
+ assert.equal(calls[1].args.p_cursor.sort,'top');assert.equal(calls[1].args.p_cursor.id,id(2));
+ supabase.rpc=async()=>({data:null,error:{code:'42501'}});
+ await assert.rejects(readOwnedWorks(owner),/Couldn’t load your works/);
 });
 test('deletion requires confirmation, cannot delete another owner’s meme, and removes both database row and media',async()=>{
  const state=fixture();await assert.rejects(deleteWork(owner,id(1),false),/Confirm deletion/);assert.equal(state.deleted.length,0);

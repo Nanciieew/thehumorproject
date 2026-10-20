@@ -155,7 +155,7 @@ test('failed received totals show unavailable rather than invented zeroes', () =
 test('hero and decorations use independent assets while the dashboard remains interactive', () => {
  const ui=render(React.createElement(ChecklyDashboard,{userId:'owner',received:{upvotes:'124',downvotes:'18'}}));
  const sources=[...ui.container.querySelectorAll('img')].map(img=>decodeURIComponent(img.getAttribute('src')));
- for(const asset of ['mascot.png','glass-bubbles.png','sparkle.svg']) assert.ok(sources.some(src=>src.includes(asset)),asset);
+ for(const asset of ['mascot.','glass-bubbles.','sparkle.svg']) assert.ok(sources.some(src=>src.includes(asset)),asset);
  assert.equal(ui.container.querySelector('img[src*="glass-checkmark"]'),null);
  assert.equal(ui.getByRole('link',{name:/Start daily quest/}).getAttribute('href'),'/quest');
  assert.equal(within(ui.getByRole('list',{name:'Weekly quest completion'})).getAllByRole('listitem').length,7);

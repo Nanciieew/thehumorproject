@@ -34,7 +34,8 @@ test("works load without duplicates, default to most votes, and switch to newest
     return Response.json({ items: [work("one")], next_cursor: "more" });
   };
   const ui = render(React.createElement(WorksGrid, { initial: { items: [work("one")], next_cursor: "more" } }));
-  await waitFor(() => assert.equal(calls.length, 1));
+  await act(async () => {});
+  assert.equal(calls.length, 0, 'server-provided works must not be fetched again on mount');
   assert.equal(ui.getByRole("button", {name:"Most upvotes"}).getAttribute("aria-pressed"), "true");
   await act(async () => { for (const observer of [...observers]) observer.callback([{ isIntersecting: true }]); });
   await waitFor(() => assert.equal(ui.getAllByRole("listitem").length, 2));
@@ -42,12 +43,15 @@ test("works load without duplicates, default to most votes, and switch to newest
   fireEvent.click(ui.getByRole("button", {name:"Newest first"}));
   await waitFor(() => assert.ok(ui.getByRole("link", {name:"Edit Work newest"})));
   assert.equal(calls.at(-1).get("sort"),"newest");
+  fireEvent.click(ui.getByRole("button", {name:"Most upvotes"}));
+  await waitFor(() => assert.equal(calls.at(-1).get("sort"), "top"));
 });
 
 test("vote changes refresh meme counts and overview totals from the same response", async () => {
   let upvotes = '2';const totals=[];
   globalThis.fetch = async () => Response.json({items:[{...work('one'),photo_id:'one',upvotes,downvotes:'3'}],next_cursor:null,received:{upvotes,downvotes:'3'}});
   const ui = render(React.createElement(WorksGrid,{initial:{items:[work('one')],next_cursor:null},onTotalsChange:value=>totals.push(value)}));
+  await act(async()=>window.dispatchEvent(new Event('checked:votes-changed')));
   await waitFor(()=>assert.ok(ui.getByLabelText('2 upvotes received')));
   upvotes='9';await act(async()=>window.dispatchEvent(new Event('checked:votes-changed')));
   await waitFor(()=>assert.ok(ui.getByLabelText('9 upvotes received')));

@@ -29,6 +29,21 @@ const photo = (id, count = 2) => ({ id, photo_url: `https://example.com/${id}.we
 const mount = (userId = "user", items = [photo("one")], cursor = null) => render(React.createElement(Gallery, {userId, initial: {items, next_cursor: cursor}}));
 const scroll = async () => { await act(async () => { for (const observer of [...observers]) observer.callback([{isIntersecting: true}]); }); };
 
+test("gallery heading and filters remain available while the server feed streams", async () => {
+  let finish; let calls = 0;
+  globalThis.fetch = async () => { calls++; throw new Error("The streamed first page must not be fetched again"); };
+  const initial = new Promise(resolve => { finish = resolve; });
+  let ui;
+  await act(async () => { ui = render(React.createElement(Gallery, {userId:"user", initial})); });
+  assert.ok(ui.getByRole("heading", {name:"Checked Gallery"}));
+  assert.ok(ui.getByRole("searchbox", {name:"Search gallery"}));
+  assert.match(ui.getByRole("status").textContent, /Loading memes/);
+  assert.equal(ui.queryByRole("article"), null);
+  await act(async () => finish({items:[photo("streamed")], next_cursor:null}));
+  await waitFor(() => assert.ok(ui.getByRole("article")));
+  assert.equal(calls, 0);
+});
+
 test("guests see public counts and an English login prompt without casting a vote", () => {
   let calls = 0; globalThis.fetch = async () => { calls++; throw new Error("Unexpected request"); };
   const ui = mount(null);

@@ -71,6 +71,7 @@ await db.exec('create view public.works_dependency_test as select * from public.
 await assert.rejects(db.exec(removeView), /depend/);
 await db.exec('rollback; drop view public.works_dependency_test');
 await db.exec(removeView);
+await db.exec(await readFile(new URL('../supabase/migrations/20261020000000_owned_works_page.sql', import.meta.url), 'utf8'));
 assert.equal((await sql("select to_regclass('public.my_works') as name"))[0].name, null);
 after(async () => db.close());
 
@@ -80,6 +81,36 @@ async function as(role, id, action) {
   try { return await action(); } finally { await db.exec('reset role'); }
 }
 const feed = async (sort = 'top', cursor = null, limit = 60) => (await sql('select public.gallery_feed($1, $2::jsonb, $3) as page', [sort, cursor && JSON.stringify(cursor), limit]))[0].page;
+
+test('works pagination ranks the whole owner collection, includes private works, retains totals, and denies client execution', async () => {
+  const owner = '40000000-0000-4000-8000-000000000001';
+  try {
+  await sql('insert into auth.users(id) values ($1)', [owner]);
+  await sql("insert into public.profiles(id,first_name,last_name,state_code,onboarding_completed_at) values ($1,'Page','Owner','NY',now())", [owner]);
+  const ids = Array.from({length:35}, (_, i) => `50000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`);
+  for (const [i,id] of ids.entries()) {
+    const time = new Date(Date.UTC(2026,0,i+1)).toISOString();
+    await sql(`insert into public.images(id,contributor_id,source,private_storage_path,public_storage_path,created_at,published_at)
+      values ($1,$2,'generated',$3,$4,$5,$6)`, [id,owner,`${owner}/${id}.webp`,i===34?null:`${owner}/public-${id}.webp`,time,i===34?null:time]);
+  }
+  await sql('insert into public.photo_votes(photo_id,voter_id,value) values ($1,$2,1),($1,$3,1)', [ids[0],a,b]);
+  const page = async (sort='top',cursor=null) => (await as('service_role',null,()=>sql('select public.owned_works_page($1,$2,$3::jsonb,30) as page',[owner,sort,cursor&&JSON.stringify(cursor)])))[0].page;
+  const first=await page(),second=await page('top',first.next_cursor);
+  assert.equal(first.items.length,30);assert.equal(first.items[0].id,ids[0]);
+  assert.equal(second.items.length,5);assert.equal(second.next_cursor,null);
+  assert.equal(new Set([...first.items,...second.items].map(row=>row.id)).size,35);
+  assert.ok([...first.items,...second.items].every(row=>ids.includes(row.id)));
+  assert.deepEqual(first.received,{upvotes:'2',downvotes:'0'});assert.deepEqual(second.received,first.received);
+  assert.equal((await page('newest')).items[0].id,ids[34]);
+  assert.equal((await page('newest')).items[0].published_at,null);
+  await assert.rejects(page('newest',first.next_cursor),/Invalid works cursor/);
+  for (const role of ['anon','authenticated']) await assert.rejects(as(role,a,()=>sql('select public.owned_works_page($1)',[owner])),/permission denied/);
+  } finally {
+    await sql('delete from public.images where contributor_id=$1', [owner]);
+    await sql('delete from public.profiles where id=$1', [owner]);
+    await sql('delete from auth.users where id=$1', [owner]);
+  }
+});
 
 test('backfill preserves IDs, captions, votes, creation dates, private assets and profile photos', async () => {
   const rows = await sql('select * from public.images order by id');

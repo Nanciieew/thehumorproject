@@ -1,5 +1,6 @@
 import "server-only";
 import sharp from "sharp";
+import { cache } from "react";
 import { supabase } from "@/lib/supabase";
 
 export const PHOTO_BUCKET = "profile-photos";
@@ -23,9 +24,19 @@ export async function prepareProfilePhoto(file: File) {
   }
 }
 
-export async function profilePhotoUrl(path: string | null) {
+export const profilePhotoUrl = cache(async (path: string | null) => {
   if (!path) return null;
   const { data, error } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrl(path, 3600);
   if (error) return null;
   return data.signedUrl;
+});
+
+export async function profilePhotoUrls(paths: (string | null)[]) {
+  const unique = [...new Set(paths.filter((path): path is string => Boolean(path)))];
+  const urls = new Map<string, string | null>();
+  if (!unique.length) return urls;
+  const { data, error } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrls(unique, 3600);
+  if (error) return urls;
+  for (const item of data) if (item.path) urls.set(item.path, item.error ? null : item.signedUrl);
+  return urls;
 }

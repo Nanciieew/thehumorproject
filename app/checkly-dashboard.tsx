@@ -39,8 +39,8 @@ export function ChecklyDashboard({ userId, received, children }: { userId: strin
   return <main id="main" data-quest-screen="dashboard" className={board.checkboard}>
     <section className={board.hero} aria-labelledby="checkboard-title">
       <div className={board.heroAtmosphere} aria-hidden="true" />
-      <Image className={board.heroBubbles} src="/checkboard/glass-bubbles.png" alt="" width={1829} height={860} sizes="57vw" aria-hidden="true" />
-      <Image className={board.mascot} src="/checkboard/mascot.png" alt="" width={1536} height={1024} sizes="(max-width: 750px) 40vw, 42vw" unoptimized priority aria-hidden="true" />
+      <Image className={board.heroBubbles} src="/page-art/glass-bubbles.250613b5bbb0.webp" alt="" width={1829} height={860} sizes="57vw" aria-hidden="true" />
+      <Image className={board.mascot} src="/page-art/mascot.a142c44ccb73.webp" alt="" width={1536} height={1024} sizes="(max-width: 750px) 40vw, 42vw" loading="eager" aria-hidden="true" />
       <Image className={`${board.spark} ${board.sparkOne}`} src="/checkboard/sparkle.svg" alt="" width={32} height={50} aria-hidden="true" /><Image className={`${board.spark} ${board.sparkTwo}`} src="/checkboard/sparkle.svg" alt="" width={45} height={70} aria-hidden="true" />
       <div className={board.heroContent}>
         <h1 id="checkboard-title">My <span>Checkboard</span></h1>

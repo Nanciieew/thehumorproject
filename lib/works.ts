@@ -2,6 +2,7 @@ import "server-only";
 import { supabase } from "./supabase";
 import { readReceivedVotes } from "./checkboard";
 import { createAuthClient } from "./auth/server";
+import { getViewer } from "./auth/profile";
 import { isUuid } from "./gallery-types";
 import type { Work, WorksPage, WorksSort } from "./work-types";
 
@@ -10,13 +11,15 @@ type WorkRow = {
   title: string; description: string; private_storage_path: string | null; public_storage_path: string | null;
 };
 const columns = "id,source,created_at,published_at,title,description,private_storage_path,public_storage_path";
-async function withPhoto(row: WorkRow, auth: Awaited<ReturnType<typeof createAuthClient>>): Promise<Work> {
+async function withPhoto(row: WorkRow, auth: Awaited<ReturnType<typeof createAuthClient>>, thumbnail = false): Promise<Work> {
   const work = { work_id: row.id, source: row.source, created_at: row.created_at, published_at: row.published_at,
     photo_id: row.published_at ? row.id : null, title: row.title, description: row.description };
-  if (row.source === "upload" && row.public_storage_path) {
+  if ((thumbnail || row.source === "upload") && row.published_at && row.public_storage_path) {
     return { ...work, photo_url: auth.storage.from("gallery-photos").getPublicUrl(row.public_storage_path).data.publicUrl };
   }
   if (!row.private_storage_path) throw new Error("Couldn’t load your image. Please refresh and try again.");
+  // Listing private works never needs to sign or download the full-size original.
+  if (thumbnail) return { ...work, photo_url: `/api/my-works/${row.id}/thumbnail` };
   const signed = await auth.storage.from("generated-images").createSignedUrl(row.private_storage_path, 3600);
   if (signed.error) throw new Error("Couldn’t load your image. Please refresh and try again.");
   return { ...work, photo_url: signed.data.signedUrl };
@@ -26,14 +29,12 @@ function compareWorks(a: { id: string; time: string; upvotes: string }, b: { id:
   return score < 0 ? -1 : score > 0 ? 1 : Date.parse(b.time) - Date.parse(a.time) || b.id.localeCompare(a.id);
 }
 export async function readWorks(cursor: string | null = null, sort: WorksSort = "top"): Promise<WorksPage> {
-  const auth = await createAuthClient();
-  const { data: { user } } = await auth.auth.getUser();
-  if (!user) throw new Error("Please log in to view your works.");
-  return readOwnedWorks(user.id, cursor, sort);
+  const viewer = await getViewer();
+  if (!viewer) throw new Error("Please log in to view your works.");
+  return readOwnedWorks(viewer.user.id, cursor, sort);
 }
 
-// Read the entire owner's score index before paging so top-voted memes on later
-// upload pages can rise to the first page. Only sign URLs for the requested page.
+// Trusted server callers must supply the verified owner, never a request parameter.
 export async function readOwnedWorks(userId: string, cursor: string | null = null, sort: WorksSort = "top"): Promise<WorksPage> {
   let after: { id: string; time: string; upvotes: string } | null = null;
   if (cursor) {
@@ -44,6 +45,19 @@ export async function readOwnedWorks(userId: string, cursor: string | null = nul
       after = value;
     } catch { throw new Error("Invalid works cursor. Please refresh the page."); }
   }
+  const { data: result, error: rpcError } = await supabase.rpc("owned_works_page", {
+    p_contributor_id: userId, p_sort: sort, p_cursor: after, p_limit: 30,
+  });
+  if (!rpcError) {
+    const page = result as { items: (WorkRow & { upvotes: string; downvotes: string })[]; next_cursor: unknown; received: WorksPage["received"] };
+    return {
+      items: await Promise.all(page.items.map(async row => ({ ...await withPhoto(row, supabase, true), upvotes: row.upvotes, downvotes: row.downvotes }))),
+      next_cursor: page.next_cursor ? Buffer.from(JSON.stringify(page.next_cursor)).toString("base64url") : null,
+      received: page.received,
+    };
+  }
+  // Allow the application to deploy before the additive database migration.
+  if (rpcError.code !== "PGRST202") throw new Error("Couldn’t load your works. Please try again.");
   const rows: WorkRow[] = [];
   let lastId: string | null = null;
   while (true) {
@@ -67,7 +81,7 @@ export async function readOwnedWorks(userId: string, cursor: string | null = nul
   const remaining = after ? ranked.filter(row => compareWorks(row, after!, sort) > 0) : ranked;
   const page = remaining.slice(0, 30), last = page.at(-1);
   return {
-    items: await Promise.all(page.map(async item => ({ ...await withPhoto(item.row, supabase), upvotes: item.upvotes, downvotes: item.downvotes }))),
+    items: await Promise.all(page.map(async item => ({ ...await withPhoto(item.row, supabase, true), upvotes: item.upvotes, downvotes: item.downvotes }))),
     next_cursor: remaining.length > 30 && last ? Buffer.from(JSON.stringify({ sort, id: last.id, time: last.time, upvotes: last.upvotes })).toString("base64url") : null,
     received: { upvotes: upvotes.toString(), downvotes: downvotes.toString() },
   };
@@ -91,9 +105,9 @@ export async function deleteWork(userId: string, id: string, confirmed: boolean)
 export async function readWork(id: string): Promise<Work | null> {
   if (!isUuid(id)) return null;
   const auth = await createAuthClient();
-  const { data: { user } } = await auth.auth.getUser();
-  if (!user) return null;
-  const { data, error } = await auth.from("images").select(columns).eq("contributor_id", user.id).eq("id", id).maybeSingle();
+  const viewer = await getViewer();
+  if (!viewer) return null;
+  const { data, error } = await auth.from("images").select(columns).eq("contributor_id", viewer.user.id).eq("id", id).maybeSingle();
   if (error) throw new Error("Couldn’t load this work. Please try again.");
   return data ? withPhoto(data as WorkRow, auth) : null;
 }

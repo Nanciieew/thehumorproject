@@ -1,6 +1,7 @@
 import "server-only";
 import { createAuthClient } from "@/lib/auth/server";
-import { profilePhotoUrl } from "./profile-photo";
+import { profilePhotoUrls } from "./profile-photo";
+import { getAuthUser } from "./auth/profile";
 import { supabase } from "@/lib/supabase";
 import type { GalleryPage, GalleryPhoto, GallerySort, Vote } from "./gallery-types";
 
@@ -16,7 +17,10 @@ export async function readGallery(sort: GallerySort, cursor: string | null = nul
     if (sort === "month" && decoded?.sort === "newest") throw new GalleryCursorExpired("Monthly ranking changed. Refreshing photos.");
   }
   const auth = await createAuthClient();
-  const { data, error } = await auth.rpc("gallery_feed", { p_sort: sort === "month" ? "top" : sort, p_cursor: decoded, p_limit: 30 });
+  const [{ data, error }, user] = await Promise.all([
+    auth.rpc("gallery_feed", { p_sort: sort === "month" ? "top" : sort, p_cursor: decoded, p_limit: 30 }),
+    getAuthUser(),
+  ]);
   if (error) throw new Error("Couldn’t load the gallery. Please try again.");
   let items = data.items as (Omit<GalleryPhoto, "photo_url" | "vote"> & { storage_path: string })[];
   if (sort === "month") {
@@ -25,21 +29,23 @@ export async function readGallery(sort: GallerySort, cursor: string | null = nul
     const current = items.filter(item => month.format(new Date(item.published_at)) === currentMonth);
     items = current;
   }
-  const { data: { user } } = await auth.auth.getUser();
+  const ids = items.map(item => item.id);
   const votes = new Map<string, Vote>();
-  if (user && items.length) {
-    const own = await auth.from("photo_votes").select("photo_id,value").in("photo_id", items.map((item) => item.id)).eq("voter_id", user.id);
+  const resultMetadata = new Map<string, { battle_votes: number; outcome: string; roast: string }>();
+  const authorPhotos = new Map<string, string | null>();
+  // Votes, battle metadata and author lookup depend on the feed, not each other.
+  await Promise.all([ (async () => {
+    if (!user || !ids.length) return;
+    const own = await auth.from("photo_votes").select("photo_id,value").in("photo_id", ids).eq("voter_id", user.id);
     if (own.error) throw new Error("Couldn’t load your votes. Please try again.");
     for (const vote of own.data) votes.set(vote.photo_id, vote.value as Vote);
-  }
-  const resultMetadata = new Map<string, { battle_votes: number; outcome: string; roast: string }>();
-  if (items.length) {
-    const meta = await auth.rpc("ego_action", { p_action: "gallery_metadata", p_data: { ids: items.map(i => i.id) } });
+  })(), (async () => {
+    if (!ids.length) return;
+    const meta = await auth.rpc("ego_action", { p_action: "gallery_metadata", p_data: { ids } });
     if (meta.error && meta.error.code !== "PGRST202") throw new Error("Couldn’t load challenge result details.");
     for (const row of meta.data ?? []) resultMetadata.set(row.image_id, { battle_votes: Number(row.battle_votes), outcome: row.outcome, roast: row.roast });
-  }
+  })(), (async () => {
   // Resolve only the public cards' authors; never return private profile fields.
-  const authorPhotos = new Map<string, string | null>();
   if (items.length) {
     const images = await supabase.from("images").select("id,contributor_id").in("id", items.map(item => item.id));
     if (images.error) throw new Error("Couldn’t load gallery authors.");
@@ -47,10 +53,12 @@ export async function readGallery(sort: GallerySort, cursor: string | null = nul
     if (ids.length) {
       const profiles = await supabase.from("profiles").select("id,avatar_path").in("id", ids);
       if (profiles.error) throw new Error("Couldn’t load gallery authors.");
-      const urls = new Map(await Promise.all((profiles.data ?? []).map(async profile => [profile.id, await profilePhotoUrl(profile.avatar_path)] as const)));
+      const signed = await profilePhotoUrls((profiles.data ?? []).map(profile => profile.avatar_path));
+      const urls = new Map((profiles.data ?? []).map(profile => [profile.id, signed.get(profile.avatar_path) ?? null]));
       for (const image of images.data ?? []) authorPhotos.set(image.id, urls.get(image.contributor_id) ?? null);
     }
   }
+  })() ]);
   return {
     items: items.map(({ storage_path, ...item }) => ({ ...item, contributor_photo_url: authorPhotos.get(item.id) ?? null, kind: resultMetadata.has(item.id) || /(?:^|\/)roast-[^/]+\.webp$/.test(storage_path) ? "ego" as const : "memes" as const, result: resultMetadata.get(item.id), upvotes: Number(item.upvotes), vote: votes.get(item.id) ?? null,
       photo_url: supabase.storage.from("gallery-photos").getPublicUrl(storage_path).data.publicUrl,

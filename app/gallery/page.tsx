@@ -7,9 +7,10 @@ import { Gallery } from "../gallery";
 import { isGallerySort } from "@/lib/gallery-types";
 export const metadata = { title: "Checked Gallery | checked" };
 export default async function GalleryPage({ searchParams }: { searchParams: Promise<{ sort?: string }> }) {
-  const viewer = await getViewer(); after(cleanupGalleryStaging);
+  const viewerPromise = getViewer(); after(cleanupGalleryStaging);
   const params = await searchParams;
   const sort = isGallerySort(params.sort) ? params.sort : "top";
-  const initial = await readGallery(sort).catch(() => undefined);
+  const initial = readGallery(sort).catch(() => undefined);
+  const viewer = await viewerPromise;
   return <><Gallery initial={initial} initialSort={sort} userId={viewer?.user.id ?? null} />{viewer && <QuestInvitation userId={viewer.user.id} />}</>;
 }

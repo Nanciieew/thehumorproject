@@ -12,10 +12,16 @@ export async function readProfile(userId: string): Promise<Profile | null> {
   return data;
 }
 
-// A verified OAuth session may still be waiting for signup to finish.
-export const getAuthViewer = cache(async () => {
+// Reuse user verification across layouts, pages and data helpers in one request.
+export const getAuthUser = cache(async () => {
   const auth = await createAuthClient();
   const { data: { user } } = await auth.auth.getUser();
+  return user;
+});
+
+// A verified OAuth session may still be waiting for signup to finish.
+export const getAuthViewer = cache(async () => {
+  const user = await getAuthUser();
   if (!user) return null;
   return { user, profile: await readProfile(user.id) };
 });

@@ -3,11 +3,14 @@
 import { announceVoteChange, VOTES_CHANGED_EVENT } from "@/lib/vote-updates";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, use, useCallback, useEffect, useRef, useState } from "react";
+import { MemeImage } from "./meme-image";
+import { FeedSkeleton } from "./page-skeleton";
 import styles from "./gallery-play.module.css";
 import { PhotoInput } from "./photo-input";
 import { Icon } from "./ui";
 import { GALLERY_MIME_TYPES, MAX_GALLERY_BYTES, type GalleryPage, type GalleryPhoto, type GallerySort, type Vote } from "@/lib/gallery-types";
+type InitialGallery = GalleryPage | Promise<GalleryPage | undefined>;
 
 function Thumb({ down = false }: { down?: boolean }) {
   return <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill={down ? "none" : "currentColor"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={down ? { transform: "rotate(180deg)" } : undefined}><path d="M7 11 11 2a3 3 0 0 1 3 3v4h5.66a2 2 0 0 1 1.98 2.28l-1.38 9A2 2 0 0 1 18.28 22H7Z" /><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" /></svg>;
@@ -54,7 +57,7 @@ function GalleryCard({ photo, rank, leading, feedback, signedIn, requestLogin, u
     } finally { inFlight.current = false; setBusy(false); }
   }
   return <article id={`photo-${photo.id}`} className={`gallery-card ${styles.card}`} data-leading={leading} data-kind={photo.kind === "ego" || photo.result ? "ego" : "memes"}>
-    <div className="card-image"><Image src={photo.photo_url} alt={photo.title || `Meme shared by ${photo.contributor_name}`} width={400} height={400} unoptimized />{rank && <span className={styles.rank} aria-label={`Rank ${rank}`}>#{rank}{leading && <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="m2 6 5 4 5-7 5 7 5-4-3 14H5Z"/></svg>}</span>}</div>
+    <div className="card-image"><MemeImage src={photo.photo_url} alt={photo.title || `Meme shared by ${photo.contributor_name}`} width={400} height={400} sizes="(max-width: 650px) 100vw, (max-width: 1150px) 50vw, 25vw" loading={rank === 1 ? "eager" : "lazy"} />{rank && <span className={styles.rank} aria-label={`Rank ${rank}`}>#{rank}{leading && <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="m2 6 5 4 5-7 5 7 5-4-3 14H5Z"/></svg>}</span>}</div>
     <div className="card-info">
       <h3 title={photo.title || photo.contributor_name}><Link className={styles.cardLink} aria-label={photo.title || photo.contributor_name} href={`/avatars/${photo.id}`}><span className={styles.avatar} aria-hidden="true">{photo.contributor_photo_url ? <Image src={photo.contributor_photo_url} alt="" width={38} height={38} unoptimized /> : <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M3 23v-3a9 9 0 0 1 18 0v3Z"/></svg>}</span><span className={styles.creatorName}>{photo.contributor_name}</span></Link></h3>
       {photo.result && <p className="battle-tally">{photo.result.outcome} · Battle votes: {photo.result.battle_votes} · Gallery upvotes: {count}</p>}
@@ -69,10 +72,11 @@ function GalleryCard({ photo, rank, leading, feedback, signedIn, requestLogin, u
   </article>;
 }
 
-function GalleryFeed({ sort, search, kind, initial, signedIn, requestLogin }: { sort: GallerySort; search: string; kind: string; initial?: GalleryPage; signedIn: boolean; requestLogin: () => void }) {
-  const [items, setItems] = useState(initial?.items ?? []);
-  const [cursor, setCursor] = useState(initial?.next_cursor ?? null);
-  const [started, setStarted] = useState(Boolean(initial));
+function GalleryFeed({ sort, search, kind, initial, signedIn, requestLogin }: { sort: GallerySort; search: string; kind: string; initial?: InitialGallery; signedIn: boolean; requestLogin: () => void }) {
+  const page = initial && "then" in initial ? use(initial) : initial;
+  const [items, setItems] = useState(page?.items ?? []);
+  const [cursor, setCursor] = useState(page?.next_cursor ?? null);
+  const [started, setStarted] = useState(Boolean(page));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const itemsRef = useRef(items);
@@ -244,7 +248,7 @@ export function UploadPhoto({ close, published }: { close: () => void; published
   </dialog>;
 }
 
-export function Gallery({ initial, userId, initialSort = "top" }: { initial?: GalleryPage; userId: string | null; initialSort?: GallerySort }) {
+export function Gallery({ initial, userId, initialSort = "top" }: { initial?: InitialGallery; userId: string | null; initialSort?: GallerySort }) {
   const [kind, setKind] = useState("all");
   const [sort, setSort] = useState<GallerySort>(initialSort);
   const [searchInput, setSearchInput] = useState("");
@@ -272,7 +276,9 @@ export function Gallery({ initial, userId, initialSort = "top" }: { initial?: Ga
         <div className={styles.filterGroup} role="group" aria-label="Sort gallery"><span>Sort</span>{([["top", "Most upvotes"], ["newest", "Newest first"]] as const).map(([value, label]) => <button key={value} aria-pressed={sort === value} onClick={() => { if (sort !== value) { setSort(value); setRevision(v => v + 1); setMessage(""); } }}>{label}</button>)}</div>
       </div>
       {message && <p role="status" className="gallery-message">{message}</p>}
-      <GalleryFeed kind={kind} key={`${sort}:${userId}:${revision}:${search}`} sort={sort} search={search} initial={!search && sort === initialSort && revision === 0 ? initial : undefined} signedIn={Boolean(userId)} requestLogin={requestLogin} />
+      <Suspense fallback={<FeedSkeleton />}>
+        <GalleryFeed kind={kind} key={`${sort}:${userId}:${revision}:${search}`} sort={sort} search={search} initial={!search && sort === initialSort && revision === 0 ? initial : undefined} signedIn={Boolean(userId)} requestLogin={requestLogin} />
+      </Suspense>
     </section>
 
     {login && <LoginPrompt close={() => setLogin(false)} />}
