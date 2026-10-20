@@ -107,9 +107,8 @@ function GalleryFeed({ sort, search, kind, initial, signedIn, requestLogin }: { 
   }, [sort]);
   const ordered = orderPhotos(items, sort);
   const leaderId = sort === "newest" ? undefined : ordered[0]?.id;
-  // Competition ranks depend only on upvotes; publication time orders ties.
-  const ranks = new Map<number, number>();
-  ordered.forEach((photo, index) => { if (!ranks.has(photo.upvotes)) ranks.set(photo.upvotes, index + 1); });
+  // Every meme has a unique position; newer publications win equal scores.
+  const ranks = new Map(ordered.map((photo, index) => [photo.id, index + 1]));
   if (voteFeedback) {
     const positions = new Map(voteFeedback.order.map((id, index) => [id, index]));
     ordered.sort((a, b) => (positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity));
@@ -187,7 +186,7 @@ function GalleryFeed({ sort, search, kind, initial, signedIn, requestLogin }: { 
   }, [started, cursor, loading, refreshing, error, load]);
   return <>
     <ul aria-label="Avatar gallery" className={styles.grid}>
-      {ordered.map(photo => <li key={photo.id}><GalleryCard feedback={voteFeedback?.clicks[photo.id]} rank={sort === "newest" ? undefined : ranks.get(photo.upvotes)} leading={photo.id === leaderId} photo={photo} signedIn={signedIn} requestLogin={requestLogin} updateVote={updateVote} /></li>)}
+      {ordered.map(photo => <li key={photo.id}><GalleryCard feedback={voteFeedback?.clicks[photo.id]} rank={sort === "newest" ? undefined : ranks.get(photo.id)} leading={photo.id === leaderId} photo={photo} signedIn={signedIn} requestLogin={requestLogin} updateVote={updateVote} /></li>)}
     </ul>
     {started && !items.length && !cursor && !loading && !error && <div className="gallery-empty">
       <p className="text-xl font-semibold">{search ? "No matches yet." : "Nothing here yet."}</p>

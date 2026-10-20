@@ -301,8 +301,9 @@ test("Most upvotes ranks with newer publication breaking ties across loaded page
   await waitFor(() => assert.deepEqual(ui.getAllByRole("article").map(el => el.id), ["photo-older", "photo-newer"]));
   await scroll();
   await waitFor(() => assert.deepEqual(ui.getAllByRole("article").map(el => el.id), ["photo-tied", "photo-older", "photo-newer"]));
-  assert.equal(ui.getAllByLabelText("Rank 1").length, 2);
+  assert.equal(ui.getAllByLabelText("Rank 1").length, 1);
   assert.equal(ui.container.querySelector('#photo-newer [aria-label="Rank 3"]').textContent, "#3");
+  assert.equal(ui.container.querySelector('#photo-older [aria-label="Rank 2"]').textContent, "#2");
   assert.equal(ui.container.querySelectorAll('[data-leading="true"]').length, 1);
   assert.equal(ui.container.querySelector('[data-leading="true"]').id, "photo-tied");
   assert.equal(ui.container.querySelectorAll('[aria-label="Rank 1"] svg').length, 1);
@@ -353,7 +354,7 @@ test("gallery shows real author photos, thumb voting and the factory link", () =
  assert.equal(down.style.transform, "rotate(180deg)");
 });
 
-test("Checked Ego shares score ranks and the top-left badge, with only the newest leader crowned", () => {
+test("memes and Checked Ego receive unique ranks, with newer publications breaking tied scores", () => {
   const ui = mount("user", [
     { ...photo("older-meme", 10), published_at: "2026-10-07T12:00:00Z" },
     { ...photo("newest-ego", 10), kind: "ego", published_at: "2026-10-08T12:00:00Z" },
@@ -363,7 +364,7 @@ test("Checked Ego shares score ranks and the top-left badge, with only the newes
   ]);
   const cards = ui.getAllByRole("article");
   assert.deepEqual(cards.map(card => card.id), ["photo-newest-ego", "photo-older-meme", "photo-result-ego", "photo-other-meme", "photo-last"]);
-  assert.deepEqual(cards.map(card => card.querySelector('[aria-label^="Rank "]').textContent), ["#1", "#1", "#3", "#3", "#5"]);
+  assert.deepEqual(cards.map(card => card.querySelector('[aria-label^="Rank "]').textContent), ["#1", "#2", "#3", "#4", "#5"]);
   assert.equal(cards.filter(card => card.dataset.leading === "true").length, 1);
   assert.equal(cards[0].dataset.leading, "true");
   assert.equal(ui.container.querySelectorAll('[aria-label^="Rank "] svg').length, 1);
@@ -371,17 +372,28 @@ test("Checked Ego shares score ranks and the top-left badge, with only the newes
   for (const card of cards) assert.equal(card.querySelector('[aria-label^="Rank "]').className, "rank");
 });
 
-test("a vote creating a tie shares the rank and crowns the newest meme after the hold", async t => {
+test("a vote creating a tie gives the newer meme rank one and preserves unique ranks during feedback", async t => {
   const older = { ...photo("older", 3), published_at: "2026-10-07T12:00:00Z" };
   const newer = { ...photo("newer", 2), published_at: "2026-10-08T12:00:00Z" };
   globalThis.fetch = async () => Response.json({ vote: 1, upvotes: 3 });
   const ui = mount("user", [older, newer]);
   t.mock.timers.enable({ apis: ["setTimeout"] });
   await act(async () => fireEvent.click(ui.container.querySelector('#photo-newer button')));
-  assert.equal(ui.getAllByLabelText("Rank 1").length, 2);
+  assert.equal(ui.getAllByLabelText("Rank 1").length, 1);
   assert.equal(ui.getAllByRole("article")[0].id, "photo-older");
+  assert.ok(ui.container.querySelector('#photo-newer [aria-label="Rank 1"]'));
+  assert.ok(ui.container.querySelector('#photo-older [aria-label="Rank 2"]'));
   await act(async () => t.mock.timers.tick(500));
   assert.equal(ui.getAllByRole("article")[0].id, "photo-newer");
   assert.equal(ui.container.querySelector('[data-leading="true"]').id, "photo-newer");
   assert.equal(ui.container.querySelectorAll('[aria-label="Rank 1"] svg').length, 1);
+});
+
+
+test("identical scores and publication times still have unique deterministic ranks", () => {
+ const ui=mount("user",[photo("a",10),photo("c",10),photo("b",10),photo("last",0)]);
+ const cards=ui.getAllByRole("article");
+ assert.deepEqual(cards.map(card=>card.id),["photo-c","photo-b","photo-a","photo-last"]);
+ assert.deepEqual(cards.map(card=>card.querySelector('[aria-label^="Rank "]').textContent),["#1","#2","#3","#4"]);
+ assert.equal(ui.getAllByLabelText("Rank 1").length,1);
 });
