@@ -190,3 +190,14 @@ test('retirement refuses missing generation data, then removes only redundant ta
   assert.ok((await as('authenticated', a, () => sql('select * from public.images'))).length > 0);
   assert.equal((await sql('select count(*)::int as n from public.gallery_uploads'))[0].n, 1);
 });
+
+test('deleting an owned meme removes its image row and cascades gallery and quest votes', async () => {
+  const id = '50000000-0000-4000-8000-000000000099';
+  await sql("insert into public.images(id,contributor_id,source,public_storage_path,published_at) values ($1,$2,'upload',$3,now())", [id,a,`${a}/delete-fixture.webp`]);
+  await sql('insert into public.photo_votes(photo_id,voter_id,value) values ($1,$2,1)', [id,b]);
+  assert.equal((await sql('select upvotes::int as n from public.gallery_vote_totals where photo_id=$1',[id]))[0].n,1);
+  assert.equal((await sql('delete from public.images where id=$1 and contributor_id=$2 returning id',[id,b])).length,0);
+  assert.equal((await sql('delete from public.images where id=$1 and contributor_id=$2 returning id',[id,a])).length,1);
+  assert.equal((await sql('select * from public.images where id=$1',[id])).length,0);
+  assert.equal((await sql('select * from public.photo_votes where photo_id=$1',[id])).length,0);
+});

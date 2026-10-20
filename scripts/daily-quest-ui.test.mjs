@@ -91,7 +91,7 @@ test('meme cards contain only the image, with no creator, headline, or caption',
 test('empty feeds offer the dashboard without falsely completing the daily quest',async()=>{
  const {ui,calls}=setup(0);
  await waitFor(()=>assert.ok(ui.getByRole('heading',{name:'You’re all checked.'})));
- assert.equal(ui.getByRole('link',{name:/Back to Dashboard/}).getAttribute('href'),'/my-works');
+ assert.equal(ui.getByRole('link',{name:/Back to Gallery/}).getAttribute('href'),'/gallery');
  assert.equal(ui.queryByRole('progressbar'),null);
  assert.equal(questSummary(readQuestHistory('tester')).completedToday,false);
  assert.equal(calls.length,0);

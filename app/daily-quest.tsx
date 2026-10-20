@@ -1,5 +1,6 @@
 "use client";
 
+import { announceVoteChange } from "@/lib/vote-updates";
 import Image from "next/image";
 import { QuestBackground } from "./quest-background";
 import Link from "next/link";
@@ -123,6 +124,7 @@ export function DailyQuest({ userId }: { userId: string }) {
       try { localStorage.setItem(storageKey.current, JSON.stringify(next)); } catch { /* Keep progress in memory. */ }
       recordQuestVote(userId, photo.id, value);
       setNotice(value === 1 ? "Upvote saved." : "Downvote saved.");
+      announceVoteChange();
       try { sessionStorage.setItem("checked:gallery-votes-changed", "1"); } catch { /* Gallery also refreshes on focus. */ }
       router.refresh();
     } catch (cause) {
@@ -157,10 +159,10 @@ export function DailyQuest({ userId }: { userId: string }) {
       {allChecked ? <div className={`${styles.complete} ${styles.allChecked}`}>
         <div className={styles.emptyIllustration} aria-hidden="true"><div className={styles.emptyCard}>✓</div><span>✦</span><i>✧</i><b>ALL CHECKED</b></div>
         <p>NOT A MEME LEFT UNJUDGED.</p><h2>You’re all checked.</h2><p>You’ve reached the end of the meme pile.<br />Fresh uploads will bring fresh judgments.</p>
-        <div className={styles.completionActions}><Link className={styles.dashboardReturn} href="/my-works">Back to Dashboard <span aria-hidden="true">↗</span></Link></div>
+        <div className={styles.completionActions}><Link className={styles.dashboardReturn} href="/gallery">Back to Gallery <span aria-hidden="true">↗</span></Link></div>
       </div> : completed ? <div className={styles.complete}>
         <div className={styles.completeMark} aria-hidden="true">✓<span>✦</span><i>✧</i></div><p>{done === 10 ? "ALL TEN. ALL YOU." : "DAILY QUEST. CHECKED."}</p><h2>Consider it checked.</h2><p>{done} {done === 1 ? "meme" : "memes"}. {done} {done === 1 ? "verdict" : "verdicts"}. Excellent judgment.</p>
-        <div className={styles.completionActions}><Link href="/my-works">Back to Dashboard</Link><button onClick={() => { persist({ ...progress, goal: progress.ids.length + 10 }); setNotice("Next round. Keep going!"); }}>Keep Going <span aria-hidden="true">→</span></button></div>
+        <div className={styles.completionActions}><Link href="/gallery">Back to Gallery</Link><button onClick={() => { persist({ ...progress, goal: progress.ids.length + 10 }); setNotice("Next round. Keep going!"); }}>Keep Going <span aria-hidden="true">→</span></button></div>
       </div> : !photo ? <div className={styles.feedState}>
         {error ? <><span aria-hidden="true">↻</span><h2>A tiny meme delay.</h2><p role="alert">{error}</p><button onClick={() => void load()}>Try again</button></> : <><span className={styles.loadingMark} aria-hidden="true">✦</span><p role="status">Finding your next meme…</p></>}
       </div> : <div className={styles.arena}>

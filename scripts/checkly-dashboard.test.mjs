@@ -81,6 +81,7 @@ test('completed quests suppress the login invitation while yesterday’s complet
 });
 test('dashboard starts with zero activity and gives a direct daily quest action', () => {
  const ui = render(React.createElement(ChecklyDashboard,{userId:'new',firstName:'',received:{upvotes:'0',downvotes:'0'}}));
+ assert.equal(ui.container.querySelector('img[src*="glass-checkmark"]'),null);
  assert.equal(ui.getByRole('link',{name:/Start daily quest/}).getAttribute('href'),'/quest');
  assert.equal(within(ui.getByRole('list',{name:'Weekly quest completion'})).getAllByRole('listitem').filter(item=>item.dataset.completed==='true').length,0);
  assert.equal(ui.getAllByText('0',{selector:'strong'}).length,3);
@@ -154,7 +155,8 @@ test('failed received totals show unavailable rather than invented zeroes', () =
 test('hero and decorations use independent assets while the dashboard remains interactive', () => {
  const ui=render(React.createElement(ChecklyDashboard,{userId:'owner',received:{upvotes:'124',downvotes:'18'}}));
  const sources=[...ui.container.querySelectorAll('img')].map(img=>decodeURIComponent(img.getAttribute('src')));
- for(const asset of ['mascot.png','glass-bubbles.png','glass-checkmark.png','sparkle.svg']) assert.ok(sources.some(src=>src.includes(asset)),asset);
+ for(const asset of ['mascot.png','glass-bubbles.png','sparkle.svg']) assert.ok(sources.some(src=>src.includes(asset)),asset);
+ assert.equal(ui.container.querySelector('img[src*="glass-checkmark"]'),null);
  assert.equal(ui.getByRole('link',{name:/Start daily quest/}).getAttribute('href'),'/quest');
  assert.equal(within(ui.getByRole('list',{name:'Weekly quest completion'})).getAllByRole('listitem').length,7);
 });

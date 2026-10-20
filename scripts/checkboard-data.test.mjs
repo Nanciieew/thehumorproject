@@ -7,7 +7,7 @@ const {readCheckboardTotals,readReceivedVotes}=await import('../lib/checkboard.t
 const originalFrom=supabase.from;
 after(()=>{supabase.from=originalFrom;});
 
-test('received totals include all published pages, exclude self votes, and retain exact large counts',async()=>{
+test('received totals include all published pages, match all gallery and quest votes, and retain exact large counts',async()=>{
  const ids=Array.from({length:503},(_,i)=>String(i).padStart(4,'0'));
  let pages=0;
  supabase.from=table=>{
@@ -24,8 +24,7 @@ test('received totals include all published pages, exclude self votes, and retai
   }};return q;
  };
  const result=await readCheckboardTotals('owner');
- // Each 250-row page has 125 self upvotes; the final 3 rows have one.
- assert.deepEqual(result,{upvotes:(BigInt('9007199254740993')*BigInt(503)-BigInt(251)).toString(),downvotes:'2263'});
+ assert.deepEqual(result,{upvotes:(BigInt('9007199254740993')*BigInt(503)).toString(),downvotes:'2515'});
  assert.equal(pages,3);
 });
 test('empty accounts return zero without querying vote tables',async()=>{

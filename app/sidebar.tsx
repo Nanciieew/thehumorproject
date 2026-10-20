@@ -9,9 +9,9 @@ import styles from "./sidebar.module.css";
 
 const links = [
   { href: "/gallery", label: "Checked Gallery", icon: "grid" as const },
-  { href: "/my-works", label: "My Checkboard", icon: "checkboard" as const },
   { href: "/disguise", label: "Checked Factory", icon: "create" as const },
   { href: "/you-are-a-joke", label: "Get Checked", icon: "roast" as const },
+  { href: "/my-works", label: "My Checkboard", icon: "checkboard" as const },
 ];
 
 export function Sidebar({ children }: { children?: ReactNode }) {

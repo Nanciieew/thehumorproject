@@ -1,3 +1,4 @@
+import { deleteWork } from "@/lib/works";
 import { revalidatePath } from "next/cache";
 import { createAuthClient } from "@/lib/auth/server";
 import { galleryWriter, galleryError } from "@/lib/gallery-http";
@@ -20,4 +21,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (result.error) return galleryError(new Error("Couldn’t save your captions. Please try again."), 503);
   revalidatePath("/my-works"); revalidatePath(`/my-works/${id}`); revalidatePath("/");
   return Response.json({ title, description }, { headers: { "Cache-Control": "no-store" } });
+}
+
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const viewer = await galleryWriter(request); if (viewer instanceof Response) return viewer;
+  const { id } = await params;
+  try {
+    const body = await request.json();
+    await deleteWork(viewer.user.id, id, body?.confirmed === true);
+    revalidatePath("/my-works"); revalidatePath(`/my-works/${id}`); revalidatePath(`/avatars/${id}`); revalidatePath("/gallery");
+    return Response.json({ deleted: true }, { headers: { "Cache-Control": "private, no-store" } });
+  } catch (error) { return galleryError(error); }
 }

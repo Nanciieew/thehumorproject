@@ -38,3 +38,18 @@
 @media(max-width:700px) {
   .sidebar[data-collapsed="true"] { width:62px;padding:10px 8px; }
 }
+
+@media(min-width:701px) {
+  .sidebar:global(.app-sidebar) {
+    position:fixed;
+    left:12px;
+    top:14px;
+    margin:0;
+    width:232px;
+    height:calc(100dvh - 28px);
+  }
+  .sidebar:global(.app-sidebar)[data-collapsed="true"] { width:72px;margin:0; }
+}
+@media(min-width:701px) {
+  :global(.app-shell):has(> .sidebar) > :global(.site-content) { grid-column:2; }
+}

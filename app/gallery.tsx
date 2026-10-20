@@ -1,5 +1,6 @@
 "use client";
 
+import { announceVoteChange, VOTES_CHANGED_EVENT } from "@/lib/vote-updates";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -46,6 +47,7 @@ function GalleryCard({ photo, rank, leading, feedback, signedIn, requestLogin, u
       const result = await response.json();
       if (!response.ok) { if (response.status === 401) requestLogin(); throw new Error(result.error); }
       updateVote(photo.id, result.vote, result.upvotes, false);
+      announceVoteChange();
     } catch (error) {
       updateVote(photo.id, previous.vote, previous.count, false);
       setError(error instanceof Error && !(error instanceof TypeError) ? error.message : "Your vote couldn’t be saved. Please try again.");
@@ -173,8 +175,10 @@ function GalleryFeed({ sort, search, kind, initial, signedIn, requestLogin }: { 
     const timer = window.setInterval(() => void refresh(), 15_000);
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
+    window.addEventListener(VOTES_CHANGED_EVENT, onFocus);
+    window.addEventListener("storage", onFocus);
     document.addEventListener("visibilitychange", onFocus);
-    return () => { stopped = true; window.clearInterval(timer); window.removeEventListener("focus", onFocus); document.removeEventListener("visibilitychange", onFocus); };
+    return () => { stopped = true; window.clearInterval(timer); window.removeEventListener("focus", onFocus); window.removeEventListener(VOTES_CHANGED_EVENT, onFocus); window.removeEventListener("storage", onFocus); document.removeEventListener("visibilitychange", onFocus); };
   }, [sort, search, kind]);
   useEffect(() => {
     if ((started && !cursor) || loading || refreshing || error || !sentinel.current) return;

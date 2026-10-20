@@ -79,7 +79,6 @@ export function ChecklyDashboard({ userId, received, children }: { userId: strin
     </div>
     {received === null && <p className={board.error} role="alert">Received votes couldn’t load. Refresh the page to try again.</p>}
     {children}
-    <Image className={board.cornerCheck} src="/checkboard/glass-checkmark.png" alt="" width={1195} height={1316} sizes="245px" aria-hidden="true" />
     <p className={board.storageNote}>Quest progress saved in this browser · Activity uses New York time</p>
   </main>;
 }
