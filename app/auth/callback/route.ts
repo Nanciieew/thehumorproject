@@ -13,7 +13,7 @@ export async function GET(request: Request) {
       const { data: { user } } = await auth.auth.getUser();
       const profile = user ? await readProfile(user.id) : null;
       if (profile?.onboarding_completed_at) {
-        const jar = await cookies(); jar.delete("ego_return"); redirect("/?welcome=quest");
+        const jar = await cookies(); jar.delete("ego_return"); redirect("/gallery?welcome=quest");
       }
       redirect("/profile/complete");
     }

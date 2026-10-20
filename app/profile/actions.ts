@@ -20,7 +20,7 @@ export async function finishOnboarding(_state: ProfileState, form: FormData): Pr
   const result = await persistProfile(form, true);
   if (result.error) return result;
   const jar = await cookies(); jar.delete("ego_return");
-  redirect("/?welcome=quest");
+  redirect("/gallery?welcome=quest");
 }
 
 async function persistProfile(form: FormData, complete: boolean): Promise<ProfileState> {

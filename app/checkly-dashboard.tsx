@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { QUEST_HISTORY_EVENT, questActivitySlots, questDay, questSummary, readQuestHistory, type QuestHistory } from "@/lib/checkly-quest";
 import styles from "./checkly-dashboard.module.css";
 
@@ -9,39 +9,16 @@ export function ChecklyDashboard({ userId }: { userId: string; firstName: string
   const [history, setHistory] = useState<QuestHistory>({});
   const [today, setToday] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const invitation = useRef<HTMLDialogElement>(null);
-  const pendingLogin = useRef<string | null>(null);
-  const startLink = useRef<HTMLAnchorElement>(null);
-  const dismissInvitation = () => {
-    pendingLogin.current = null;
-    invitation.current?.close();
-    startLink.current?.focus();
-  };
   useEffect(() => {
-    const element = invitation.current;
-    const url = new URL(window.location.href);
-    if (url.searchParams.get("welcome") === "quest") {
-      pendingLogin.current = userId;
-      url.searchParams.delete("welcome");
-      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
-    }
     const refresh = () => {
-      const saved = readQuestHistory(userId);
-      const date = questDay();
-      setHistory(saved); setToday(date); setReady(true);
-      if (saved[date]?.completed) {
-        pendingLogin.current = null;
-        element?.close();
-      } else if (pendingLogin.current === userId && element && !element.open) {
-        element.showModal();
-      }
+      setHistory(readQuestHistory(userId)); setToday(questDay()); setReady(true);
     };
     refresh();
     window.addEventListener(QUEST_HISTORY_EVENT, refresh);
     window.addEventListener("storage", refresh);
     window.addEventListener("focus", refresh);
     const timer = window.setInterval(refresh, 60_000);
-    return () => { window.removeEventListener(QUEST_HISTORY_EVENT, refresh); window.removeEventListener("storage", refresh); window.removeEventListener("focus", refresh); window.clearInterval(timer); element?.close(); };
+    return () => { window.removeEventListener(QUEST_HISTORY_EVENT, refresh); window.removeEventListener("storage", refresh); window.removeEventListener("focus", refresh); window.clearInterval(timer); };
   }, [userId]);
   const summary = questSummary(history, today ?? "2000-01-03");
   const month = (today ?? "2000-01-01").slice(0, 7);
@@ -62,7 +39,7 @@ export function ChecklyDashboard({ userId }: { userId: string; firstName: string
     </header>
     <section className={styles.week} aria-labelledby="week-title">
       <div className={styles.weekHeading}><h2 id="week-title">This week</h2><p><strong>{ready ? summary.completedThisWeek : "—"}</strong> of 7 completed</p></div>
-      <Link ref={startLink} href="/quest" className={styles.primary}>{ready && summary.completedToday ? "Keep voting" : "Start my daily quest"}<span aria-hidden="true">→</span></Link>
+      <Link href="/quest" className={styles.primary}>{ready && summary.completedToday ? "Keep voting" : "Start my daily quest"}<span aria-hidden="true">→</span></Link>
       <ol className={styles.timeline} aria-label="Weekly quest completion">{summary.week.map((day, index) => <li key={day.day} data-completed={ready && day.completed} data-today={ready && day.today} data-future={ready && day.future}>
         <span className={styles.day}>{["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"][index]}</span>
         <span className={styles.check} aria-label={`${["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][index]}: ${ready && day.completed ? "completed" : "not completed"}`}>{ready && day.completed ? "✓" : <span aria-hidden="true">{Number(day.day.slice(-2))}</span>}</span>
@@ -92,18 +69,6 @@ export function ChecklyDashboard({ userId }: { userId: string; firstName: string
       </div>
       <div className={styles.activityFooter}><span>New York time</span><div className={styles.legend}><span>Less</span>{[0, 1, 2, 3].map(level => <i key={level} data-level={level} aria-hidden="true" />)}<span>More</span></div></div>
     </section>
-    <dialog ref={invitation} className={styles.invitation} aria-labelledby="daily-invitation-title" onCancel={event => { event.preventDefault(); dismissInvitation(); }}>
-      <div className={styles.invitationEyebrow}><span aria-hidden="true">✦</span> DAILY QUEST</div>
-      <div className={styles.invitationArt} aria-hidden="true">
-        <div className={styles.memeLeft}><span>THE VERDICT</span><strong>LOL.</strong><i>↑</i></div>
-        <div className={styles.memeRight}><span>BE HONEST</span><strong>meh.</strong><i>↓</i></div>
-        <svg className={styles.questFace} viewBox="0 0 100 100" fill="none"><circle cx="50" cy="50" r="45" fill="#e8f044" /><g stroke="#191c13" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"><path d="m23 39 8 8 15-17m27 3-10 6 10 5M31 62q19 21 38 0" /></g></svg>
-        <span className={styles.artSpark}>✦</span><span className={styles.artSparkSmall}>✧</span>
-      </div>
-      <h2 id="daily-invitation-title">Your daily dose<br />of <em>bad judgment.</em></h2>
-      <p>Up to 10 memes. A few honest votes.<br />One more day checked off.</p>
-      <div className={styles.invitationActions}><Link href="/quest" className={styles.primary} onClick={dismissInvitation}>Let’s judge some memes <span aria-hidden="true">→</span></Link><button type="button" onClick={dismissInvitation}>Maybe later</button></div>
-    </dialog>
     <p className={styles.storageNote}>Saved in this browser · Resets at midnight, New York time</p>
   </main>;
 }

@@ -10,6 +10,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 dom.window.HTMLDialogElement.prototype.showModal = function() { this.setAttribute('open',''); };
 dom.window.HTMLDialogElement.prototype.close = function() { this.removeAttribute('open'); };
 const {render, waitFor, cleanup, within, fireEvent} = await import('@testing-library/react');
+const {QuestInvitation} = await import('../app/quest-invitation.tsx');
 const {ChecklyDashboard} = await import('../app/checkly-dashboard.tsx');
 afterEach(() => { cleanup(); localStorage.clear(); sessionStorage.clear(); window.history.replaceState(null,'','/'); });
 const day = (completed = true, votes = {}) => ({completed,votes});
@@ -50,7 +51,7 @@ test('dashboard shows all weekly checks and metrics with one direct voting actio
  assert.equal(ui.getAllByRole('link').length,1);
 });
 test('each fresh login opens the quest invitation if today is incomplete', () => {
- const login = () => { window.history.replaceState(null,'','/?welcome=quest'); return render(React.createElement(React.StrictMode,null,React.createElement(ChecklyDashboard,{userId:'alice',firstName:'Alice'}))); };
+ const login = () => { window.history.replaceState(null,'','/gallery?welcome=quest'); return render(React.createElement(React.StrictMode,null,React.createElement(QuestInvitation,{userId:'alice',firstName:'Alice'}))); };
  const ui = login();
  assert.ok(ui.getByRole('dialog',{name:/Your daily dose/}));
  assert.equal(ui.getByRole('link',{name:'Let’s judge some memes'}).getAttribute('href'),'/quest');
@@ -66,14 +67,14 @@ test('each fresh login opens the quest invitation if today is incomplete', () =>
 test('completed quests suppress the login invitation while yesterday’s completion does not', () => {
  const today=questDay();
  localStorage.setItem('checked:quest-history:alice',JSON.stringify({[today]:day(true)}));
- window.history.replaceState(null,'','/?welcome=quest');
- const ui=render(React.createElement(ChecklyDashboard,{userId:'alice',firstName:''}));
+ window.history.replaceState(null,'','/gallery?welcome=quest');
+ const ui=render(React.createElement(QuestInvitation,{userId:'alice',firstName:''}));
  assert.equal(ui.queryByRole('dialog'),null);
  assert.equal(window.location.search,'');
  ui.unmount();
  localStorage.setItem('checked:quest-history:alice',JSON.stringify({[shiftDay(today,-1)]:day(true)}));
- window.history.replaceState(null,'','/?welcome=quest');
- const next=render(React.createElement(ChecklyDashboard,{userId:'alice',firstName:''}));
+ window.history.replaceState(null,'','/gallery?welcome=quest');
+ const next=render(React.createElement(QuestInvitation,{userId:'alice',firstName:''}));
  assert.ok(next.getByRole('dialog',{name:/Your daily dose/}));
  fireEvent(next.getByRole('dialog'),new Event('cancel',{cancelable:true}));
  assert.equal(next.queryByRole('dialog'),null);
