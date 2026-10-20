@@ -1,5 +1,6 @@
 import "server-only";
 import { createAuthClient } from "@/lib/auth/server";
+import { profilePhotoUrl } from "./profile-photo";
 import { supabase } from "@/lib/supabase";
 import type { GalleryPage, GalleryPhoto, GallerySort, Vote } from "./gallery-types";
 
@@ -37,8 +38,21 @@ export async function readGallery(sort: GallerySort, cursor: string | null = nul
     if (meta.error && meta.error.code !== "PGRST202") throw new Error("Couldn’t load challenge result details.");
     for (const row of meta.data ?? []) resultMetadata.set(row.image_id, { battle_votes: Number(row.battle_votes), outcome: row.outcome, roast: row.roast });
   }
+  // Resolve only the public cards' authors; never return private profile fields.
+  const authorPhotos = new Map<string, string | null>();
+  if (items.length) {
+    const images = await supabase.from("images").select("id,contributor_id").in("id", items.map(item => item.id));
+    if (images.error) throw new Error("Couldn’t load gallery authors.");
+    const ids = [...new Set((images.data ?? []).map(image => image.contributor_id))];
+    if (ids.length) {
+      const profiles = await supabase.from("profiles").select("id,avatar_path").in("id", ids);
+      if (profiles.error) throw new Error("Couldn’t load gallery authors.");
+      const urls = new Map(await Promise.all((profiles.data ?? []).map(async profile => [profile.id, await profilePhotoUrl(profile.avatar_path)] as const)));
+      for (const image of images.data ?? []) authorPhotos.set(image.id, urls.get(image.contributor_id) ?? null);
+    }
+  }
   return {
-    items: items.map(({ storage_path, ...item }) => ({ ...item, result: resultMetadata.get(item.id), upvotes: Number(item.upvotes), vote: votes.get(item.id) ?? null,
+    items: items.map(({ storage_path, ...item }) => ({ ...item, contributor_photo_url: authorPhotos.get(item.id) ?? null, kind: resultMetadata.has(item.id) || /(?:^|\/)roast-[^/]+\.webp$/.test(storage_path) ? "ego" as const : "memes" as const, result: resultMetadata.get(item.id), upvotes: Number(item.upvotes), vote: votes.get(item.id) ?? null,
       photo_url: supabase.storage.from("gallery-photos").getPublicUrl(storage_path).data.publicUrl,
     })),
     next_cursor: data.next_cursor ? Buffer.from(JSON.stringify(data.next_cursor)).toString("base64url") : null,

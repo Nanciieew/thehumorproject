@@ -22,7 +22,7 @@ globalThis.IntersectionObserver = class {
   unobserve() { observers.delete(this); }
 };
 const { render, fireEvent, waitFor, cleanup, act } = await import("@testing-library/react");
-const { Gallery } = await import("../app/gallery.tsx");
+const { Gallery, UploadPhoto } = await import("../app/gallery.tsx");
 const originalFetch = globalThis.fetch;
 afterEach(() => { cleanup(); observers.clear(); globalThis.fetch = originalFetch; });
 const photo = (id, count = 2) => ({ id, photo_url: `https://example.com/${id}.webp`, contributor_name: "Test Contributor", created_at: "2026-10-07T12:00:00Z", published_at: "2026-10-07T12:00:00Z", source: "upload", upvotes: count, vote: null });
@@ -71,7 +71,7 @@ test("infinite scrolling appends, deduplicates, and ends; filter changes fetch f
   globalThis.fetch = async (url) => {
     requests.push(String(url));
     const query = new URL(String(url), "http://localhost:3000").searchParams;
-    if (query.get("sort") === "month") return Response.json({items: [], next_cursor: null});
+    if (query.get("sort") === "newest") return Response.json({items: [], next_cursor: null});
     if (query.get("cursor") === "first") return Response.json({items: [photo("one", 100), photo("two")], next_cursor: "second"});
     if (query.get("cursor") === "second") return Response.json({items: [photo("three")], next_cursor: null});
     return Response.json({items: [photo("fresh")], next_cursor: null});
@@ -82,9 +82,9 @@ test("infinite scrolling appends, deduplicates, and ends; filter changes fetch f
   await scroll(); await waitFor(() => assert.equal(ui.getAllByRole("article").length, 3));
   assert.ok(ui.getByText("You’re all caught up."));
   assert.equal(ui.queryByRole("button", {name: "Load more"}), null);
-  fireEvent.click(ui.getByRole("button", {name: "New this month"}));
-  await scroll(); await waitFor(() => assert.ok(ui.getByText("No new avatars this month yet.")));
-  fireEvent.click(ui.getByRole("button", {name: "Most votes overall", exact: true}));
+  fireEvent.click(ui.getByRole("button", {name: "Newest first"}));
+  await scroll(); await waitFor(() => assert.ok(ui.getByText("Nothing here yet.")));
+  fireEvent.click(ui.getByRole("button", {name: "Most upvotes", exact: true}));
   await scroll(); await waitFor(() => assert.equal(ui.getAllByRole("article").length, 1));
   assert.ok(ui.container.querySelector("#photo-fresh"));
   assert.equal(requests.length, 4);
@@ -109,14 +109,15 @@ test("upload control is English and a selected gallery file is uploaded directly
     if (url === "/api/gallery/publish") return Response.json({photoId: "published"});
     return Response.json({items: [], next_cursor: null});
   };
-  const ui = mount(); fireEvent.click(ui.getByRole("button", {name: "Upload photo"}));
+  let published = false;
+  const ui = render(React.createElement(UploadPhoto, {close: () => {}, published: () => { published = true; }}));
   assert.ok(ui.getByText("Choose file")); assert.ok(ui.getByText("No file chosen"));
   assert.ok(ui.getByText(/Up to 10 MB and 24 megapixels/));
   assert.ok(ui.getByRole("button", {name: "Publish photo"}).disabled);
   const file = new File([new Uint8Array(3 * 1024 * 1024)], "portrait.png", {type: "image/png"});
   fireEvent.change(ui.container.querySelector('input[type="file"]'), {target: {files: [file]}});
   fireEvent.click(ui.getByRole("button", {name: "Publish photo"}));
-  await waitFor(() => assert.ok(ui.getByText("Your avatar is live. Welcome to the gallery!")));
+  await waitFor(() => assert.equal(published, true));
   assert.equal(calls[1][0], "https://storage.example.test/signed"); assert.equal(calls[1][1].method, "PUT");
   assert.deepEqual(JSON.parse(calls[2][1].body), {assetId: "ticket", source: "upload"});
 });
@@ -210,11 +211,11 @@ test("avatar name search sends a trimmed query, survives sort changes and clears
     return Response.json({items: [], next_cursor: null});
   };
   const ui = mount();
-  const input = ui.getByRole("searchbox", {name: "Search by avatar name"});
+  const input = ui.getByRole("searchbox", {name: "Search gallery"});
   fireEvent.change(input, {target: {value: "  Mario  "}});
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 300)); });
   await scroll();
-  await waitFor(() => assert.ok(ui.getByText("No avatars found.")));
+  await waitFor(() => assert.ok(ui.getByText("No matches yet.")));
   assert.equal(requests.at(-1).searchParams.get("search"), "Mario");
   fireEvent.click(ui.getByRole("button", {name: "Newest first"}));
   await scroll();
@@ -223,7 +224,7 @@ test("avatar name search sends a trimmed query, survives sort changes and clears
   fireEvent.change(input, {target: {value: ""}});
   await act(async () => { await new Promise((resolve) => setTimeout(resolve, 300)); });
   await scroll();
-  await waitFor(() => assert.ok(ui.getByText("Be the first face in the gallery.")));
+  await waitFor(() => assert.ok(ui.getByText("Nothing here yet.")));
   assert.equal(requests.at(-1).searchParams.get("search"), "");
 });
 
@@ -232,23 +233,22 @@ test("gallery has a single bubble title and avatar cards link to public descript
   const ui = mount("user", [{...photo("one"), title: "Bubble Hero", description: "A happy little adventurer."}]);
   assert.equal(ui.getByRole("heading", {level: 1, name: "Checked Gallery"}).getAttribute("id"), "gallery-title");
   assert.equal(ui.getByRole("link", {name: "Bubble Hero"}).getAttribute("href"), "/avatars/one");
-  assert.ok(ui.getByRole("button", {name: "Most votes overall"}));
-  assert.ok(ui.getByRole("button", {name: "New this month"}));
+  assert.ok(ui.getByRole("button", {name: "Most upvotes"}));
+  assert.ok(ui.getByRole("button", {name: "Memes"}));
   assert.ok(ui.getByRole("button", {name: "Newest first"}));
   assert.equal(ui.getByRole("button", {name: "Upvote: 2 upvotes"}).closest("a"), null);
 });
 
-test("New this month ranks by most votes, with newer publication breaking ties, across loaded pages", async () => {
+test("Most upvotes ranks with newer publication breaking ties across loaded pages", async () => {
   let page = 0;
   const older = {...photo("older", 20), published_at: "2026-10-02T12:00:00Z"};
   const newer = {...photo("newer", 1), published_at: "2026-10-08T12:00:00Z"};
   const tied = {...photo("tied", 20), published_at: "2026-10-05T12:00:00Z"};
   globalThis.fetch = async url => {
-    assert.equal(new URL(url, "http://localhost:3000").searchParams.get("sort"), "month");
+    assert.equal(new URL(url, "http://localhost:3000").searchParams.get("sort"), "top");
     return Response.json(page++ === 0 ? {items: [newer, older], next_cursor: "next"} : {items: [tied], next_cursor: null});
   };
-  const ui = mount();
-  fireEvent.click(ui.getByRole("button", {name: "New this month"}));
+  const ui = mount("user", [], "first");
   await scroll();
   await waitFor(() => assert.deepEqual(ui.getAllByRole("article").map(el => el.id), ["photo-older", "photo-newer"]));
   await scroll();
@@ -265,4 +265,32 @@ test("publication links can open Newest first with server-rendered cards and ord
  const ui=render(React.createElement(Gallery,{userId:"voter",initialSort:"newest",initial:{items:[{...photo("solo",0),title:"Ego checked.",description:"A verified solo roast."}],next_cursor:null}}));
  assert.equal(ui.getByRole("button",{name:"Newest first"}).getAttribute("aria-pressed"),"true");
  assert.ok(ui.getByText("A verified solo roast."));assert.ok(ui.getByRole("button",{name:"Upvote: 0 upvotes"}));
+});
+
+
+test("content filters stay selected when sorting changes; newest has no rank badges", async () => {
+ const requests=[];
+ globalThis.fetch=async url=>{requests.push(new URL(url,"http://localhost"));return Response.json({items:[{...photo("ego"),kind:"ego"}],next_cursor:null});};
+ const ui=mount();
+ assert.equal(ui.getByRole("button",{name:"All",exact:true}).getAttribute("aria-pressed"),"true");
+ assert.equal(ui.getByRole("button",{name:"Most upvotes"}).getAttribute("aria-pressed"),"true");
+ assert.ok(ui.getByLabelText("Rank 1"));
+ fireEvent.click(ui.getByRole("button",{name:"Checked Ego",exact:true}));await scroll();
+ await waitFor(()=>assert.equal(requests.at(-1).searchParams.get("kind"),"ego"));
+ fireEvent.click(ui.getByRole("button",{name:"Newest first"}));await scroll();
+ await waitFor(()=>assert.equal(requests.at(-1).searchParams.get("sort"),"newest"));
+ assert.equal(requests.at(-1).searchParams.get("kind"),"ego");assert.equal(ui.queryByLabelText("Rank 1"),null);
+ fireEvent.click(ui.getByRole("button",{name:"Memes",exact:true}));await scroll();
+ await waitFor(()=>assert.equal(requests.at(-1).searchParams.get("kind"),"memes"));
+ assert.equal(requests.at(-1).searchParams.get("sort"),"newest");
+});
+
+test("reference design shows real author photos, arrow voting and the factory link", () => {
+ const ui=mount("user",[{...photo("author"),contributor_photo_url:"https://example.com/author.webp"}]);
+ assert.equal(ui.getByRole("link",{name:"Create meme"}).getAttribute("href"),"/disguise");
+ assert.ok(ui.container.querySelector('img[src="https://example.com/author.webp"]'));
+ assert.equal(ui.container.querySelector('[aria-label="Rank 1"]').textContent,"#1");
+ assert.ok(ui.container.querySelector('[aria-label="Rank 1"] svg'));
+ assert.ok(ui.getByPlaceholderText("Search memes, creators, tags..."));
+ assert.equal(ui.getByRole("button",{name:"Upvote: 2 upvotes"}).querySelector("svg").getAttribute("fill"),"currentColor");
 });

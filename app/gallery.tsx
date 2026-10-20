@@ -9,9 +9,7 @@ import { Icon } from "./ui";
 import { GALLERY_MIME_TYPES, MAX_GALLERY_BYTES, type GalleryPage, type GalleryPhoto, type GallerySort, type Vote } from "@/lib/gallery-types";
 
 function Thumb({ down = false }: { down?: boolean }) {
-  return <svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className={down ? "rotate-180" : ""}>
-    <path d="M7 10v11H3V10h4Zm0 0 5-7c1-1 3 0 3 2l-1 5h5a2 2 0 0 1 2 2l-2 7a3 3 0 0 1-3 2H7" />
-  </svg>;
+  return <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill={down ? "none" : "currentColor"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={down ? { transform: "rotate(180deg)" } : undefined}><path d="M9 21V10H4l8-8 8 8h-5v11Z" /></svg>;
 }
 
 function LoginPrompt({ close }: { close: () => void }) {
@@ -25,7 +23,7 @@ function LoginPrompt({ close }: { close: () => void }) {
   </dialog>;
 }
 
-function GalleryCard({ photo, signedIn, requestLogin, updateVote }: { photo: GalleryPhoto; signedIn: boolean; requestLogin: () => void; updateVote: (id: string, vote: Vote, count: number, pending: boolean) => void }) {
+function GalleryCard({ photo, rank, signedIn, requestLogin, updateVote }: { rank?: number; photo: GalleryPhoto; signedIn: boolean; requestLogin: () => void; updateVote: (id: string, vote: Vote, count: number, pending: boolean) => void }) {
   const vote = photo.vote;
   const count = photo.upvotes;
   const [busy, setBusy] = useState(false);
@@ -48,15 +46,15 @@ function GalleryCard({ photo, signedIn, requestLogin, updateVote }: { photo: Gal
       setError(error instanceof Error && !(error instanceof TypeError) ? error.message : "Your vote couldn’t be saved. Please try again.");
     } finally { inFlight.current = false; setBusy(false); }
   }
-  return <article id={`photo-${photo.id}`} className={`gallery-card ${styles.card}`}>
-    <div className="card-image"><Image src={photo.photo_url} alt={`Avatar shared by ${photo.contributor_name}`} width={400} height={400} unoptimized /><span className="image-tag">{photo.source === "generated" ? "AI GENERATED" : "EVIDENCE ON FILE"}</span></div>
+  return <article id={`photo-${photo.id}`} className={`gallery-card ${styles.card}`} data-leading={rank === 1} data-kind={photo.kind === "ego" || photo.result ? "ego" : "memes"}>
+    <div className="card-image"><Image src={photo.photo_url} alt={photo.title || `Meme shared by ${photo.contributor_name}`} width={400} height={400} unoptimized />{(photo.kind === "ego" || photo.result) && <span className={styles.badge}><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7" r="5"/><path d="M2 23v-3a10 10 0 0 1 20 0v3Z"/></svg>Checked Ego</span>}{rank && <span className={styles.rank} aria-label={`Rank ${rank}`}>#{rank}{rank === 1 && <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="m2 6 5 4 5-7 5 7 5-4-3 14H5Z"/></svg>}</span>}</div>
     <div className="card-info">
-      <h3 title={photo.title || photo.contributor_name}><Link className={styles.cardLink} href={`/avatars/${photo.id}`}>{photo.title || photo.contributor_name}</Link></h3><p>{photo.title ? `By ${photo.contributor_name}` : photo.source === "generated" ? "AI-generated image" : "Shared with the community"}</p>
+      <h3 title={photo.title || photo.contributor_name}><Link className={styles.cardLink} aria-label={photo.title || photo.contributor_name} href={`/avatars/${photo.id}`}><span className={styles.avatar} aria-hidden="true">{photo.contributor_photo_url ? <Image src={photo.contributor_photo_url} alt="" width={38} height={38} unoptimized /> : <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M3 23v-3a9 9 0 0 1 18 0v3Z"/></svg>}</span>{photo.contributor_name}</Link></h3>
       {photo.result && <p className="battle-tally">{photo.result.outcome} · Battle votes: {photo.result.battle_votes} · Gallery upvotes: {count}</p>}
       {photo.result && <blockquote className="work-card-description">{photo.result.roast}</blockquote>}
       {photo.description && (!photo.result || photo.description !== photo.result.roast) && <p className="work-card-description">{photo.description}</p>}
       <div className="card-votes" aria-label="Photo voting" aria-busy={busy}>
-        <button type="button" aria-label={`Upvote: ${count} ${count === 1 ? "upvote" : "upvotes"}`} aria-pressed={vote === 1} disabled={busy} onClick={() => void choose(1)} className={`vote-button ${vote === 1 ? "text-blue-600" : vote === -1 ? "text-gray-400" : ""}`}><Thumb /><span>{count}</span></button>
+        <button type="button" aria-label={`Upvote: ${count} ${count === 1 ? "upvote" : "upvotes"}`} aria-pressed={vote === 1} disabled={busy} onClick={() => void choose(1)} className={`vote-button ${vote === 1 ? "text-blue-600" : vote === -1 ? "text-gray-400" : ""}`}><Thumb /><span>{new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(count)}</span></button>
         <button type="button" aria-label="Downvote" aria-pressed={vote === -1} disabled={busy} onClick={() => void choose(-1)} className={`vote-button down ${vote === -1 ? "text-red-600" : vote === 1 ? "text-gray-400" : ""}`}><Thumb down /></button>
       </div>
       {error && <p role="alert" className="form-error">{error}</p>}
@@ -151,22 +149,22 @@ function GalleryFeed({ sort, search, kind, initial, signedIn, requestLogin }: { 
     observer.observe(sentinel.current); return () => observer.disconnect();
   }, [started, cursor, loading, refreshing, error, load]);
   return <>
-    <ul aria-label="Avatar gallery" className="gallery-grid">
-      {ordered.map((photo) => <li key={photo.id}><GalleryCard photo={photo} signedIn={signedIn} requestLogin={requestLogin} updateVote={updateVote} /></li>)}
+    <ul aria-label="Avatar gallery" className={styles.grid}>
+      {ordered.map((photo, index) => <li key={photo.id}><GalleryCard rank={sort === "newest" ? undefined : index + 1} photo={photo} signedIn={signedIn} requestLogin={requestLogin} updateVote={updateVote} /></li>)}
     </ul>
     {started && !items.length && !cursor && !loading && !error && <div className="gallery-empty">
-      <p className="text-xl font-semibold">{search ? "No avatars found." : sort === "month" ? "No new avatars this month yet." : "Be the first face in the gallery."}</p>
-      <p className="mt-3 text-sm opacity-65">{search ? "Try another avatar name or clear your search." : "Share an avatar you love and let the votes begin."}</p>
+      <p className="text-xl font-semibold">{search ? "No matches yet." : "Nothing here yet."}</p>
+      <p className="mt-3 text-sm opacity-65">{search ? "Try another search or filter." : "Create a meme and start the votes."}</p>
     </div>}
     <div ref={sentinel} className="gallery-status">
-      {loading && <p role="status">Loading avatars…</p>}
+      {loading && <p role="status">Loading gallery…</p>}
       {error && <div role="alert"><p>{error}</p><button onClick={() => void load()} className="secondary-button">Try again</button></div>}
       {started && items.length > 0 && !cursor && !loading && !error && <p>You’re all caught up.</p>}
     </div>
   </>;
 }
 
-function UploadPhoto({ close, published }: { close: () => void; published: () => void }) {
+export function UploadPhoto({ close, published }: { close: () => void; published: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState("");
@@ -221,27 +219,26 @@ export function Gallery({ initial, userId, initialSort = "top" }: { initial?: Ga
   }, [searchInput]);
   const [revision, setRevision] = useState(0);
   const [login, setLogin] = useState(false);
-  const [upload, setUpload] = useState(false);
   const [message, setMessage] = useState("");
   const requestLogin = useCallback(() => setLogin(true), []);
-  return <main id="main" className={styles.page}>
+  return <main id="main" data-gallery-screen className={styles.page}>
+    <div className={styles.decorations} aria-hidden="true" />
     <header className={styles.hero}>
-      <div className={styles.decorations} aria-hidden="true"><span className={styles.orbit} /><span className={styles.bubble} /><svg className={styles.star} viewBox="0 0 80 80"><path d="m40 5 9 23 25 4-19 17 5 25-20-13-21 13 5-25L5 32l25-4Z" /></svg><svg className={styles.sparkle} viewBox="0 0 60 60"><path d="M30 3c3 19 8 24 27 27-19 3-24 8-27 27C27 38 22 33 3 30 22 27 27 22 30 3Z" /></svg><span className={styles.cloud} /><span className={styles.confetti} /></div>
-      <h1 id="gallery-title" className={styles.title} aria-label="Checked Gallery">{["CHECKED", "GALLERY"].map(word => <span className={styles.word} key={word} aria-hidden="true">{Array.from(word).map((letter, index) => <span className={styles.letter} key={index}>{letter}</span>)}</span>)}</h1>
-      <div className="hero-actions"><button aria-label="Upload photo" onClick={() => userId ? setUpload(true) : requestLogin()} className="action-button">Share your photo <span><Icon name="upload" /></span></button></div>
+      <h1 id="gallery-title" className={styles.title} aria-label="Checked Gallery">Checked Gallery<span>.</span></h1>
+      <div className={styles.headerActions}>
+        <label className={styles.search}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></svg><input type="search" aria-label="Search gallery" placeholder="Search memes, creators, tags..." value={searchInput} onChange={event => setSearchInput(event.target.value)} /></label>
+        <Link href="/disguise" className={styles.create}><Icon name="create" />Create meme</Link>
+      </div>
     </header>
-
-    <section className={`gallery-section ${styles.collection}`} aria-labelledby="gallery-title">
+    <section className={styles.collection} aria-labelledby="gallery-title">
       <div className={styles.toolbar}>
-      <div className={styles.searchRow}><label className="gallery-search"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="10" cy="10" r="6" /><path d="m15 15 5 5" /></svg><input type="search" aria-label="Search by avatar name" placeholder="Search by avatar name" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} /></label></div>
-      <div className="ego-tabs" role="group" aria-label="Evidence type">{[["all","All"],["photos","Photos"],["results","Shared Results"]].map(([value,label])=><button key={value} aria-pressed={kind===value} onClick={()=>{setKind(value);setRevision(v=>v+1);}}>{label}</button>)}</div>
-      <div className={styles.filterbar}><div aria-label="Sort gallery" className={styles.filters}>{([["top", "Most votes overall", "Most votes overall"], ["month", "New this month", "New this month"], ["newest", "Newest first", "Newest first"]] as const).map(([value, label, accessibleLabel]) => <button key={value} aria-label={accessibleLabel} aria-pressed={sort === value} onClick={() => { if (sort !== value) { setSort(value); setRevision((value) => value + 1); setMessage(""); } }}><span aria-hidden="true">{value === "top" ? "★" : value === "month" ? "✿" : "✦"}</span>{label}</button>)}</div></div>
+        <div className={styles.filterGroup} role="group" aria-label="Content type"><span>Show</span>{[["all", "All"], ["memes", "Memes"], ["ego", "Checked Ego"]].map(([value, label]) => <button key={value} aria-pressed={kind === value} onClick={() => { if (kind !== value) { setKind(value); setRevision(v => v + 1); } }}>{label}</button>)}</div>
+        <div className={styles.filterGroup} role="group" aria-label="Sort gallery"><span>Sort</span>{([["top", "Most upvotes"], ["newest", "Newest first"]] as const).map(([value, label]) => <button key={value} aria-pressed={sort === value} onClick={() => { if (sort !== value) { setSort(value); setRevision(v => v + 1); setMessage(""); } }}>{label}</button>)}</div>
       </div>
       {message && <p role="status" className="gallery-message">{message}</p>}
       <GalleryFeed kind={kind} key={`${sort}:${userId}:${revision}:${search}`} sort={sort} search={search} initial={!search && sort === initialSort && revision === 0 ? initial : undefined} signedIn={Boolean(userId)} requestLogin={requestLogin} />
     </section>
 
     {login && <LoginPrompt close={() => setLogin(false)} />}
-    {upload && <UploadPhoto close={() => setUpload(false)} published={() => { setUpload(false); setSort("newest"); setRevision((value) => value + 1); setMessage("Your avatar is live. Welcome to the gallery!"); }} />}
   </main>;
 }

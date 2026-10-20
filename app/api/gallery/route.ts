@@ -7,7 +7,7 @@ import { galleryError } from "@/lib/gallery-http";
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const kind = params.get("kind") ?? "all";
-  if (!["all", "photos", "results"].includes(kind)) return Response.json({ error: "Choose a valid gallery type." }, { status: 400 });
+  if (!["all", "memes", "ego", "photos", "results"].includes(kind)) return Response.json({ error: "Choose a valid gallery type." }, { status: 400 });
   const sort = params.get("sort") ?? "top";
   if (!isGallerySort(sort)) return Response.json({ error: "Choose a valid gallery filter." }, { status: 400 });
   after(cleanupGalleryStaging);
@@ -19,8 +19,8 @@ export async function GET(request: Request) {
     // Bound each request so sparse matches can continue through infinite scrolling.
     for (let scanned = 0; scanned < 5; scanned++) {
       const page = await readGallery(sort, cursor);
-      if (kind !== "all") page.items = page.items.filter(photo => kind === "results" ? !!photo.result : !photo.result);
-      if (search) page.items = page.items.filter((photo) => (photo.title || photo.contributor_name).toLocaleLowerCase().includes(search));
+      if (kind !== "all") page.items = page.items.filter(photo => ["ego", "results"].includes(kind) ? photo.kind === "ego" : photo.kind !== "ego");
+      if (search) page.items = page.items.filter((photo) => [photo.title, photo.contributor_name].filter(Boolean).join(" ").toLocaleLowerCase().includes(search));
       if (page.items.length || !page.next_cursor || scanned === 4) {
         return Response.json(page, { headers: { "Cache-Control": "private, no-store" } });
       }

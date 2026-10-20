@@ -496,3 +496,20 @@ h1 em { color: var(--coral); font-style: normal; }
 .site-content:has(> main[data-factory-screen]) > .app-topbar,
 .site-content:has(> main[data-factory-screen]) > .app-footer { display:none; }
 .site-content > main[data-factory-screen] { flex:1;min-height:0; }
+
+/* Gallery follows its full-page design without the shared page-title strip. */
+.site-content:has(> main[data-gallery-screen]) > .app-topbar,
+.site-content:has(> main[data-gallery-screen]) > .app-footer { display:none; }
+@media(min-width:1151px) {
+  .app-shell:has(main[data-gallery-screen]):has(.app-sidebar[data-collapsed="true"]) { --sidebar-width:128px; }
+  .app-shell:has(main[data-gallery-screen]) .app-sidebar[data-collapsed="true"] { --rail-slot:72px;margin:55px 24px 24px;width:96px;top:55px;height:calc(100dvh - 79px);border-radius:23px; }
+  .app-shell:has(main[data-gallery-screen]) .app-sidebar[data-collapsed="true"] .sidebar-links { gap:16px; }
+  .app-shell:has(main[data-gallery-screen]) .app-sidebar[data-collapsed="true"] .sidebar-links a { min-height:65px;border-radius:17px; }
+  .app-shell:has(main[data-gallery-screen]) .app-sidebar .sidebar-links .ui-icon { width:28px;height:28px; }
+  .app-shell:has(main[data-gallery-screen]) .app-sidebar .brand-mark { width:43px;height:43px;margin-inline:auto; }
+}
+@media(min-width:1151px) {
+  .app-shell:has(main[data-gallery-screen]) .app-sidebar[data-collapsed="true"] { max-height:833px;padding-top:22px; }
+  .app-shell:has(main[data-gallery-screen]) .app-sidebar .sidebar-heading { row-gap:20px; }
+  .app-shell:has(main[data-gallery-screen]) .app-sidebar[data-collapsed="true"] .sidebar-links { margin-top:47px; }
+}

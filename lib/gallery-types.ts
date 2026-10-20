@@ -1,6 +1,8 @@
 export type GallerySort = "top" | "week" | "month" | "newest";
 export type Vote = 1 | -1 | null;
 export type GalleryPhoto = {
+  kind?: "memes" | "ego";
+  contributor_photo_url?: string | null;
   title?: string; description?: string;
   result?: { battle_votes: number; outcome: string; roast: string };
   id: string; photo_url: string; contributor_name: string;
