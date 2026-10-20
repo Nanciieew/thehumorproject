@@ -24,6 +24,7 @@ export function DisguiseStudio({ configured, userId }: { configured: boolean; us
   const [result, setResult] = useState<FactoryPreview | null>(null);
   const [selected, setSelected] = useState(0);
   const [photoId, setPhotoId] = useState("");
+  const [celebrating, setCelebrating] = useState(false);
   const [error, setError] = useState("");
   const [publishError, setPublishError] = useState("");
   const [recoverable, setRecoverable] = useState(false);
@@ -77,6 +78,11 @@ export function DisguiseStudio({ configured, userId }: { configured: boolean; us
     });
     return () => { for (const image of previews) image.src = ""; };
   }, [result]);
+  useEffect(() => {
+    if (!celebrating) return;
+    const timer = window.setTimeout(() => setCelebrating(false), 2400);
+    return () => window.clearTimeout(timer);
+  }, [celebrating]);
   async function discard(id: string) {
     const response = await fetch(`/api/factory/${id}`, { method: "DELETE" });
     if (!response.ok && response.status !== 404 && response.status !== 410) {
@@ -135,6 +141,7 @@ export function DisguiseStudio({ configured, userId }: { configured: boolean; us
       if (!response.ok || !isUuid(data.photoId)) throw new Error(data.error || "Couldn’t publish your meme. Please retry.");
       if (mounted.current) {
         setPhotoId(data.photoId);
+        setCelebrating(true);
         setResult(previous => previous ? { ...previous, selected: index, photoId: data.photoId, variants: previous.variants.map((variant, position) => position === index ? variant : { ...variant, url: "" }) } : previous);
         try { sessionStorage.setItem("checked:gallery-votes-changed", "1"); } catch { /* The gallery also refreshes on focus. */ }
       }
@@ -148,10 +155,24 @@ export function DisguiseStudio({ configured, userId }: { configured: boolean; us
     // Going back or forward can still restore the current selection.
     router.push("/disguise", { scroll: false });
   }
+  function createAnother() {
+    if (inFlight.current || publishingRef.current) return;
+    version.current++;
+    remember(null);
+    setCelebrating(false); setSource(null); setResult(null); setPhotoId("");
+    setConfirmed(false); setSelected(0); setDirection(""); setError(""); setPublishError(""); setRecoverable(false);
+    router.push("/disguise", { scroll: false });
+  }
   const locked = busy || publishing;
   const variant = result?.variants[selected];
   const errorPanel = error && <div role="alert" className={styles.error}><span>{error}</span>{recoverable && !busy && <button onClick={() => { if (batchId.current) void restore(batchId.current); }}>Try loading again</button>}</div>;
   return <main id="main" data-factory-screen={previewScreen ? "preview" : "upload"} className={styles.factory}>
+    {celebrating && <div className={styles.celebration} role="status" aria-label="Meme published. CHECKED">
+      <div className={styles.checkedStamp}>
+        <div className={styles.checkHalo} aria-hidden="true"><svg viewBox="0 0 140 140" fill="none"><circle className={styles.checkRing} cx="70" cy="70" r="60" /><path className={styles.checkStroke} pathLength="1" d="m39 71 21 22 43-47" /></svg><i /><i /><i /><i /></div>
+        <span>CHECKED</span>
+      </div>
+    </div>}
     {previewScreen ? <>
       <header className={styles.previewHeader}>
         <button className={styles.back} disabled={locked} onClick={() => void startOver()} aria-label="Back to upload">← <span>New meme</span></button>
@@ -173,7 +194,7 @@ export function DisguiseStudio({ configured, userId }: { configured: boolean; us
           {result ? <div className={styles.options} role="group" aria-label="Choose a caption">{result.variants.map((option, index) => <button key={index} className={styles.option} aria-pressed={selected === index} disabled={locked || confirmed || !!photoId} onClick={() => setSelected(index)}><span className={styles.number}>{String(index + 1).padStart(2, "0")}</span><span>{option.caption}</span><span className={styles.selected} aria-hidden="true">{selected === index ? "✓" : ""}</span></button>)}</div> : <div className={styles.placeholders} aria-label="Captions are being created">{Array.from({ length: 5 }, (_, index) => <div key={index}><span>{String(index + 1).padStart(2, "0")}</span><i /></div>)}</div>}
           <div className={styles.publish}>
             {publishError && <p role="alert" className={styles.error}>{publishError}</p>}
-            {photoId ? <><p className={styles.success} role="status">Published. This one’s a keeper.</p><Link className={styles.primary} href={`/gallery?sort=newest#photo-${photoId}`}>View in gallery <span aria-hidden="true">↗</span></Link></> : <button className={styles.primary} disabled={!result || locked} onClick={() => void publish()}>{publishing ? "Publishing…" : confirmed ? "Retry publishing" : "Publish to gallery"}<span aria-hidden="true">↗</span></button>}
+            {photoId ? <div className={styles.publishedActions}><button className={styles.createAnother} onClick={createAnother}>Create Another Meme</button><Link className={styles.primary} href={`/gallery?sort=newest#photo-${photoId}`}>View in gallery <span aria-hidden="true">↗</span></Link></div> : <button className={styles.primary} disabled={!result || locked} onClick={() => void publish()}>{publishing ? "Publishing…" : confirmed ? "Retry publishing" : "Publish to gallery"}<span aria-hidden="true">↗</span></button>}
           </div>
         </section>
       </div>

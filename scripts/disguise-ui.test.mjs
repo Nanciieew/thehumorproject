@@ -48,7 +48,8 @@ test('Publish to gallery confirms the selected caption, locks selection, and rep
  fireEvent.click(publish);fireEvent.click(publish);
  await waitFor(()=>assert.ok(ui.getByRole('link',{name:'View in gallery'})));
  assert.deepEqual(calls[1],{url:`/api/factory/${id}`,selected:2,approved:true});assert.equal(calls.length,2);
- assert.ok(ui.getByText('Published. This one’s a keeper.'));
+ assert.equal(ui.queryByText('Published. This one’s a keeper.'),null);
+ assert.ok(ui.getByRole('status',{name:'Meme published. CHECKED'}));
  assert.equal(ui.getByRole('button',{name:/04\s*Caption 4/}).disabled,true);
  assert.equal(ui.getByRole('link',{name:'View in gallery'}).getAttribute('href'),`/gallery?sort=newest#photo-${id}`);
 });
@@ -74,7 +75,7 @@ test('publication failure allows retry of the confirmed caption and never claims
  const ui=setup();await generate(ui);fireEvent.click(ui.getByRole('button',{name:'Publish to gallery'}));
  await waitFor(()=>assert.ok(ui.getByText('Cleanup pending.')));assert.equal(ui.queryByText('Published. This one’s a keeper.'),null);
  assert.equal(ui.getByRole('button',{name:/02\s*Caption 2/}).disabled,true);
- fireEvent.click(ui.getByRole('button',{name:'Retry publishing'}));await waitFor(()=>assert.ok(ui.getByRole('link',{name:'View in gallery'})));assert.equal(publishes,2);
+ fireEvent.click(ui.getByRole('button',{name:'Retry publishing'}));await waitFor(()=>assert.ok(ui.getByRole('link',{name:'View in gallery'})));assert.equal(publishes,2);assert.ok(ui.getByRole('status',{name:'Meme published. CHECKED'}));
 });
 test('cached batch restores after remount without generating again; missing configuration blocks paid requests',async()=>{
  sessionStorage.setItem('checked:factory-batch:tester',id);let calls=0;globalThis.fetch=async(url,options)=>{calls++;assert.equal(url,`/api/factory/${id}`);assert.equal(options.method,undefined);return Response.json(preview);};
@@ -98,4 +99,17 @@ test('back to upload separates the screens and does not discard a recoverable pr
  fireEvent.click(ui.getByRole('button',{name:'Back to upload'}));
  assert.ok(ui.getByRole('button',{name:'Create meme'}));assert.equal(ui.queryByRole('heading',{name:'Pick your caption'}),null);
  assert.equal(calls.filter(call=>call.method==='DELETE').length,0);
+});
+
+
+test('Create Another Meme clears the published batch and returns to an empty upload screen',async()=>{
+ draft();const calls=[];globalThis.fetch=async(url,options)=>{calls.push({url,method:options.method});return Response.json(url==='/api/factory'?preview:{photoId:id});};
+ const ui=setup();await generate(ui);fireEvent.click(ui.getByRole('button',{name:'Publish to gallery'}));
+ await waitFor(()=>assert.ok(ui.getByRole('button',{name:'Create Another Meme'})));
+ const actions=ui.getByRole('button',{name:'Create Another Meme'}).parentElement;
+ assert.equal(actions.firstElementChild.textContent,'Create Another Meme');assert.match(actions.lastElementChild.textContent,/View in gallery/);
+ fireEvent.click(ui.getByRole('button',{name:'Create Another Meme'}));
+ assert.ok(ui.getByRole('button',{name:'Upload photo'}));assert.equal(generateButton(ui).disabled,true);
+ assert.equal(ui.getByLabelText(/Keyword/).value,'');assert.equal(sessionStorage.getItem('checked:factory-batch:tester'),null);
+ assert.equal(ui.queryByRole('status',{name:'Meme published. CHECKED'}),null);assert.equal(calls.length,2);
 });
