@@ -122,22 +122,70 @@ test("upload control is English and a selected gallery file is uploaded directly
   assert.deepEqual(JSON.parse(calls[2][1].body), {assetId: "ticket", source: "upload"});
 });
 
-test("ranking moves immediately on upvote/removal, reconciles server totals and rolls back failures", async () => {
+test("voting glows immediately, holds rank for 500ms and then reconciles server totals", async t => {
   let finish;
-  globalThis.fetch = async () => new Promise((resolve) => { finish = resolve; });
+  globalThis.fetch = async () => new Promise(resolve => { finish = resolve; });
   const ui = mount("user", [photo("z", 2), photo("a", 2)]);
-  const order = () => ui.getAllByRole("article").map((element) => element.id);
-  const click = (id) => fireEvent.click(ui.container.querySelector(`#photo-${id} button`));
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const order = () => ui.getAllByRole("article").map(element => element.id);
+  const up = () => ui.container.querySelector('#photo-a button');
   assert.deepEqual(order(), ["photo-z", "photo-a"]);
-  click("a"); assert.deepEqual(order(), ["photo-a", "photo-z"]);
-  await act(async () => finish(Response.json({vote: 1, upvotes: 3})));
-  click("a"); assert.deepEqual(order(), ["photo-z", "photo-a"]);
-  await act(async () => finish(Response.json({vote: null, upvotes: 8})));
+  fireEvent.click(up());
+  assert.equal(up().getAttribute("aria-label"), "Upvote: 3 upvotes");
+  assert.equal(up().getAttribute("data-feedback"), "true");
+  await act(async () => finish(Response.json({ vote: 1, upvotes: 4 })));
+  await act(async () => t.mock.timers.tick(499));
+  assert.deepEqual(order(), ["photo-z", "photo-a"], "a fast response cannot move the clicked meme early");
+  assert.equal(up().getAttribute("data-feedback"), "true");
+  await act(async () => t.mock.timers.tick(1));
   assert.deepEqual(order(), ["photo-a", "photo-z"]);
-  globalThis.fetch = async () => Response.json({error: "Vote failed"}, {status: 500});
-  fireEvent.click(ui.container.querySelector('#photo-a button[aria-label="Downvote"]'));
-  await waitFor(() => assert.ok(ui.getByText("Vote failed")));
-  assert.equal(ui.container.querySelector('#photo-a button').getAttribute('aria-label'), 'Upvote: 8 upvotes');
+  assert.equal(up().getAttribute("data-feedback"), null);
+  fireEvent.click(up());
+  assert.deepEqual(order(), ["photo-a", "photo-z"]);
+  await act(async () => finish(Response.json({ vote: null, upvotes: 1 })));
+  await act(async () => t.mock.timers.tick(500));
+  assert.deepEqual(order(), ["photo-z", "photo-a"]);
+});
+
+test("slow responses release the 500ms hold; failed votes restore totals without moving early", async t => {
+  let finish;
+  globalThis.fetch = async () => new Promise(resolve => { finish = resolve; });
+  const ui = mount("user", [photo("z", 2), photo("a", 2)]);
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const order = () => ui.getAllByRole("article").map(element => element.id);
+  const up = () => ui.container.querySelector('#photo-a button');
+  fireEvent.click(up());
+  await act(async () => t.mock.timers.tick(500));
+  assert.deepEqual(order(), ["photo-a", "photo-z"]);
+  assert.equal(up().disabled, true, "the in-flight request still blocks duplicate votes");
+  await act(async () => finish(Response.json({ error: "Vote failed" }, { status: 500 })));
+  assert.ok(ui.getByText("Vote failed"));
+  assert.deepEqual(order(), ["photo-z", "photo-a"]);
+  assert.equal(up().getAttribute("aria-label"), "Upvote: 2 upvotes");
+  fireEvent.click(up());
+  await act(async () => finish(Response.json({ error: "Vote failed" }, { status: 500 })));
+  await act(async () => t.mock.timers.tick(500));
+  assert.deepEqual(order(), ["photo-z", "photo-a"], "a rejected vote never changes the final rank");
+});
+
+test("downvotes glow too and concurrent votes keep both cards still until feedback completes", async t => {
+  globalThis.fetch = async (_url, options) => {
+    const { value } = JSON.parse(options.body);
+    return Response.json({ vote: value, upvotes: value === 1 ? 3 : 1 });
+  };
+  const ui = mount("user", [photo("z", 2), photo("a", 2)]);
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const order = () => ui.getAllByRole("article").map(element => element.id);
+  await act(async () => fireEvent.click(ui.container.querySelector('#photo-a button')));
+  await act(async () => t.mock.timers.tick(250));
+  const down = ui.container.querySelector('#photo-z button[aria-label="Downvote"]');
+  await act(async () => fireEvent.click(down));
+  assert.equal(down.getAttribute("data-feedback"), "true");
+  await act(async () => t.mock.timers.tick(250));
+  assert.deepEqual(order(), ["photo-z", "photo-a"], "another active vote cannot shift the clicked card");
+  await act(async () => t.mock.timers.tick(250));
+  assert.deepEqual(order(), ["photo-a", "photo-z"]);
+  assert.equal(down.getAttribute("data-feedback"), null);
 });
 
 test("returning to the page refreshes global leaders, including photos outside the visible page", async () => {
@@ -253,6 +301,12 @@ test("Most upvotes ranks with newer publication breaking ties across loaded page
   await waitFor(() => assert.deepEqual(ui.getAllByRole("article").map(el => el.id), ["photo-older", "photo-newer"]));
   await scroll();
   await waitFor(() => assert.deepEqual(ui.getAllByRole("article").map(el => el.id), ["photo-tied", "photo-older", "photo-newer"]));
+  assert.equal(ui.getAllByLabelText("Rank 1").length, 2);
+  assert.equal(ui.container.querySelector('#photo-newer [aria-label="Rank 3"]').textContent, "#3");
+  assert.equal(ui.container.querySelectorAll('[data-leading="true"]').length, 1);
+  assert.equal(ui.container.querySelector('[data-leading="true"]').id, "photo-tied");
+  assert.equal(ui.container.querySelectorAll('[aria-label="Rank 1"] svg').length, 1);
+  assert.ok(ui.container.querySelector('#photo-tied [aria-label="Rank 1"] svg'));
 });
 
 test('challenge result cards show canonical roast and separate frozen battle votes from gallery upvotes',()=>{
@@ -285,12 +339,49 @@ test("content filters stay selected when sorting changes; newest has no rank bad
  assert.equal(requests.at(-1).searchParams.get("sort"),"newest");
 });
 
-test("reference design shows real author photos, arrow voting and the factory link", () => {
+test("gallery shows real author photos, thumb voting and the factory link", () => {
  const ui=mount("user",[{...photo("author"),contributor_photo_url:"https://example.com/author.webp"}]);
  assert.equal(ui.getByRole("link",{name:"Create meme"}).getAttribute("href"),"/disguise");
  assert.ok(ui.container.querySelector('img[src="https://example.com/author.webp"]'));
  assert.equal(ui.container.querySelector('[aria-label="Rank 1"]').textContent,"#1");
  assert.ok(ui.container.querySelector('[aria-label="Rank 1"] svg'));
  assert.ok(ui.getByPlaceholderText("Search memes, creators, tags..."));
- assert.equal(ui.getByRole("button",{name:"Upvote: 2 upvotes"}).querySelector("svg").getAttribute("fill"),"currentColor");
+ const up = ui.getByRole("button", {name:"Upvote: 2 upvotes"}).querySelector("svg");
+ const down = ui.getByRole("button", {name:"Downvote"}).querySelector("svg");
+ assert.equal(up.getAttribute("fill"), "currentColor");
+ assert.equal(up.querySelectorAll("path").length, 2, "thumb includes the hand and cuff");
+ assert.equal(down.style.transform, "rotate(180deg)");
+});
+
+test("Checked Ego shares score ranks and the top-left badge, with only the newest leader crowned", () => {
+  const ui = mount("user", [
+    { ...photo("older-meme", 10), published_at: "2026-10-07T12:00:00Z" },
+    { ...photo("newest-ego", 10), kind: "ego", published_at: "2026-10-08T12:00:00Z" },
+    { ...photo("result-ego", 5), result: { battle_votes: 99, outcome: "Checked", roast: "A roast." } },
+    photo("other-meme", 5),
+    photo("last", 0),
+  ]);
+  const cards = ui.getAllByRole("article");
+  assert.deepEqual(cards.map(card => card.id), ["photo-newest-ego", "photo-older-meme", "photo-result-ego", "photo-other-meme", "photo-last"]);
+  assert.deepEqual(cards.map(card => card.querySelector('[aria-label^="Rank "]').textContent), ["#1", "#1", "#3", "#3", "#5"]);
+  assert.equal(cards.filter(card => card.dataset.leading === "true").length, 1);
+  assert.equal(cards[0].dataset.leading, "true");
+  assert.equal(ui.container.querySelectorAll('[aria-label^="Rank "] svg').length, 1);
+  assert.equal(ui.container.querySelector(".card-image .badge"), null, "the old card label is replaced by the rank");
+  for (const card of cards) assert.equal(card.querySelector('[aria-label^="Rank "]').className, "rank");
+});
+
+test("a vote creating a tie shares the rank and crowns the newest meme after the hold", async t => {
+  const older = { ...photo("older", 3), published_at: "2026-10-07T12:00:00Z" };
+  const newer = { ...photo("newer", 2), published_at: "2026-10-08T12:00:00Z" };
+  globalThis.fetch = async () => Response.json({ vote: 1, upvotes: 3 });
+  const ui = mount("user", [older, newer]);
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  await act(async () => fireEvent.click(ui.container.querySelector('#photo-newer button')));
+  assert.equal(ui.getAllByLabelText("Rank 1").length, 2);
+  assert.equal(ui.getAllByRole("article")[0].id, "photo-older");
+  await act(async () => t.mock.timers.tick(500));
+  assert.equal(ui.getAllByRole("article")[0].id, "photo-newer");
+  assert.equal(ui.container.querySelector('[data-leading="true"]').id, "photo-newer");
+  assert.equal(ui.container.querySelectorAll('[aria-label="Rank 1"] svg').length, 1);
 });

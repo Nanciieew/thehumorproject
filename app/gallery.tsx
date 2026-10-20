@@ -9,7 +9,7 @@ import { Icon } from "./ui";
 import { GALLERY_MIME_TYPES, MAX_GALLERY_BYTES, type GalleryPage, type GalleryPhoto, type GallerySort, type Vote } from "@/lib/gallery-types";
 
 function Thumb({ down = false }: { down?: boolean }) {
-  return <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill={down ? "none" : "currentColor"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={down ? { transform: "rotate(180deg)" } : undefined}><path d="M9 21V10H4l8-8 8 8h-5v11Z" /></svg>;
+  return <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill={down ? "none" : "currentColor"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={down ? { transform: "rotate(180deg)" } : undefined}><path d="M7 11 11 2a3 3 0 0 1 3 3v4h5.66a2 2 0 0 1 1.98 2.28l-1.38 9A2 2 0 0 1 18.28 22H7Z" /><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3" /></svg>;
 }
 
 function LoginPrompt({ close }: { close: () => void }) {
@@ -23,7 +23,12 @@ function LoginPrompt({ close }: { close: () => void }) {
   </dialog>;
 }
 
-function GalleryCard({ photo, rank, signedIn, requestLogin, updateVote }: { rank?: number; photo: GalleryPhoto; signedIn: boolean; requestLogin: () => void; updateVote: (id: string, vote: Vote, count: number, pending: boolean) => void }) {
+type VoteUpdate = (id: string, vote: Vote, count: number, pending: boolean, clicked?: 1 | -1) => void;
+function orderPhotos(items: GalleryPhoto[], sort: GallerySort) {
+  return [...items].sort((a, b) => (sort === "newest" ? 0 : b.upvotes - a.upvotes) || b.published_at.localeCompare(a.published_at) || b.id.localeCompare(a.id));
+}
+
+function GalleryCard({ photo, rank, leading, feedback, signedIn, requestLogin, updateVote }: { rank?: number; leading: boolean; feedback?: 1 | -1; photo: GalleryPhoto; signedIn: boolean; requestLogin: () => void; updateVote: VoteUpdate }) {
   const vote = photo.vote;
   const count = photo.upvotes;
   const [busy, setBusy] = useState(false);
@@ -35,7 +40,7 @@ function GalleryCard({ photo, rank, signedIn, requestLogin, updateVote }: { rank
     inFlight.current = true; setBusy(true); setError("");
     const previous = { vote, count };
     const next = vote === choice ? null : choice;
-    updateVote(photo.id, next, Math.max(0, count + Number(next === 1) - Number(vote === 1)), true);
+    updateVote(photo.id, next, Math.max(0, count + Number(next === 1) - Number(vote === 1)), true, choice);
     try {
       const response = await fetch("/api/gallery/vote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ photoId: photo.id, value: next }) });
       const result = await response.json();
@@ -46,16 +51,16 @@ function GalleryCard({ photo, rank, signedIn, requestLogin, updateVote }: { rank
       setError(error instanceof Error && !(error instanceof TypeError) ? error.message : "Your vote couldn’t be saved. Please try again.");
     } finally { inFlight.current = false; setBusy(false); }
   }
-  return <article id={`photo-${photo.id}`} className={`gallery-card ${styles.card}`} data-leading={rank === 1} data-kind={photo.kind === "ego" || photo.result ? "ego" : "memes"}>
-    <div className="card-image"><Image src={photo.photo_url} alt={photo.title || `Meme shared by ${photo.contributor_name}`} width={400} height={400} unoptimized />{(photo.kind === "ego" || photo.result) && <span className={styles.badge}><svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7" r="5"/><path d="M2 23v-3a10 10 0 0 1 20 0v3Z"/></svg>Checked Ego</span>}{rank && <span className={styles.rank} aria-label={`Rank ${rank}`}>#{rank}{rank === 1 && <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="m2 6 5 4 5-7 5 7 5-4-3 14H5Z"/></svg>}</span>}</div>
+  return <article id={`photo-${photo.id}`} className={`gallery-card ${styles.card}`} data-leading={leading} data-kind={photo.kind === "ego" || photo.result ? "ego" : "memes"}>
+    <div className="card-image"><Image src={photo.photo_url} alt={photo.title || `Meme shared by ${photo.contributor_name}`} width={400} height={400} unoptimized />{rank && <span className={styles.rank} aria-label={`Rank ${rank}`}>#{rank}{leading && <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="m2 6 5 4 5-7 5 7 5-4-3 14H5Z"/></svg>}</span>}</div>
     <div className="card-info">
       <h3 title={photo.title || photo.contributor_name}><Link className={styles.cardLink} aria-label={photo.title || photo.contributor_name} href={`/avatars/${photo.id}`}><span className={styles.avatar} aria-hidden="true">{photo.contributor_photo_url ? <Image src={photo.contributor_photo_url} alt="" width={38} height={38} unoptimized /> : <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M3 23v-3a9 9 0 0 1 18 0v3Z"/></svg>}</span><span className={styles.creatorName}>{photo.contributor_name}</span></Link></h3>
       {photo.result && <p className="battle-tally">{photo.result.outcome} · Battle votes: {photo.result.battle_votes} · Gallery upvotes: {count}</p>}
       {photo.result && <blockquote className="work-card-description">{photo.result.roast}</blockquote>}
       {photo.description && (!photo.result || photo.description !== photo.result.roast) && <p className="work-card-description">{photo.description}</p>}
       <div className="card-votes" aria-label="Photo voting" aria-busy={busy}>
-        <button type="button" aria-label={`Upvote: ${count} ${count === 1 ? "upvote" : "upvotes"}`} aria-pressed={vote === 1} disabled={busy} onClick={() => void choose(1)} className={`vote-button ${vote === 1 ? "text-blue-600" : vote === -1 ? "text-gray-400" : ""}`}><Thumb /><span>{new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(count)}</span></button>
-        <button type="button" aria-label="Downvote" aria-pressed={vote === -1} disabled={busy} onClick={() => void choose(-1)} className={`vote-button down ${vote === -1 ? "text-red-600" : vote === 1 ? "text-gray-400" : ""}`}><Thumb down /></button>
+        <button type="button" aria-label={`Upvote: ${count} ${count === 1 ? "upvote" : "upvotes"}`} aria-pressed={vote === 1} data-feedback={feedback === 1 || undefined} disabled={busy} onClick={() => void choose(1)} className={`vote-button ${vote === 1 ? "text-blue-600" : vote === -1 ? "text-gray-400" : ""}`}><Thumb /><span>{new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(count)}</span></button>
+        <button type="button" aria-label="Downvote" aria-pressed={vote === -1} data-feedback={feedback === -1 || undefined} disabled={busy} onClick={() => void choose(-1)} className={`vote-button down ${vote === -1 ? "text-red-600" : vote === 1 ? "text-gray-400" : ""}`}><Thumb down /></button>
       </div>
       {error && <p role="alert" className="form-error">{error}</p>}
     </div>
@@ -73,12 +78,40 @@ function GalleryFeed({ sort, search, kind, initial, signedIn, requestLogin }: { 
   const revision = useRef(0);
   const pendingVotes = useRef(new Set<string>());
   const [refreshing, setRefreshing] = useState(false);
-  const updateVote = useCallback((id: string, vote: Vote, count: number, pending: boolean) => {
+  const feedbackTimers = useRef(new Map<string, number>());
+  const [voteFeedback, setVoteFeedback] = useState<{ order: string[]; clicks: Record<string, 1 | -1> } | null>(null);
+  useEffect(() => {
+    const timers = feedbackTimers.current;
+    return () => { for (const timer of timers.values()) window.clearTimeout(timer); timers.clear(); };
+  }, []);
+  const updateVote = useCallback<VoteUpdate>((id, vote, count, pending, clicked) => {
     revision.current++;
     if (pending) pendingVotes.current.add(id); else pendingVotes.current.delete(id);
-    setItems((existing) => existing.map((photo) => photo.id === id ? { ...photo, vote, upvotes: count } : photo));
-  }, []);
-  const ordered = [...items].sort((a, b) => (sort === "newest" ? 0 : b.upvotes - a.upvotes) || b.published_at.localeCompare(a.published_at) || b.id.localeCompare(a.id));
+    if (clicked) {
+      // Keep the visible order while the clicked thumb acknowledges the vote.
+      const order = orderPhotos(itemsRef.current, sort).map(photo => photo.id);
+      setVoteFeedback(current => ({ order: current?.order ?? order, clicks: { ...current?.clicks, [id]: clicked } }));
+      window.clearTimeout(feedbackTimers.current.get(id));
+      feedbackTimers.current.set(id, window.setTimeout(() => {
+        feedbackTimers.current.delete(id);
+        setVoteFeedback(current => {
+          if (!current) return null;
+          const clicks = { ...current.clicks }; delete clicks[id];
+          return Object.keys(clicks).length ? { ...current, clicks } : null;
+        });
+      }, 500));
+    }
+    setItems(existing => existing.map(photo => photo.id === id ? { ...photo, vote, upvotes: count } : photo));
+  }, [sort]);
+  const ordered = orderPhotos(items, sort);
+  const leaderId = sort === "newest" ? undefined : ordered[0]?.id;
+  // Competition ranks depend only on upvotes; publication time orders ties.
+  const ranks = new Map<number, number>();
+  ordered.forEach((photo, index) => { if (!ranks.has(photo.upvotes)) ranks.set(photo.upvotes, index + 1); });
+  if (voteFeedback) {
+    const positions = new Map(voteFeedback.order.map((id, index) => [id, index]));
+    ordered.sort((a, b) => (positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity));
+  }
   const sentinel = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false);
   const controller = useRef<AbortController | null>(null);
@@ -108,7 +141,7 @@ function GalleryFeed({ sort, search, kind, initial, signedIn, requestLogin }: { 
     // Re-read the entire visible prefix so photos rising from later pages can enter it.
     let stopped = false;
     const refresh = async () => {
-      if (document.visibilityState === "hidden" || inFlight.current || pendingVotes.current.size) return;
+      if (document.visibilityState === "hidden" || inFlight.current || pendingVotes.current.size || feedbackTimers.current.size) return;
       inFlight.current = true;
       setRefreshing(true);
       const version = revision.current;
@@ -150,7 +183,7 @@ function GalleryFeed({ sort, search, kind, initial, signedIn, requestLogin }: { 
   }, [started, cursor, loading, refreshing, error, load]);
   return <>
     <ul aria-label="Avatar gallery" className={styles.grid}>
-      {ordered.map((photo, index) => <li key={photo.id}><GalleryCard rank={sort === "newest" ? undefined : index + 1} photo={photo} signedIn={signedIn} requestLogin={requestLogin} updateVote={updateVote} /></li>)}
+      {ordered.map(photo => <li key={photo.id}><GalleryCard feedback={voteFeedback?.clicks[photo.id]} rank={sort === "newest" ? undefined : ranks.get(photo.upvotes)} leading={photo.id === leaderId} photo={photo} signedIn={signedIn} requestLogin={requestLogin} updateVote={updateVote} /></li>)}
     </ul>
     {started && !items.length && !cursor && !loading && !error && <div className="gallery-empty">
       <p className="text-xl font-semibold">{search ? "No matches yet." : "Nothing here yet."}</p>
