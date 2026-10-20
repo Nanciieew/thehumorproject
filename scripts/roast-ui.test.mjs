@@ -10,11 +10,10 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { render, fireEvent, waitFor, cleanup, act } = await import('@testing-library/react');
 const { RoastStudio } = await import('../app/you-are-a-joke/studio.tsx');
 const { PublishEgo } = await import('../app/you-are-a-joke/publish-ego.tsx');
-const { peekDisguiseDraft, clearDisguiseDraft } = await import('../lib/disguise-draft.ts');
 dom.window.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
 dom.window.HTMLDialogElement.prototype.close = function () { this.open = false; };
 const originalFetch = globalThis.fetch;
-afterEach(() => { cleanup(); globalThis.fetch = originalFetch; });
+afterEach(() => { cleanup(); window.sessionStorage.clear(); globalThis.fetch = originalFetch; });
 const mount = (mock = true, configured = true) => render(React.createElement(RoastStudio, { mock, configured }));
 test('camera remains closed until acknowledgement and explicit start', async () => {
   let calls = 0; Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => { calls++; throw new DOMException('denied', 'NotAllowedError'); } } });
@@ -65,7 +64,7 @@ async function liveHarness(mock = false) {
   return { ui, faces, tick, stopped: () => stopped };
 }
 
-test('clear invalidates an outstanding roast and stop releases the camera', async () => {
+test('cancel invalidates an outstanding roast and leaving releases the camera without extra controls', async () => {
   let resolve; let sent;
   globalThis.fetch = (url, options) => {
     if (url.endsWith('/reset')) return Promise.resolve(new Response(null, { status: 204 }));
@@ -74,12 +73,14 @@ test('clear invalidates an outstanding roast and stop releases the camera', asyn
   const { ui, faces, tick, stopped } = await liveHarness();
   await faces(1); await tick(100);
   assert.ok(sent); assert.equal(sent.frames.length, 1);
-  fireEvent.click(ui.getByRole('button', { name: 'Clear Session' }));
+  assert.equal(ui.queryByRole('button', {name:'Clear Session'}),null);
+  assert.equal(ui.queryByRole('button', {name:'Stop Camera'}),null);
+  fireEvent.click(ui.getByRole('button', { name: 'Cancel roast' }));
   const { act } = await import('@testing-library/react');
   await act(async () => resolve(Response.json({ sessionId: sent.sessionId, requestId: sent.requestId, status: 'ok', roast: 'STALE CAPTION', anchor: 'screen' })));
   assert.equal(ui.queryByText('STALE CAPTION'), null);
-  fireEvent.click(ui.getByRole('button', { name: 'Stop Camera' }));
-  assert.equal(stopped(), 1); assert.equal(ui.getByLabelText('Mirrored live webcam').srcObject, null);
+  ui.unmount();
+  assert.equal(stopped(), 1);
 });
 
 test('multiple faces prevent uploads and revoking consent keeps roasting paused', async () => {
@@ -125,18 +126,20 @@ test('one click produces one roast, preserves its receipt while paused, and need
   assert.ok(ui.getByText(/Paused — camera is on/));
   assert.equal(memes.length, 1);
   assert.equal(memes[0].body.receipt, 'receipt-0');
-  assert.equal(ui.getByAltText('The screenshot captured for your punchline').getAttribute('src'), 'data:image/jpeg;base64,/9j/AA==');
+  assert.equal(ui.queryByAltText('The screenshot captured for your punchline'),null);
+  assert.equal(ui.queryByText('Adding your punchline to the screenshot…'),null);
+  assert.equal(ui.queryByText('THE PUNCHLINE'),null);
+  assert.equal(ui.queryByText('First roast.'),null);
+  assert.equal(ui.queryByRole('link',{name:'Checked Factory ↗'}),null);
   assert.equal(ui.queryByRole('button', { name: 'Publish my ego' }), null);
   await act(async () => memes[0].resolve(Response.json({ snapshot: 'Z2VuZXJhdGVk', receipt: 'meme-receipt' })));
-  assert.equal(ui.getByAltText('Your screenshot with the punchline: First roast.').getAttribute('src'), 'data:image/webp;base64,Z2VuZXJhdGVk');
+  assert.equal(ui.getByAltText('Your checked screenshot').getAttribute('src'), 'data:image/webp;base64,Z2VuZXJhdGVk');
   const publish = ui.getByRole('button', { name: 'Publish my ego' });
-  assert.ok(ui.getByRole('region', { name: 'Camera preview' }).contains(publish));
-  const disguise = ui.getByRole('link', { name: 'Checked Factory ↗' });
-  assert.equal(disguise.getAttribute('href'), '/disguise');
-  const navigate = new MouseEvent('click', { bubbles: true, cancelable: true }); navigate.preventDefault();
-  fireEvent(disguise, navigate);
-  assert.equal(peekDisguiseDraft().image, 'data:image/jpeg;base64,/9j/AA==');
-  clearDisguiseDraft(peekDisguiseDraft().image);
+  assert.ok(ui.getByRole('region', { name: 'Experience controls' }).contains(publish));
+  assert.equal(ui.getByRole('region', {name:'Camera preview'}).contains(publish),false);
+  assert.equal(ui.queryByRole('link',{name:'Checked Factory ↗'}),null);
+  assert.equal(ui.queryByText('One roast per click.'),null);
+  assert.equal(ui.queryByText('Privacy & camera'),null);
   now += 9000; await faces(1); await tick(10000); await tick(11000);
   assert.equal(sent.length, 1, 'elapsed cooldown and tracking cannot start another roast');
   assert.ok(ui.getByRole('button', { name: 'Publish my ego' }), 'publishing remains available while paused');
@@ -149,7 +152,7 @@ test('one click produces one roast, preserves its receipt while paused, and need
   await respond(1, 'Second roast.');
   await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Hurt my feelings again ↗' })));
   assert.equal(ui.queryByText('First roast.'), null);
-  assert.ok(ui.getByText('Second roast.'));
+  assert.equal(ui.queryByText('Second roast.'),null);
 });
 
 for (const outcome of ['skip', 'error']) {
@@ -219,7 +222,7 @@ test('solo publication previews before explicit approval, blocks duplicate click
   const ui = render(React.createElement(PublishEgo, { receipt: 'receipt-fixture', snapshot: '/9j/AA==', roast: 'A solo roast.', onBusyChange: value => busy.push(value) }));
   fireEvent.click(ui.getByRole('button', { name: 'Publish my ego' }));
   assert.ok(ui.getByRole('dialog', { name: 'Publish my ego' }));
-  assert.ok(ui.getByText('A solo roast.')); assert.equal(calls.length, 0);
+  assert.equal(ui.queryByText('A solo roast.'),null);assert.ok(ui.getByAltText('Your roast snapshot for public sharing')); assert.equal(calls.length, 0);
   const confirm = ui.getByRole('button', { name: 'Publish to Checked Gallery' });
   assert.equal(confirm.disabled, true);
   fireEvent.click(ui.getByRole('checkbox'));
@@ -253,7 +256,7 @@ test('cancelled public-sharing previews send nothing and failed publication can 
   assert.equal(calls, 2);
 });
 
-test('meme generation failure keeps the captured screenshot and retries before enabling publication', async () => {
+test('meme generation failure offers retry without revealing the unfinished screenshot', async () => {
   const { RoastMeme } = await import('../app/you-are-a-joke/roast-meme.tsx');
   const calls = [];
   globalThis.fetch = async (url, options) => {
@@ -262,7 +265,8 @@ test('meme generation failure keeps the captured screenshot and retries before e
   };
   const ui = render(React.createElement(RoastMeme, { receipt: 'original-receipt', snapshot: '/9j/AA==', roast: 'Your punchline.', onBusyChange: () => {} }));
   await waitFor(() => assert.ok(ui.getByRole('alert')));
-  assert.ok(ui.getByAltText('The screenshot captured for your punchline'));
+  assert.equal(ui.queryByAltText('The screenshot captured for your punchline'),null);
+  assert.equal(ui.queryByAltText('Your checked screenshot'),null);
   assert.equal(ui.queryByRole('button', { name: 'Publish my ego' }), null);
   fireEvent.click(ui.getByRole('button', { name: 'Retry image generation' }));
   await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Publish my ego' })));
@@ -270,4 +274,42 @@ test('meme generation failure keeps the captured screenshot and retries before e
   assert.deepEqual(calls[1], { url: '/api/roast/meme', body: { receipt: 'original-receipt', snapshot: '/9j/AA==' } });
   fireEvent.click(ui.getByRole('button', { name: 'Publish my ego' }));
   assert.equal(ui.getByAltText('Your roast snapshot for public sharing').getAttribute('src'), 'data:image/webp;base64,ZmluaXNoZWQ=');
+});
+
+
+test('generated screenshots survive tab changes and remount without another generation or camera permission',async()=>{
+ const { RoastMeme }=await import('../app/you-are-a-joke/roast-meme.tsx');
+ const {readCheckedMeme}=await import('../lib/checked-meme-cache.ts');
+ let calls=0;globalThis.fetch=async()=>{calls++;return Response.json({snapshot:'ZmluaXNoZWQ=',receipt:'cached-receipt'});};
+ const first=render(React.createElement(RoastMeme,{receipt:'input',snapshot:'/9j/AA==',roast:'Private roast',userId:'cached-user',onBusyChange:()=>{}}));
+ await waitFor(()=>assert.ok(first.getByAltText('Your checked screenshot')));
+ await waitFor(async()=>assert.equal((await readCheckedMeme('cached-user'))?.snapshot,'ZmluaXNoZWQ='));
+ first.unmount();
+ const restored=render(React.createElement(RoastStudio,{mock:false,configured:true,userId:'cached-user'}));
+ await waitFor(()=>assert.equal(restored.getByAltText('Your checked screenshot').getAttribute('src'),'data:image/webp;base64,ZmluaXNoZWQ='));
+ assert.equal(calls,1);assert.equal(restored.queryByText('Private roast'),null);
+ Object.defineProperty(document,'hidden',{configurable:true,value:true});
+ await act(async()=>document.dispatchEvent(new Event('visibilitychange')));
+ Object.defineProperty(document,'hidden',{configurable:true,value:false});
+ await act(async()=>document.dispatchEvent(new Event('visibilitychange')));
+ assert.ok(restored.getByAltText('Your checked screenshot'));assert.equal(calls,1);
+ restored.unmount();
+ const other=render(React.createElement(RoastStudio,{mock:false,configured:true,userId:'other-user'}));
+ await act(async()=>{});assert.equal(other.queryByAltText('Your checked screenshot'),null);
+});
+
+
+test('the optional Factory-style keyword is sent as the punchline direction',async()=>{
+ let sent;globalThis.fetch=async(url,options)=>{sent=JSON.parse(options.body);return new Promise(()=>{});};
+ const ui=mount(false);const keyword=ui.getByLabelText(/Keyword/);
+ fireEvent.change(keyword,{target:{value:'  Finals week  '}});
+ assert.equal(keyword.maxLength,500);assert.equal(keyword.getAttribute('placeholder'),'Finals week, first dates, office life…');
+ // The camera harness supplies frames; retain the keyword on the mounted studio.
+ ui.unmount();
+ const {ui:live,faces,tick}=await liveHarness();
+ fireEvent.click(live.getByRole('button',{name:'Cancel roast'}));
+ fireEvent.change(live.getByLabelText(/Keyword/),{target:{value:'  Finals week  '}});
+ fireEvent.click(live.getByRole('button',{name:'Hurt my feelings again ↗'}));
+ await faces(1);await tick(100);
+ assert.equal(sent.settings.direction,'Finals week');
 });

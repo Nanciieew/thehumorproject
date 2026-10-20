@@ -2,19 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Intensity, RoastEvent, RoastResponse } from "@/lib/roast/contracts";
-import Link from "next/link";
 import { PlayfulTitle } from "../playful-title";
 import styles from "./studio.module.css";
 import { RoastMeme } from "./roast-meme";
-import { setDisguiseDraft } from "@/lib/disguise-draft";
+import { PublishEgo } from "./publish-ego";
+import { readCheckedMeme, type CachedCheckedMeme } from "@/lib/checked-meme-cache";
 
 type Point = { x: number; y: number };
 type Tracking = { faces: number; x: number; y: number; at: number };
 const demos = ["This is a sample punchline. The camera has not been analyzed by AI.", "Demo comedian reporting for duty. My observational skills are currently fictional.", "Mock mode: all the audacity, none of the cloud analysis."];
 
-export function RoastStudio({ mock, configured }: { mock: boolean; configured: boolean }) {
-  const [selected, setSelected] = useState<{ receipt: string; snapshot: string; roast: string } | null>(null);
+export function RoastStudio({ mock, configured, userId }: { mock: boolean; configured: boolean; userId?: string }) {
+  const [selected, setSelected] = useState<{ receipt: string; snapshot: string; roast: string; generated?: boolean } | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [finished, setFinished] = useState<CachedCheckedMeme | null>(null);
+  const [direction, setDirection] = useState("");
   const video = useRef<HTMLVideoElement>(null);
   const badge = useRef<HTMLDivElement>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -29,7 +31,7 @@ export function RoastStudio({ mock, configured }: { mock: boolean; configured: b
   const busy = useRef(false);
   const running = useRef(false);
   const consentRef = useRef(false);
-  const options = useRef({ intensity: "savage" as Intensity, excludedTopics: [] as string[] });
+  const options = useRef({ intensity: "savage" as Intensity, excludedTopics: [] as string[], direction: "" });
   const [consent, setConsent] = useState(false);
   const [camera, setCamera] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -37,16 +39,24 @@ export function RoastStudio({ mock, configured }: { mock: boolean; configured: b
   const [ready, setReady] = useState(false);
   const [faceCount, setFaceCount] = useState(0);
   const [thinking, setThinking] = useState(false);
-  const [caption, setCaption] = useState("");
   const [message, setMessage] = useState("");
   const [intensity, setIntensity] = useState<Intensity>("savage");
   const [topics, setTopics] = useState("");
-  const [anchor, setAnchor] = useState<"face" | "screen">("screen");
+
+  useEffect(() => {
+    if (mock || !userId) return;
+    let cancelled = false;
+    const version = generation.current;
+    void readCheckedMeme(userId).then(cached => {
+      if (!cancelled && cached && generation.current === version) setSelected(previous => previous ?? { ...cached, generated: true });
+    });
+    return () => { cancelled = true; };
+  }, [mock, userId]);
 
   function invalidate(reset = false) {
     generation.current++; request.current?.abort(); request.current = null; busy.current = false;
     frames.current = []; events.current = []; setThinking(false);
-    if (reset) { setSelected(null); }
+    if (reset) { setSelected(null); setFinished(null); }
     if (reset && session.current) {
       void fetch("/api/roast/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: session.current }), keepalive: true }).catch(() => {});
       session.current = crypto.randomUUID();
@@ -55,16 +65,16 @@ export function RoastStudio({ mock, configured }: { mock: boolean; configured: b
   function pause() { running.current = false; setEnabled(false); invalidate(); }
   function roastAgain() {
     if (running.current || busy.current || !consentRef.current || !workerReady.current || !stream.current) return;
-    invalidate(); setSelected(null); setCaption(""); setMessage("");
+    invalidate(); setSelected(null); setFinished(null); setMessage("");
     running.current = true; setEnabled(true);
   }
   function stop() {
-    running.current = false; setEnabled(false); invalidate(true);
+    running.current = false; setEnabled(false); invalidate();
     stream.current?.getTracks().forEach(t => t.stop()); stream.current = null;
     if (video.current) video.current.srcObject = null;
     worker.current?.terminate(); worker.current = null; workerReady.current = false; busyTracking.current = false;
     tracking.current = { faces: 0, x: .5, y: .5, at: 0 };
-    setCamera(false); setStarting(false); setReady(false); setFaceCount(0); setCaption("");
+    setCamera(false); setStarting(false); setReady(false); setFaceCount(0);
     if (badge.current) badge.current.style.opacity = "0";
   }
 
@@ -169,7 +179,7 @@ export function RoastStudio({ mock, configured }: { mock: boolean; configured: b
               : fetch("/api/roast", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(16000)]) }).then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.message ?? "AI roasting is unavailable."); return data; });
             void work.then(result => {
               if (token !== generation.current || controller.signal.aborted || !running.current || !consentRef.current || tracking.current.faces !== 1 || Date.now() - tracking.current.at > 1000 || Date.now() - now > 14000 || result.sessionId !== sid || result.requestId !== id) return;
-              if (result.status === "ok" && typeof result.roast === "string") { setCaption(result.roast); setAnchor(result.anchor);
+              if (result.status === "ok" && typeof result.roast === "string") {
                 if (!mock && result.receipt && body.frames.length) {
                   setSelected({ receipt: result.receipt, snapshot: body.frames[body.frames.length - 1].base64, roast: result.roast });
                 } }
@@ -194,7 +204,7 @@ export function RoastStudio({ mock, configured }: { mock: boolean; configured: b
   function changeConsent(value: boolean) { consentRef.current = value; setConsent(value); if (!value) { if (starting) stop(); else pause(); } }
   function changeSettings(nextIntensity: Intensity, nextTopics: string) {
     pause();
-    setIntensity(nextIntensity); setTopics(nextTopics); options.current = { intensity: nextIntensity, excludedTopics: nextTopics.split(",").map(s => s.trim().slice(0, 80)).filter(Boolean).slice(0, 10) }; invalidate(true); setCaption("");
+    setIntensity(nextIntensity); setTopics(nextTopics); options.current = { intensity: nextIntensity, direction: direction.trim(), excludedTopics: nextTopics.split(",").map(s => s.trim().slice(0, 80)).filter(Boolean).slice(0, 10) }; invalidate(true);
   }
   const status = !camera ? starting ? "Waiting for camera permission…" : "Camera off" : !ready ? "Tracking unavailable / loading" : faceCount > 1 ? "One participant only, please" : faceCount === 0 ? "Looking for a face" : !enabled ? "Paused — camera is on" : thinking ? "Thinking…" : "Getting your roast ready…";
   return <main id="main" className={styles.page}>
@@ -206,17 +216,15 @@ export function RoastStudio({ mock, configured }: { mock: boolean; configured: b
           {!camera && <div className={styles.empty}><span aria-hidden="true">✳</span><h2>Your close-up awaits.</h2></div>}
           <div ref={badge} className={styles.badge} aria-hidden="true">✳ MAIN CHARACTER</div>
           <span className={styles.live}>{mock ? "DEMO · NO AI ANALYSIS" : "GEMINI AI"}</span>
-          {!mock && selected && <RoastMeme key={selected.receipt} {...selected} onBusyChange={setPublishing} />}
-          {!mock && selected && !enabled && !thinking && <div className={styles.resultActions}>
-            <Link href="/disguise" className={`${styles.challengeButton} ${styles.disguiseButton}`} aria-disabled={publishing} onClick={e => { if (publishing) { e.preventDefault(); return; } pause(); setDisguiseDraft(selected.snapshot); }}>Checked Factory ↗</Link>
-          </div>}
+          {!mock && selected && <RoastMeme key={selected.receipt} {...selected} onBusyChange={setPublishing} userId={userId} onGenerated={setFinished} />}
+
         </div>
-        <div className={caption ? styles.caption : "visually-hidden"} data-anchor={anchor}><p className="eyebrow">{mock ? "DEMO · SCRIPTED CAPTION" : "THE PUNCHLINE"}</p><p role="status" aria-live="polite">{caption}</p></div>
         <p className={styles.status} role="status">● {status}</p>
       </section>
       <section className={styles.controls} aria-label="Experience controls">
         <h2>How spicy?</h2>
         <label htmlFor="roast-intensity">Roast intensity</label><select id="roast-intensity" value={intensity} disabled={publishing} onChange={e => changeSettings(e.target.value as Intensity, topics)}><option value="playful">Playful</option><option value="savage">Savage</option><option value="profane">Profane · swearing</option></select>
+        <div className={styles.keyword}><label htmlFor="roast-direction">Keyword <span>optional</span></label><input id="roast-direction" maxLength={500} placeholder="Finals week, first dates, office life…" value={direction} disabled={publishing || enabled} onChange={event => { setDirection(event.target.value); options.current.direction = event.target.value.trim(); }} /></div>
         <details className="ego-details"><summary>Topics to avoid</summary><label className="visually-hidden" htmlFor="roast-topics">Topics to avoid</label><input id="roast-topics" value={topics} disabled={publishing} maxLength={800} placeholder="work, dating, my room…" onChange={e => changeSettings(intensity, e.target.value)} /><p className={styles.note}>Up to 10, separated by commas.</p></details>
         <div className={styles.consent}>
           {mock && <p>Mock mode: no camera snapshots are uploaded. Captions are scripted.</p>}
@@ -226,9 +234,10 @@ export function RoastStudio({ mock, configured }: { mock: boolean; configured: b
         {!configured && <p role="alert">Live roasting is not configured. Set the Gemini credentials and model on the server.</p>}
         {!camera && !starting && <button className="action-button wide" disabled={!consent || !configured} onClick={() => void start()}>Check my ego ↗</button>}
         {starting && <button className="action-button wide" onClick={stop}>Cancel camera request</button>}
-        {camera && <><button className="action-button wide" disabled={!consent || !ready || publishing} onClick={() => { if (enabled) pause(); else roastAgain(); }}>{enabled ? "Cancel roast" : "Hurt my feelings again ↗"}</button><p className={styles.note}>One roast per click.</p><div className={styles.buttons}><button disabled={publishing} onClick={() => { pause(); invalidate(true); setCaption(""); }}>Clear Session</button><button onClick={stop}>Stop Camera</button></div>{!ready && <button onClick={() => { busyTracking.current = false; initializeTracking(); }}>Retry tracking</button>}</>}
+        {camera && <><button className="action-button wide" disabled={!consent || !ready || publishing} onClick={() => { if (enabled) pause(); else roastAgain(); }}>{enabled ? "Cancel roast" : "Hurt my feelings again ↗"}</button>{!ready && <button onClick={() => { busyTracking.current = false; initializeTracking(); }}>Retry tracking</button>}</>}
+        {finished && <div className={styles.publishPanel}><PublishEgo key={finished.receipt} {...finished} onBusyChange={setPublishing} /></div>}
         {message && <p role="alert" className={styles.message}>{message}</p>}
-        <details className="ego-details"><summary>Privacy & camera</summary><p className={styles.note}>Camera permission is separate. No microphone is used. Tracking runs locally; hiding or leaving this page stops the camera.</p>{!mock && <p className={styles.note}>Selected snapshots go to Gemini and Seedream. Unchecking consent stops new uploads; images already sent cannot be recalled. This app doesn’t save session images unless you approve sharing. <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Gemini data terms ↗</a></p>}</details>
+
       </section>
     </div>
   </main>;

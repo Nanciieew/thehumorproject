@@ -5,7 +5,7 @@ const originalFetch = globalThis.fetch;
 const originalKey = process.env.GEMINI_API_KEY;
 const originalModel = process.env.GEMINI_MODEL;
 after(() => { globalThis.fetch = originalFetch; if (originalKey === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = originalKey; if (originalModel === undefined) delete process.env.GEMINI_MODEL; else process.env.GEMINI_MODEL = originalModel; });
-const input = { sessionId: 'test', requestId: 'test', settings: { intensity: 'playful', excludedTopics: ['work'] }, frames: [{ mimeType: 'image/jpeg', base64: '/9j/AA==', capturedAtMs: Date.now() }], events: [] };
+const input = { sessionId: 'test', requestId: 'test', settings: { intensity: 'playful', excludedTopics: ['work'], direction: 'Finals week' }, frames: [{ mimeType: 'image/jpeg', base64: '/9j/AA==', capturedAtMs: Date.now() }], events: [] };
 test('Gemini adapter sends inline images, settings, bounded history and structured output configuration', async () => {
   process.env.GEMINI_API_KEY = 'fixture-not-a-real-key'; process.env.GEMINI_MODEL = 'gemini-3.8-flash';
   const result = { status: 'ok', roast: 'Your mug has main character energy.', anchor: 'screen' };
@@ -14,6 +14,8 @@ test('Gemini adapter sends inline images, settings, bounded history and structur
     const body = JSON.parse(options.body);
     assert.deepEqual(body.contents[0].parts[1], { inlineData: { mimeType: 'image/jpeg', data: '/9j/AA==' } });
     assert.deepEqual(JSON.parse(body.contents[0].parts[0].text).recentJokes, ['Previous roast']);
+    assert.equal(JSON.parse(body.contents[0].parts[0].text).settings.direction,'Finals week');
+    assert.ok(body.systemInstruction.parts[0].text.includes('settings.direction'));
     assert.equal(body.generationConfig.responseMimeType, 'application/json');
     assert.ok(body.systemInstruction.parts[0].text.includes('protected traits'));
     return Response.json({ candidates: [{ content: { parts: [{ thought: true, text: 'internal' }, { text: JSON.stringify(result) }] } }] });

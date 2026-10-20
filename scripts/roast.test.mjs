@@ -4,7 +4,7 @@ import { validRequest, validOutput } from '../lib/roast/contracts.ts';
 const input = () => ({ sessionId: 'session', requestId: 'request', settings: { intensity: 'playful', excludedTopics: [] }, frames: [{ mimeType: 'image/jpeg', base64: '/9j/AA==', capturedAtMs: Date.now() }], events: [] });
 test('request bounds reject stale, oversized, malformed and unrestricted inputs', () => {
   assert.equal(validRequest(input()), true);
-  for (const mutate of [r => r.frames = [], r => r.frames[0].base64 = 'data:image/jpeg;base64,AAA=', r => r.frames[0].capturedAtMs = 0, r => r.settings.intensity = 'anything', r => r.settings.excludedTopics = Array(11).fill('x'), r => r.events = [{ type: 'diagnosis', observedAtMs: Date.now() }], r => r.frames[0].base64 = 'a'.repeat(300000)]) {
+  for (const mutate of [r => r.settings.direction = 'x'.repeat(501), r => r.settings.direction = 3, r => r.frames = [], r => r.frames[0].base64 = 'data:image/jpeg;base64,AAA=', r => r.frames[0].capturedAtMs = 0, r => r.settings.intensity = 'anything', r => r.settings.excludedTopics = Array(11).fill('x'), r => r.events = [{ type: 'diagnosis', observedAtMs: Date.now() }], r => r.frames[0].base64 = 'a'.repeat(300000)]) {
     const r = input(); mutate(r); assert.equal(validRequest(r), false);
   }
 });
