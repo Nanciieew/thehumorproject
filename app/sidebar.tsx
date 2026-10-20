@@ -9,10 +9,9 @@ import styles from "./sidebar.module.css";
 
 const links = [
   { href: "/gallery", label: "Checked Gallery", icon: "grid" as const },
-  { href: "/", label: "Checkly Quest", icon: "quest" as const },
+  { href: "/my-works", label: "My Checkboard", icon: "checkboard" as const },
   { href: "/disguise", label: "Checked Factory", icon: "create" as const },
   { href: "/you-are-a-joke", label: "Get Checked", icon: "roast" as const },
-  { href: "/my-works", label: "My Checkboard", icon: "checkboard" as const },
 ];
 
 export function Sidebar({ children }: { children?: ReactNode }) {
@@ -32,7 +31,7 @@ export function Sidebar({ children }: { children?: ReactNode }) {
       </button>
     </div>
     <nav aria-label="Main navigation" className="sidebar-links">{links.map((link) => {
-      const active = link.href === "/" ? (pathname === "/" || pathname === "/quest") : pathname === link.href || pathname.startsWith(`${link.href}/`);
+      const active = link.href === "/" ? (pathname === "/" || pathname === "/quest") : pathname === link.href || pathname.startsWith(`${link.href}/`) || (link.href === "/my-works" && pathname.startsWith("/quest"));
       return <Link key={link.href} href={link.href} aria-label={link.label} title={collapsed ? link.label : undefined} aria-current={active ? "page" : undefined} className={active ? "active" : ""}><Icon name={link.icon} /><span>{link.label}</span><span className="nav-arrow" aria-hidden="true">↗</span></Link>;
     })}</nav>
     {children}

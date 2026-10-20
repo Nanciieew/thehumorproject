@@ -41,17 +41,17 @@ test('quest votes are deduplicated, account scoped, and only completion earns a 
 test('dashboard shows all weekly checks and metrics with one direct voting action', async () => {
  const today = questDay();
  localStorage.setItem('checked:quest-history:alice',JSON.stringify({[shiftDay(today,-1)]:day(true,{a:1,b:1}),[today]:day(true,{c:-1})}));
- const ui = render(React.createElement(ChecklyDashboard,{userId:'alice',firstName:'Alice'}));
+ const ui = render(React.createElement(ChecklyDashboard,{userId:'alice',firstName:'Alice',received:{upvotes:'124',downvotes:'18'}}));
  await waitFor(() => assert.equal(ui.getByRole('link',{name:/Keep voting/}).getAttribute('href'),'/quest'));
- assert.equal(ui.getByText(/Upvotes given/).parentElement.querySelector('strong').textContent,'2');
- assert.equal(ui.getByText(/Downvotes given/).parentElement.querySelector('strong').textContent,'1');
+ assert.equal(ui.getByText(/Upvotes received/).parentElement.querySelector('strong').textContent,'124');
+ assert.equal(ui.getByText(/Downvotes received/).parentElement.querySelector('strong').textContent,'18');
  assert.equal(within(ui.getByRole('list',{name:'Weekly quest completion'})).getAllByRole('listitem').length,7);
  assert.ok(ui.getAllByLabelText(/: completed/).length >= 1);
  assert.equal(ui.queryByRole('dialog'),null);
  assert.equal(ui.getAllByRole('link').length,1);
 });
 test('each fresh login opens the quest invitation if today is incomplete', () => {
- const login = () => { window.history.replaceState(null,'','/gallery?welcome=quest'); return render(React.createElement(React.StrictMode,null,React.createElement(QuestInvitation,{userId:'alice',firstName:'Alice'}))); };
+ const login = () => { window.history.replaceState(null,'','/gallery?welcome=quest'); return render(React.createElement(React.StrictMode,null,React.createElement(QuestInvitation,{userId:'alice',firstName:'Alice',received:{upvotes:'124',downvotes:'18'}}))); };
  const ui = login();
  assert.ok(ui.getByRole('dialog',{name:/Your daily dose/}));
  assert.equal(ui.getByRole('link',{name:'Let’s judge some memes'}).getAttribute('href'),'/quest');
@@ -80,10 +80,10 @@ test('completed quests suppress the login invitation while yesterday’s complet
  assert.equal(next.queryByRole('dialog'),null);
 });
 test('dashboard starts with zero activity and gives a direct daily quest action', () => {
- const ui = render(React.createElement(ChecklyDashboard,{userId:'new',firstName:''}));
- assert.equal(ui.getByRole('link',{name:/Start my daily quest/}).getAttribute('href'),'/quest');
+ const ui = render(React.createElement(ChecklyDashboard,{userId:'new',firstName:'',received:{upvotes:'0',downvotes:'0'}}));
+ assert.equal(ui.getByRole('link',{name:/Start daily quest/}).getAttribute('href'),'/quest');
  assert.equal(within(ui.getByRole('list',{name:'Weekly quest completion'})).getAllByRole('listitem').filter(item=>item.dataset.completed==='true').length,0);
- assert.equal(ui.getAllByText('0',{selector:'strong'}).length,4);
+ assert.equal(ui.getAllByText('0',{selector:'strong'}).length,3);
 });
 
 test('monthly activity uses calendar dates so today lights its matching numbered box', () => {
@@ -92,7 +92,7 @@ test('monthly activity uses calendar dates so today lights its matching numbered
  const [year,monthNumber] = month.split('-').map(Number);
  const dayNumber = Number(today.slice(-2));
  localStorage.setItem('checked:quest-history:alice',JSON.stringify({[shiftDay(`${month}-01`,-1)]:day(true),[today]:day(true,{new:-1})}));
- const ui = render(React.createElement(ChecklyDashboard,{userId:'alice',firstName:'Alice'}));
+ const ui = render(React.createElement(ChecklyDashboard,{userId:'alice',firstName:'Alice',received:{upvotes:'124',downvotes:'18'}}));
  const cells = within(ui.getByRole('list',{name:'This month’s daily quests'})).getAllByRole('listitem');
  assert.equal(cells.length,new Date(Date.UTC(year,monthNumber,0)).getUTCDate());
  assert.deepEqual(cells.map(cell=>cell.querySelector('span').textContent),Array.from({length:cells.length},(_,i)=>String(i+1)));
@@ -132,4 +132,29 @@ test('a new vote lights only today’s actual time slot in the monthly grid', ()
  const levels = [...todayCell.querySelectorAll('[role=img]')].map(cell=>cell.dataset.level);
  assert.deepEqual(levels,[0,1,2].map(slot=>slot===Math.floor(hour/8)?'1':'0'));
  assert.equal(cells.flatMap(cell=>[...cell.querySelectorAll('[data-level]')]).filter(cell=>cell.dataset.level!=='0').length,1);
+});
+
+
+test('combined Checkboard shows received votes separately from voting history and includes the collection', () => {
+ recordQuestVote('owner','voted-on-someone-else',1);
+ const ui=render(React.createElement(ChecklyDashboard,{userId:'owner',received:{upvotes:'987',downvotes:'23'}},React.createElement('section',{'aria-label':'Uploaded memes'},'My collection')));
+ assert.equal(ui.getByRole('heading',{level:1}).textContent,'My Checkboard');
+ assert.equal(ui.getByText('Upvotes received').parentElement.querySelector('strong').textContent,'987');
+ assert.equal(ui.getByText('Downvotes received').parentElement.querySelector('strong').textContent,'23');
+ assert.ok(ui.getByRole('region',{name:'Uploaded memes'}));
+ assert.equal(ui.queryByText('Upvotes given'),null);
+});
+test('failed received totals show unavailable rather than invented zeroes', () => {
+ const ui=render(React.createElement(ChecklyDashboard,{userId:'owner',received:null}));
+ assert.equal(ui.getByText('Upvotes received').parentElement.querySelector('strong').textContent,'—');
+ assert.equal(ui.getByText('Downvotes received').parentElement.querySelector('strong').textContent,'—');
+ assert.match(ui.getByRole('alert').textContent,/couldn’t load/);
+});
+
+test('hero and decorations use independent assets while the dashboard remains interactive', () => {
+ const ui=render(React.createElement(ChecklyDashboard,{userId:'owner',received:{upvotes:'124',downvotes:'18'}}));
+ const sources=[...ui.container.querySelectorAll('img')].map(img=>decodeURIComponent(img.getAttribute('src')));
+ for(const asset of ['mascot.png','glass-bubbles.png','glass-checkmark.png','sparkle.svg']) assert.ok(sources.some(src=>src.includes(asset)),asset);
+ assert.equal(ui.getByRole('link',{name:/Start daily quest/}).getAttribute('href'),'/quest');
+ assert.equal(within(ui.getByRole('list',{name:'Weekly quest completion'})).getAllByRole('listitem').length,7);
 });

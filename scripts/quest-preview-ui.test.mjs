@@ -36,7 +36,7 @@ test('newest first, paginated Keep Going never repeats a meme, and exhaustion ge
  await choose(10);await choose(11);
  await waitFor(()=>assert.ok(ui.getByRole('heading',{name:'You’re all checked.'})));
  assert.equal(ui.queryByRole('button',{name:/Keep Going/}),null);
- assert.equal(ui.getByRole('link',{name:/Back to Dashboard/}).getAttribute('href'),'/');
+ assert.equal(ui.getByRole('link',{name:/Back to Dashboard/}).getAttribute('href'),'/my-works');
  assert.equal(new Set(seen).size,12);
  assert.deepEqual(requests,[null,'older']);
 });

@@ -146,7 +146,7 @@ export function DailyQuest({ userId }: { userId: string }) {
   return <main id="main" className={styles.quest} data-quest-screen="voting">
     <QuestBackground />
     <header className={styles.header}>
-      <div className={styles.title}><Link href="/" aria-label="Back to Checkly Quest" className={styles.back}>←</Link><h1>Daily quest<span>.</span></h1></div>
+      <div className={styles.title}><Link href="/my-works" aria-label="Back to My Checkboard" className={styles.back}>←</Link><h1>Daily quest<span>.</span></h1></div>
     </header>
     {!allChecked && <section className={styles.journey} aria-label="Quest progress">
       <div className={styles.journeyHeading}><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2c1 6-5 5-4 10-2-1-3-2-3-4-4 6-2 13 6 13s10-9 5-13c1 4-1 5-2 5 2-5 0-9-2-11Z" /></svg>Your daily quest</span><strong>{done} <small>/ {total}</small></strong></div>
@@ -157,10 +157,10 @@ export function DailyQuest({ userId }: { userId: string }) {
       {allChecked ? <div className={`${styles.complete} ${styles.allChecked}`}>
         <div className={styles.emptyIllustration} aria-hidden="true"><div className={styles.emptyCard}>✓</div><span>✦</span><i>✧</i><b>ALL CHECKED</b></div>
         <p>NOT A MEME LEFT UNJUDGED.</p><h2>You’re all checked.</h2><p>You’ve reached the end of the meme pile.<br />Fresh uploads will bring fresh judgments.</p>
-        <div className={styles.completionActions}><Link className={styles.dashboardReturn} href="/">Back to Dashboard <span aria-hidden="true">↗</span></Link></div>
+        <div className={styles.completionActions}><Link className={styles.dashboardReturn} href="/my-works">Back to Dashboard <span aria-hidden="true">↗</span></Link></div>
       </div> : completed ? <div className={styles.complete}>
         <div className={styles.completeMark} aria-hidden="true">✓<span>✦</span><i>✧</i></div><p>{done === 10 ? "ALL TEN. ALL YOU." : "DAILY QUEST. CHECKED."}</p><h2>Consider it checked.</h2><p>{done} {done === 1 ? "meme" : "memes"}. {done} {done === 1 ? "verdict" : "verdicts"}. Excellent judgment.</p>
-        <div className={styles.completionActions}><Link href="/">Back to Dashboard</Link><button onClick={() => { persist({ ...progress, goal: progress.ids.length + 10 }); setNotice("Next round. Keep going!"); }}>Keep Going <span aria-hidden="true">→</span></button></div>
+        <div className={styles.completionActions}><Link href="/my-works">Back to Dashboard</Link><button onClick={() => { persist({ ...progress, goal: progress.ids.length + 10 }); setNotice("Next round. Keep going!"); }}>Keep Going <span aria-hidden="true">→</span></button></div>
       </div> : !photo ? <div className={styles.feedState}>
         {error ? <><span aria-hidden="true">↻</span><h2>A tiny meme delay.</h2><p role="alert">{error}</p><button onClick={() => void load()}>Try again</button></> : <><span className={styles.loadingMark} aria-hidden="true">✦</span><p role="status">Finding your next meme…</p></>}
       </div> : <div className={styles.arena}>

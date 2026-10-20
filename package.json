@@ -24,6 +24,7 @@
     "test:ego-db": "node --test scripts/ego-db.test.mjs",
     "test:ego-ui": "node --import tsx --test scripts/ego-ui.test.mjs",
     "test:ego-receipts": "node --conditions=react-server --import tsx --test scripts/ego-receipts.test.mjs",
+    "test:checkboard": "node --conditions=react-server --import tsx --test scripts/checkboard-data.test.mjs",
     "test:daily-quest": "node --import tsx --import ./scripts/roast-css-loader.mjs --test scripts/daily-quest-ui.test.mjs scripts/checkly-dashboard.test.mjs",
     "test:guest-ui": "node --import tsx --import ./scripts/roast-css-loader.mjs --test scripts/guest-landing-ui.test.mjs"
   },

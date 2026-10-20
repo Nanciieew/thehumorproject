@@ -1,9 +1,14 @@
 "use client";
 
+import styles from "./checkboard.module.css";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorksPage } from "@/lib/work-types";
+
+function VoteThumb({ down = false }: { down?: boolean }) {
+  return <svg viewBox="0 0 24 24" aria-hidden="true" style={{ transform: down ? "rotate(180deg)" : undefined }}><path d="M7 10v11H3V10h4Zm1 0 5-8h1a3 3 0 0 1 3 3l-1 4h4a2 2 0 0 1 2 2l-2 8a3 3 0 0 1-3 2H8Z" /></svg>;
+}
 
 export function WorksGrid({ initial }: { initial: WorksPage }) {
   const [items, setItems] = useState(initial.items);
@@ -35,14 +40,16 @@ export function WorksGrid({ initial }: { initial: WorksPage }) {
     {!items.length && <div className="gallery-empty"><p>Your collection starts here.</p><p>Upload a photo to the gallery to start your collection.</p><Link href="/gallery" className="action-button">Visit Checked Gallery ↗</Link></div>}
     <ul className="gallery-grid" aria-label="My works">{items.map((work) => <li key={work.work_id} className="gallery-card">
       <Link href={`/my-works/${work.work_id}`} aria-label={`Edit ${work.title || "Untitled work"}`}>
-        <div className="card-image"><Image src={work.photo_url} alt={work.title || "Untitled work"} width={400} height={400} unoptimized /><span className="image-tag">{work.photo_id ? "PUBLISHED" : "PRIVATE"}</span></div>
-        <div className="card-info"><h3 title={work.title || "Untitled work"}>{work.title || "Untitled work"}</h3><p className="work-card-description">{work.description || "Add a name and a story ↗"}</p></div>
+        <div className="card-image"><Image src={work.photo_url} alt={work.title || "Untitled work"} width={400} height={400} unoptimized />{!work.photo_id && <span className="image-tag">PRIVATE</span>}</div>
+        <div className={styles.workVotes}>
+          <span aria-label={`${work.upvotes ?? (work.photo_id ? "Unavailable" : "0")} upvotes received`}><VoteThumb />{work.upvotes === undefined ? (work.photo_id ? "—" : "0") : BigInt(work.upvotes).toLocaleString("en-US")}</span>
+          <span aria-label={`${work.downvotes ?? (work.photo_id ? "Unavailable" : "0")} downvotes received`}><VoteThumb down />{work.downvotes === undefined ? (work.photo_id ? "—" : "0") : BigInt(work.downvotes).toLocaleString("en-US")}</span>
+        </div>
       </Link>
     </li>)}</ul>
     <div ref={sentinel} className="gallery-status">
       {busy && <p role="status">Loading your works…</p>}
       {error && <div role="alert"><p>{error}</p><button onClick={() => void load()} className="text-button">Try again</button></div>}
-      {!cursor && items.length > 0 && <p>All your works, all yours.</p>}
     </div>
   </>;
 }

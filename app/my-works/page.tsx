@@ -1,19 +1,21 @@
-import { PlayfulTitle } from "../playful-title";
 import { redirect } from "next/navigation";
 import { getViewer } from "@/lib/auth/profile";
 import { readWorks } from "@/lib/works";
-import { readDashboard } from "@/lib/dashboard";
+import { readCheckboardTotals } from "@/lib/checkboard";
+import { ChecklyDashboard } from "../checkly-dashboard";
 import { WorksGrid } from "./works-grid";
-import { DashboardStats } from "./dashboard-stats";
-import styles from "./dashboard.module.css";
+import { UploadMeme } from "./upload-meme";
+import styles from "./checkboard.module.css";
 
 export const metadata = { title: "My Checkboard | checked" };
 export default async function MyDashboardPage() {
-  if (!await getViewer()) redirect("/login");
-  const [works, summary] = await Promise.all([readWorks(), readDashboard().catch(() => null)]);
-  return <main id="main">
-    <header className="page-hero works-hero"><div><PlayfulTitle text="My Checkboard" /></div></header>
-    <DashboardStats initial={summary} />
-    <section className="gallery-section works-section" aria-labelledby="collection-title"><div className={styles.collection}><div><h2 id="collection-title">Your evidence</h2><p>Your photos and shared results.</p></div></div><WorksGrid initial={works} /></section>
-  </main>;
+  const viewer = await getViewer();
+  if (!viewer) redirect("/login?next=/my-works");
+  const [works, received] = await Promise.all([readWorks(), readCheckboardTotals(viewer.user.id).catch(() => null)]);
+  return <ChecklyDashboard userId={viewer.user.id} received={received}>
+    <section className={styles.collection} aria-labelledby="collection-title">
+      <div className={styles.collectionHeading}><h2 id="collection-title">Uploaded memes</h2><UploadMeme /></div>
+      <WorksGrid key={JSON.stringify(works)} initial={works} />
+    </section>
+  </ChecklyDashboard>;
 }

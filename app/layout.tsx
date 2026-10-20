@@ -34,7 +34,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           {viewer && <Sidebar><AccountMenu signedIn name={[profile?.first_name, profile?.last_name].filter(Boolean).join(" ")} initials={`${profile?.first_name?.slice(0, 1) ?? ""}${profile?.last_name?.slice(0, 1) ?? ""}`} photoUrl={photoUrl} /></Sidebar>}
           <div className="site-content">
             <AppHeader>{!viewer ? <AccountMenu signedIn={false} name="" initials="" photoUrl={null} /> : undefined}</AppHeader>
-            {!viewer && <nav className="ego-guest-nav" aria-label="Public navigation"><Link href="/">Checkly Quest</Link><Link href="/gallery">Checked Gallery</Link><Link href="/disguise">Checked Factory</Link><Link href="/you-are-a-joke">Get Checked</Link><Link href="/my-works">My Checkboard</Link></nav>}
+            {!viewer && <nav className="ego-guest-nav" aria-label="Public navigation"><Link href="/">Home</Link><Link href="/gallery">Checked Gallery</Link><Link href="/disguise">Checked Factory</Link><Link href="/you-are-a-joke">Get Checked</Link><Link href="/my-works">My Checkboard</Link></nav>}
             {children}
             <footer className="app-footer"><Link href="/">checked <span>© 2026</span></Link><Link href={viewer ? "/profile" : "/login"}>{viewer ? "Profile" : "Sign in"}</Link></footer>
           </div>

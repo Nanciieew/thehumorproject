@@ -1,4 +1,5 @@
 import "server-only";
+import { readReceivedVotes } from "./checkboard";
 import { createAuthClient } from "./auth/server";
 import { isUuid } from "./gallery-types";
 import type { Work, WorksPage } from "./work-types";
@@ -37,7 +38,8 @@ export async function readWorks(cursor: string | null = null): Promise<WorksPage
   if (error) throw new Error("Couldn’t load your works. Please try again.");
   const rows = data.slice(0, 30) as WorkRow[];
   const last = rows.at(-1);
-  return { items: await Promise.all(rows.map((row) => withPhoto(row, auth))),
+  const votes = await readReceivedVotes(rows.filter(row => row.published_at).map(row => row.id), user.id).catch(() => null);
+  return { items: await Promise.all(rows.map(async row => ({ ...await withPhoto(row, auth), ...(votes?.[row.id] ?? {}) }))),
     next_cursor: data.length > 30 && last ? Buffer.from(JSON.stringify({ id: last.id, time: last.created_at })).toString("base64url") : null,
   };
 }

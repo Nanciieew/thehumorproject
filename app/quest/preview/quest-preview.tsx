@@ -101,7 +101,7 @@ export function QuestPreview() {
   return <main id="main" className={styles.preview} data-quest-screen="voting">
     <QuestBackground />
     <header className={styles.header}>
-      <div className={styles.title}><Link href="/" aria-label="Back to Checkly Quest" className={styles.back}>←</Link><h1>Daily quest<span>.</span></h1></div>
+      <div className={styles.title}><Link href="/my-works" aria-label="Back to My Checkboard" className={styles.back}>←</Link><h1>Daily quest<span>.</span></h1></div>
       <span className={styles.previewBadge}><i /> Design preview</span>
     </header>
     {!allChecked && <section className={styles.journey} aria-label="Quest progress">
@@ -113,9 +113,9 @@ export function QuestPreview() {
       {allChecked ? <div className={`${styles.complete} ${styles.allChecked}`}>
         <div className={styles.emptyIllustration} aria-hidden="true"><div className={styles.emptyCard}>✓</div><span>✦</span><i>✧</i><b>ALL CHECKED</b></div>
         <p>NOT A MEME LEFT UNJUDGED.</p><h2>You’re all checked.</h2><p>You’ve reached the end of the meme pile.<br />Fresh uploads will bring fresh judgments.</p>
-        <div className={styles.completionActions}><Link className={styles.dashboardReturn} href="/">Back to Dashboard <span aria-hidden="true">↗</span></Link></div>
+        <div className={styles.completionActions}><Link className={styles.dashboardReturn} href="/my-works">Back to Dashboard <span aria-hidden="true">↗</span></Link></div>
       </div> : complete ? <div className={styles.complete}>
-        <div className={styles.completeMark} aria-hidden="true">✓<span>✦</span><i>✧</i></div><p>{rated === goal ? "ALL TEN. ALL YOU." : "DAILY QUEST. CHECKED."}</p><h2>Consider it checked.</h2><p>{rated} {rated === 1 ? "meme" : "memes"}. {rated} {rated === 1 ? "verdict" : "verdicts"}. Excellent judgment.</p><div className={styles.completionActions}><Link href="/">Back to Dashboard</Link><button onClick={() => { setHasContinued(true); setBatchOffset(current => current + rated); setRated(0); setNotice("Next round. Keep going!"); }}>Keep Going <span aria-hidden="true">→</span></button></div>
+        <div className={styles.completeMark} aria-hidden="true">✓<span>✦</span><i>✧</i></div><p>{rated === goal ? "ALL TEN. ALL YOU." : "DAILY QUEST. CHECKED."}</p><h2>Consider it checked.</h2><p>{rated} {rated === 1 ? "meme" : "memes"}. {rated} {rated === 1 ? "verdict" : "verdicts"}. Excellent judgment.</p><div className={styles.completionActions}><Link href="/my-works">Back to Dashboard</Link><button onClick={() => { setHasContinued(true); setBatchOffset(current => current + rated); setRated(0); setNotice("Next round. Keep going!"); }}>Keep Going <span aria-hidden="true">→</span></button></div>
       </div> : !currentMeme ? <div className={styles.feedState}>
         {error ? <><span aria-hidden="true">↻</span><h2>A tiny meme delay.</h2><p role="alert">{error}</p><button onClick={() => void load()}>Try again</button></> : <><span className={styles.loadingMark} aria-hidden="true">✦</span><p role="status">Finding your next meme…</p></>}
       </div> : <div className={styles.arena}>
