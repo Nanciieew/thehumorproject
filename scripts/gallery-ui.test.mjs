@@ -37,7 +37,7 @@ test("gallery heading and filters remain available while the server feed streams
   await act(async () => { ui = render(React.createElement(Gallery, {userId:"user", initial})); });
   assert.ok(ui.getByRole("heading", {name:"Checked Gallery"}));
   assert.ok(ui.getByRole("searchbox", {name:"Search gallery"}));
-  assert.match(ui.getByRole("status").textContent, /Loading memes/);
+  assert.match(ui.getByRole("status").textContent, /Loading/);
   assert.equal(ui.queryByRole("article"), null);
   await act(async () => finish({items:[photo("streamed")], next_cursor:null}));
   await waitFor(() => assert.ok(ui.getByRole("article")));

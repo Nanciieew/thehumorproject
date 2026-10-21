@@ -1,7 +1,3 @@
-export default function Loading() {
-  return (
-    <main id="main" className="gallery-status">
-      <p role="status">Loading…</p>
-    </main>
-  );
-}
+import { PageLoading } from "./loading-indicator";
+
+export default function Loading() { return <PageLoading />; }

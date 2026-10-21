@@ -8,7 +8,7 @@ import { profilePhotoUrl } from "@/lib/profile-photo";
 import { AccountMenu } from "./account-menu";
 import { Onboarding } from "./onboarding";
 import { Suspense, type ReactNode } from "react";
-import { PageSkeleton } from "./page-skeleton";
+import { PageLoading } from "./loading-indicator";
 import "./globals.css";
 import "./ego.css";
 
@@ -49,6 +49,6 @@ async function AppShell({ children }: { children: ReactNode }) {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return <html lang="en" className={`${inter.variable} ${anton.variable} h-full antialiased`}>
-    <body className="min-h-full"><Suspense fallback={<PageSkeleton title="checked" />}><AppShell>{children}</AppShell></Suspense></body>
+    <body className="min-h-full"><Suspense fallback={<PageLoading />}><AppShell>{children}</AppShell></Suspense></body>
   </html>;
 }

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 import { getViewer } from "@/lib/auth/profile";
 import { DisguiseStudio } from "./studio";
-import { PageSkeleton } from "../page-skeleton";
+import { PageLoading } from "../loading-indicator";
 
 async function FactorySession({ children }: { children: ReactNode }) {
   const viewer = await getViewer();
@@ -11,5 +11,5 @@ async function FactorySession({ children }: { children: ReactNode }) {
 }
 
 export default function FactoryLayout({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<PageSkeleton title="Checked Factory" studio />}><FactorySession>{children}</FactorySession></Suspense>;
+  return <Suspense fallback={<PageLoading />}><FactorySession>{children}</FactorySession></Suspense>;
 }

@@ -1,2 +1,2 @@
-import { PageSkeleton } from "../page-skeleton";
-export default function Loading() { return <PageSkeleton title="Get Checked" studio />; }
+import { PageLoading } from "../loading-indicator";
+export default function Loading() { return <PageLoading />; }

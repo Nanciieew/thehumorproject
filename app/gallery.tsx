@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense, use, useCallback, useEffect, useRef, useState } from "react";
 import { MemeImage } from "./meme-image";
-import { FeedSkeleton } from "./page-skeleton";
+import { ContentLoading } from "./loading-indicator";
 import styles from "./gallery-play.module.css";
 import { PhotoInput } from "./photo-input";
 import { Icon } from "./ui";
@@ -279,7 +279,7 @@ export function Gallery({ initial, userId, initialSort = "top" }: { initial?: In
         <div className={styles.filterGroup} role="group" aria-label="Sort gallery"><span>Sort</span>{([["top", "Most upvotes"], ["newest", "Newest first"]] as const).map(([value, label]) => <button key={value} aria-pressed={sort === value} onClick={() => { if (sort !== value) { setSort(value); setRevision(v => v + 1); setMessage(""); } }}>{label}</button>)}</div>
       </div>
       {message && <p role="status" className="gallery-message">{message}</p>}
-      <Suspense fallback={<FeedSkeleton />}>
+      <Suspense fallback={<ContentLoading />}>
         <GalleryFeed kind={kind} key={`${sort}:${userId}:${revision}:${search}`} sort={sort} search={search} initial={!search && sort === initialSort && revision === 0 ? initial : undefined} signedIn={Boolean(userId)} requestLogin={requestLogin} />
       </Suspense>
     </section>

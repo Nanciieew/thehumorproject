@@ -6,7 +6,7 @@ import { ChecklyDashboard } from "../checkly-dashboard";
 import { WorksGrid } from "./works-grid";
 import type { WorksPage } from "@/lib/work-types";
 import styles from "./checkboard.module.css";
-import { FeedSkeleton } from "../page-skeleton";
+import { ContentLoading } from "../loading-indicator";
 
 type InitialWorks = WorksPage | Promise<WorksPage>;
 type Totals = NonNullable<WorksPage["received"]>;
@@ -23,7 +23,7 @@ export function MyCheckboard({ userId, initial }: { userId: string; initial: Ini
   const [received, setReceived] = useState("then" in initial ? undefined : initial.received);
   return <ChecklyDashboard userId={userId} received={received}>
     <section className={styles.collection} aria-labelledby="collection-title">
-      <Suspense fallback={<FeedSkeleton label="Loading your memes…" />}>
+      <Suspense fallback={<ContentLoading label="Loading your memes…" />}>
         <Collection initial={initial} onTotalsChange={setReceived} />
       </Suspense>
     </section>
