@@ -6,6 +6,8 @@ import {AppRouterContext} from 'next/dist/shared/lib/app-router-context.shared-r
 import {PathnameContext} from 'next/dist/shared/lib/hooks-client-context.shared-runtime.js';
 const dom=new JSDOM('<html><body></body></html>',{url:'http://localhost:3000/disguise'});
 for(const name of ['window','document','navigator','HTMLElement','HTMLInputElement','MutationObserver','Node','Event','MouseEvent','getComputedStyle','FileReader','sessionStorage'])Object.defineProperty(globalThis,name,{configurable:true,value:dom.window[name]});
+dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};
+dom.window.HTMLDialogElement.prototype.close=function(){this.open=false;};
 globalThis.self=dom.window;globalThis.IS_REACT_ACT_ENVIRONMENT=true;
 const {render,fireEvent,waitFor,cleanup,act}=await import('@testing-library/react');
 const {DisguiseStudio}=await import('../app/disguise/studio.tsx');
@@ -33,7 +35,8 @@ test('Create meme opens a separate preview screen; five captions switch to match
  fireEvent.change(ui.getByLabelText(/Keyword/),{target:{value:'Finals week'}});
  const button=generateButton(ui);fireEvent.click(button);fireEvent.click(button);assert.equal(requests.length,1);
  assert.equal(requests[0].url,'/api/factory');assert.equal(requests[0].body.direction,'Finals week');assert.equal(requests[0].body.image,'data:image/jpeg;base64,/9j/AA==');assert.equal(requests[0].body.approved,true);
- assert.ok(ui.getByRole('heading',{name:'Pick your caption'}));assert.equal(ui.queryByRole('button',{name:'Create meme'}),null);
+ assert.ok(ui.getByRole('dialog',{name:'Creating your memes'}));assert.equal(generateButton(ui).disabled,true);
+ assert.equal(ui.queryByRole('heading',{name:'Pick your caption'}),null);
  await act(async()=>resolve(Response.json(preview)));
  for(let index=0;index<5;index++){
   const button=ui.getByRole('button',{name:new RegExp(`0${index+1}\\s*Caption ${index+1}`)});fireEvent.click(button);
@@ -112,4 +115,13 @@ test('Create Another Meme clears the published batch and returns to an empty upl
  assert.ok(ui.getByRole('button',{name:'Upload photo'}));assert.equal(generateButton(ui).disabled,true);
  assert.equal(ui.getByLabelText(/Keyword/).value,'');assert.equal(sessionStorage.getItem('checked:factory-batch:tester'),null);
  assert.equal(ui.queryByRole('status',{name:'Meme published. CHECKED'}),null);assert.equal(calls.length,2);
+});
+
+test('Precision Lab success window closes back to the published preview without generating again',async()=>{
+ draft();let calls=0;globalThis.fetch=async url=>{calls++;return Response.json(url==='/api/factory'?preview:{photoId:id});};
+ const ui=setup();await generate(ui);fireEvent.click(ui.getByRole('button',{name:'Publish to gallery'}));
+ await waitFor(()=>assert.ok(ui.getByRole('dialog',{name:'Meme published'}).open));
+ fireEvent.click(ui.getByRole('button',{name:'Close success window'}));
+ assert.equal(ui.queryByRole('dialog',{name:'Meme published'}),null);
+ assert.ok(ui.getByRole('link',{name:'View in gallery'}));assert.equal(calls,2);
 });

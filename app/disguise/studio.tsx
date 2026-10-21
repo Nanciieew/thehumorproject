@@ -1,12 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { peekDisguiseDraft, clearDisguiseDraft } from "@/lib/disguise-draft";
 import { isUuid } from "@/lib/gallery-types";
 import type { FactoryPreview } from "@/lib/factory/types";
 import { usePathname, useRouter } from "next/navigation";
 import styles from "./studio.module.css";
+
+function FactoryModal({ label, children, onClose }: { label: string; children: ReactNode; onClose?: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => { const element = dialog.current; element?.showModal(); return () => element?.close(); }, []);
+  return <dialog ref={dialog} className={styles.modal} aria-label={label} onCancel={event => { event.preventDefault(); onClose?.(); }}>{children}</dialog>;
+}
+function LabLoader() {
+  return <div className={styles.loader} aria-hidden="true"><svg viewBox="0 0 120 120" fill="none"><circle className={styles.loaderTrack} cx="60" cy="60" r="52"/><circle className={styles.loaderArc} cx="60" cy="60" r="52"/><circle cx="60" cy="60" r="25" stroke="currentColor" strokeWidth="2"/><path d="m47 57 13 12 16-18M48 45h1m24 0h1" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg></div>;
+}
 
 export function DisguiseStudio({ configured, userId }: { configured: boolean; userId: string }) {
   const [source, setSource] = useState<{ image: string; name: string } | null>(() => peekDisguiseDraft());
@@ -78,11 +87,6 @@ export function DisguiseStudio({ configured, userId }: { configured: boolean; us
     });
     return () => { for (const image of previews) image.src = ""; };
   }, [result]);
-  useEffect(() => {
-    if (!celebrating) return;
-    const timer = window.setTimeout(() => setCelebrating(false), 2400);
-    return () => window.clearTimeout(timer);
-  }, [celebrating]);
   async function discard(id: string) {
     const response = await fetch(`/api/factory/${id}`, { method: "DELETE" });
     if (!response.ok && response.status !== 404 && response.status !== 410) {
@@ -167,17 +171,24 @@ export function DisguiseStudio({ configured, userId }: { configured: boolean; us
   const variant = result?.variants[selected];
   const errorPanel = error && <div role="alert" className={styles.error}><span>{error}</span>{recoverable && !busy && <button onClick={() => { if (batchId.current) void restore(batchId.current); }}>Try loading again</button>}</div>;
   return <main id="main" data-factory-screen={previewScreen ? "preview" : "upload"} className={styles.factory}>
-    {celebrating && <div className={styles.celebration} role="status" aria-label="Meme published. CHECKED">
-      <div className={styles.checkedStamp}>
-        <div className={styles.checkHalo} aria-hidden="true"><svg viewBox="0 0 140 140" fill="none"><circle className={styles.checkRing} cx="70" cy="70" r="60" /><path className={styles.checkStroke} pathLength="1" d="m39 71 21 22 43-47" /></svg><i /><i /><i /><i /></div>
+    <div className={styles.topbar}><span className={styles.topbarMark} aria-hidden="true">⌁</span><span>Checked <b>Factory</b></span></div>
+    {(busy || publishing) && <FactoryModal label={publishing ? "Publishing your meme" : generating ? "Creating your memes" : "Loading your memes"} onClose={generating ? () => void cancel() : undefined}>
+      <LabLoader /><p className={styles.modalTitle} role="status">{publishing ? "Publishing your meme…" : generating ? "Creating your memes…" : "Loading your memes…"}</p>
+      {generating && <button className={styles.cancelGeneration} onClick={() => void cancel()}>Cancel</button>}
+    </FactoryModal>}
+    {celebrating && <FactoryModal label="Meme published" onClose={() => setCelebrating(false)}>
+      <button className={styles.closeModal} aria-label="Close success window" onClick={() => setCelebrating(false)}>×</button>
+      <div className={styles.checkedStamp} role="status" aria-label="Meme published. CHECKED">
+        <div className={styles.checkHalo} aria-hidden="true"><svg viewBox="0 0 140 140" fill="none"><circle className={styles.checkRing} cx="70" cy="70" r="60" /><circle className={styles.checkTicks} cx="70" cy="70" r="53"/><path className={styles.checkStroke} pathLength="1" d="m39 71 21 22 43-47" /></svg></div>
         <span>CHECKED</span>
       </div>
-    </div>}
-    {previewScreen ? <>
+      <div className={styles.publishedActions}><button className={styles.createAnother} onClick={createAnother}>Create Another Meme</button><Link className={styles.primary} href={`/gallery?sort=newest#photo-${photoId}`}>View in gallery</Link></div>
+    </FactoryModal>}
+    {previewScreen && !generating ? <>
       <header className={styles.previewHeader}>
         <button className={styles.back} disabled={locked} onClick={() => void startOver()} aria-label="Back to upload">← <span>New meme</span></button>
         <h1>Make it yours<span>.</span></h1>
-        <span className={styles.brand}>CHECKED FACTORY</span>
+        <span className={styles.microcopy}>SAME PHOTO<br />DIFFERENT ENERGY</span>
       </header>
       {errorPanel}
       <div className={styles.workspace}>
@@ -185,7 +196,7 @@ export function DisguiseStudio({ configured, userId }: { configured: boolean; us
           {variant?.url || source ? <div className={styles.picture}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img key={variant?.url || source?.image} src={variant?.url || source?.image} alt={variant ? `Meme preview: ${variant.caption}` : "Your uploaded meme picture"} />
-            {busy && <div className={styles.working} role="status"><span aria-hidden="true">✳</span><p>{generating ? "Creating your memes…" : "Loading your memes…"}</p>{generating && <button onClick={() => void cancel()}>Cancel</button>}</div>}
+
           </div> : <div className={styles.empty} role="status"><span aria-hidden="true">✳</span><p>{busy ? "Loading your memes…" : "Your preview will appear here."}</p></div>}
           {variant && <span className={styles.previewCount}>{selected + 1} / 5</span>}
         </section>
@@ -194,12 +205,12 @@ export function DisguiseStudio({ configured, userId }: { configured: boolean; us
           {result ? <div className={styles.options} role="group" aria-label="Choose a caption">{result.variants.map((option, index) => <button key={index} className={styles.option} aria-pressed={selected === index} disabled={locked || confirmed || !!photoId} onClick={() => setSelected(index)}><span className={styles.number}>{String(index + 1).padStart(2, "0")}</span><span>{option.caption}</span><span className={styles.selected} aria-hidden="true">{selected === index ? "✓" : ""}</span></button>)}</div> : <div className={styles.placeholders} aria-label="Captions are being created">{Array.from({ length: 5 }, (_, index) => <div key={index}><span>{String(index + 1).padStart(2, "0")}</span><i /></div>)}</div>}
           <div className={styles.publish}>
             {publishError && <p role="alert" className={styles.error}>{publishError}</p>}
-            {photoId ? <div className={styles.publishedActions}><button className={styles.createAnother} onClick={createAnother}>Create Another Meme</button><Link className={styles.primary} href={`/gallery?sort=newest#photo-${photoId}`}>View in gallery <span aria-hidden="true">↗</span></Link></div> : <button className={styles.primary} disabled={!result || locked} onClick={() => void publish()}>{publishing ? "Publishing…" : confirmed ? "Retry publishing" : "Publish to gallery"}<span aria-hidden="true">↗</span></button>}
+            {photoId ? !celebrating && <div className={styles.publishedActions}><button className={styles.createAnother} onClick={createAnother}>Create Another Meme</button><Link className={styles.primary} href={`/gallery?sort=newest#photo-${photoId}`}>View in gallery <span aria-hidden="true">↗</span></Link></div> : <button className={styles.primary} disabled={!result || locked} onClick={() => void publish()}>{publishing ? "Publishing…" : confirmed ? "Retry publishing" : "Publish to gallery"}<span aria-hidden="true">→</span></button>}
           </div>
         </section>
       </div>
     </> : <div className={styles.uploadPage}>
-      <header className={styles.hero}><span className={styles.brand}>CHECKED FACTORY</span><h1>Make it a meme<span>.</span></h1></header>
+      <header className={styles.hero}><h1>Make it a meme<span>.</span></h1><span className={styles.microcopy}>TURN MOMENTS<br />INTO MEMES</span></header>
       <div className={`${styles.dropzone} ${dragging ? styles.dragging : ""}`} role="group" aria-label="Photo upload"
         onDragOver={event => { event.preventDefault(); if (!locked) setDragging(true); }}
         onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false); }}
@@ -212,10 +223,10 @@ export function DisguiseStudio({ configured, userId }: { configured: boolean; us
           </> : <><span className={styles.uploadIcon} aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><rect x="4" y="5" width="24" height="22" rx="4" stroke="currentColor" strokeWidth="1.5" /><circle cx="12" cy="12" r="2" fill="currentColor" /><path d="m5 23 7-7 5 5 4-4 6 6M23 3v8m-4-4 4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></span><strong>{reading ? "Reading your photo…" : dragging ? "Drop it here" : "Upload or drag a photo"}</strong><span className={styles.fileHelp}>JPG or PNG · 2 MB max</span></>}
         </button>
       </div>
-      <div className={styles.keyword}><label htmlFor="factory-direction">Keyword <span>optional</span></label><input id="factory-direction" maxLength={500} placeholder="Finals week, first dates, office life…" value={direction} disabled={locked} onChange={event => setDirection(event.target.value)} /></div>
+      <div className={styles.uploadActions}><div className={styles.keyword}><label htmlFor="factory-direction">Keyword <span>(optional)</span></label><input id="factory-direction" maxLength={500} placeholder="Finals week, first dates, office life…" value={direction} disabled={locked} onChange={event => setDirection(event.target.value)} /></div>
       {!configured && <p role="alert" className={styles.error}>Meme creation is currently unavailable.</p>}
       {errorPanel}
-      <button className={styles.primary} disabled={!configured || !source || reading || locked} onClick={() => void generate()}>Create meme <span aria-hidden="true">↗</span></button>
+      <button className={styles.primary} disabled={!configured || !source || reading || locked} onClick={() => void generate()}>Create meme <span aria-hidden="true">→</span></button></div>
     </div>}
   </main>;
 }
