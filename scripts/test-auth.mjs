@@ -44,6 +44,9 @@ assert.doesNotMatch(anonymousHome, /aria-label="Main navigation"/);
 await assertRedirect(await fetch(base + "/profile/complete", { redirect: "manual" }), "/login");
 await assertRedirect(await fetch(base + "/profile", { redirect: "manual" }), "/login");
 await assertRedirect(await fetch(base + "/auth/callback?error=access_denied", { redirect: "manual" }), "/login?error=oauth");
+for (const path of ["/admin", "/admin/users", "/admin/media?status=private", "/admin/votes?kind=battle"]) {
+  await assertRedirect(await fetch(base + path, { redirect: "manual", headers: { "x-checked-admin-return": "/admin?forged=true" } }), `/login?next=${encodeURIComponent(path)}`);
+}
 const loginHtml = await (await fetch(base + "/login")).text();
 assert.doesNotMatch(loginHtml, /aria-label="Main navigation"/);
 response = await fetch(base + "/login", {
@@ -81,7 +84,7 @@ try {
   assert.doesNotMatch(html, /aria-label="Main navigation"/);
   assert.doesNotMatch(html, /Open account options/);
   await assertRedirect(await fetch(base + "/profile", {headers: {cookie: cookie()}, redirect: "manual"}), "/login");
-  await assertRedirect(await fetch(base + "/you-are-a-joke", {headers: {cookie: cookie()}, redirect: "manual"}), "/login");
+  await assertRedirect(await fetch(base + "/you-are-a-joke", {headers: {cookie: cookie()}, redirect: "manual"}), "/login?next=/you-are-a-joke");
   assert.equal((await fetch(base + "/api/images", {method: "POST", headers: {origin: base, cookie: cookie(), "Content-Type": "application/json"}, body: JSON.stringify({prompt: "test"})})).status, 401);
   assert.match(html, /id="welcome-title"/);
   assert.match(html, /name="first_name"/);
@@ -94,6 +97,7 @@ try {
     data.set("first_name", first);
     data.set("last_name", last);
     data.set("state_code", state);
+    data.set("is_superadmin", "true"); // Ordinary signup must ignore privilege fields.
     return data;
   }
   async function submitWelcome(data, authenticated = true) {
@@ -107,19 +111,27 @@ try {
   assert.ifError(row.error);
   assert.equal(row.data, null, "No profile exists before signup completes");
   await assertRedirect(await submitWelcome(await welcome("Existing", "Tester", "NY"), false), "/login");
-  await assertRedirect(await submitWelcome(await welcome("  Existing  ", "Tester", "NY")), "/");
-  row = await admin.from("profiles").select("first_name,state_code,avatar_path,onboarding_completed_at").eq("id", id).single();
+  await assertRedirect(await submitWelcome(await welcome("  Existing  ", "Tester", "NY")), "/gallery?welcome=quest");
+  row = await admin.from("profiles").select("first_name,state_code,avatar_path,onboarding_completed_at,is_superadmin").eq("id", id).single();
   assert.ifError(row.error);
   assert.equal(row.data.first_name, "Existing");
   assert.equal(row.data.state_code, "NY");
   assert.equal(row.data.avatar_path, null);
   assert.ok(row.data.onboarding_completed_at);
+  assert.equal(row.data.is_superadmin, false);
+  assert.ok((await auth.from("profiles").update({ is_superadmin: true }).eq("id", id)).error, "An ordinary account cannot promote itself through Supabase");
+  for (const path of ["/api/admin/users", "/api/admin/media", "/api/admin/votes", `/api/admin/media/${randomUUID()}/preview`]) {
+    const denied = await fetch(base + path, { headers: { cookie: cookie() } });
+    assert.equal(denied.status, 403);
+    assert.equal(denied.headers.get("cache-control"), "private, no-store");
+    assert.equal((await fetch(base + path)).status, 401);
+  }
   const completedHome = await (await fetch(base, {headers: {cookie: cookie()}})).text();
   assert.doesNotMatch(completedHome, /id="welcome-title"/);
   assert.match(completedHome, /Open account options/);
   assert.match(completedHome, /aria-label="Main navigation"/);
   // Replaying a stale welcome form cannot overwrite a completed profile.
-  await assertRedirect(await submitWelcome(await welcome("Overwrite", "Attempt", "CA")), "/");
+  await assertRedirect(await submitWelcome(await welcome("Overwrite", "Attempt", "CA")), "/gallery?welcome=quest");
   row = await admin.from("profiles").select("first_name,state_code").eq("id", id).single();
   assert.equal(row.data.first_name, "Existing");
   assert.equal(row.data.state_code, "NY");
@@ -134,6 +146,7 @@ try {
     data.set("last_name", "Person");
     data.set("state_code", "CA");
     data.set("id", randomUUID());
+    data.set("is_superadmin", "true");
     return data;
   }
   async function saveEditor(data, authenticated = true) {
@@ -159,11 +172,12 @@ try {
   form = await editorForm();
   form.set("photo", new Blob([image], { type: "image/png" }), "portrait.png");
   assert.match(await (await saveEditor(form)).text(), /Your profile has been saved/);
-  row = await admin.from("profiles").select("first_name,last_name,avatar_path,state_code").eq("id", id).single();
+  row = await admin.from("profiles").select("first_name,last_name,avatar_path,state_code,is_superadmin").eq("id", id).single();
   assert.ifError(row.error);
   assert.equal(row.data.first_name, "Updated");
   assert.equal(row.data.last_name, "Person");
   assert.equal(row.data.state_code, "CA");
+  assert.equal(row.data.is_superadmin, false, "Profile editing cannot promote an account");
   const firstPath = row.data.avatar_path;
   assert.ok(firstPath.startsWith(id + "/"));
   assert.ok(firstPath.endsWith(".webp"));

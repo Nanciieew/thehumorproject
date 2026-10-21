@@ -2,6 +2,44 @@
 
 Finally, an app that sees the problem.
 
+## Protected administration
+
+`/admin` provides read-only users/profiles and gallery/battle votes, plus saved
+media uploads, Seedream generation, caption editing, publication and deletion.
+Direct admin uploads accept still JPG/PNG/WebP images up to 2 MB and 24 megapixels,
+keeping multipart requests within serverless payload limits.
+New media is private by default. Choose its completed-profile owner before
+creation; ownership and image bytes cannot be edited afterward. Deletion removes
+gallery votes, but database references such as sales prevent deletion. Storage
+cleanup failures log their bucket/path for a trusted operator to retry.
+
+Every admin page, API method and preview verifies the Google identity and reads
+`profiles.is_superadmin` from the database. API mutations require the same Origin.
+Private previews stream through authorized endpoints and admin responses are not
+publicly cached. Users/profiles and votes cannot be modified through the admin UI.
+
+Before deploying this version, apply the admin migration using a trusted local
+terminal with the existing ignored `.env.local` credentials:
+
+```bash
+node --env-file=.env.local scripts/admin-setup.mjs migrate --apply
+node --env-file=.env.local scripts/admin-setup.mjs grant nw2615@columbia.edu --apply
+node --env-file=.env.local scripts/admin-setup.mjs inspect nw2615@columbia.edu
+```
+
+The grant command requires one existing, confirmed Google account with a profile.
+There is no public promotion route or email-based runtime bypass. The management
+access token is used only by the local setup script, never by app routes. Omit
+`--apply` to inspect readiness without changing the database. Future administrator
+grants use the same trusted command; ordinary profile forms cannot set the flag.
+Google login preserves admin destinations while retaining the normal welcome flow
+for other logins. Administrators see an Admin link in their account menu.
+
+Run `npm run test:admin` for database permissions, bootstrap, authorization,
+endpoint, media lifecycle and UI checks. Generation tests mock the provider and
+incur no AI usage. Production environments also need the existing server-only
+Supabase secret, publishable key and Ark credential for generation.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

@@ -9,6 +9,7 @@ import { readProfile } from "@/lib/auth/profile";
 import { supabase } from "@/lib/supabase";
 import { PHOTO_BUCKET, prepareProfilePhoto } from "@/lib/profile-photo";
 import { isUSState } from "@/lib/us-states";
+import { adminReturnPath } from "@/lib/auth/return-path";
 
 export type ProfileState = { error?: string; success?: boolean };
 
@@ -19,8 +20,10 @@ export async function saveProfile(_state: ProfileState, form: FormData): Promise
 export async function finishOnboarding(_state: ProfileState, form: FormData): Promise<ProfileState> {
   const result = await persistProfile(form, true);
   if (result.error) return result;
-  const jar = await cookies(); jar.delete("ego_return");
-  redirect("/gallery?welcome=quest");
+  const jar = await cookies();
+  const destination = adminReturnPath(jar.get("ego_return")?.value);
+  jar.delete("ego_return");
+  redirect(destination ?? "/gallery?welcome=quest");
 }
 
 async function persistProfile(form: FormData, complete: boolean): Promise<ProfileState> {

@@ -2,6 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
+  // Overwrite any client-supplied value. Layout and page guards must agree on
+  // the login destination even when Next renders their segments concurrently.
+  request.headers.set("x-checked-admin-return", request.nextUrl.pathname + request.nextUrl.search);
   let response = NextResponse.next({ request });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
@@ -23,4 +26,4 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-export const config = { matcher: ["/", "/login", "/profile/:path*", "/auth/:path*", "/you-are-a-joke", "/gallery", "/challenges/:path*", "/friends", "/leaderboard", "/my-works/:path*", "/api/ego", "/api/challenges/:path*", "/api/roast/:path*", "/api/my-works/:path*", "/api/gallery/:path*", "/api/images", "/api/leaderboard", "/api/dashboard"] };
+export const config = { matcher: ["/", "/login", "/profile/:path*", "/auth/:path*", "/you-are-a-joke", "/gallery", "/challenges/:path*", "/friends", "/leaderboard", "/my-works/:path*", "/api/ego", "/api/challenges/:path*", "/api/roast/:path*", "/api/my-works/:path*", "/api/gallery/:path*", "/api/images", "/api/leaderboard", "/api/dashboard", "/admin/:path*", "/api/admin/:path*"] };

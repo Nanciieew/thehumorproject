@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { logout } from "./auth/actions";
 import { Icon } from "./ui";
 
-export function AccountMenu({ signedIn, name, initials, photoUrl }: { signedIn: boolean; name: string; initials: string; photoUrl: string | null }) {
+export function AccountMenu({ signedIn, name, initials, photoUrl, isAdmin = false }: { signedIn: boolean; name: string; initials: string; photoUrl: string | null; isAdmin?: boolean }) {
   const menu = useRef<HTMLDetailsElement>(null);
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -41,6 +41,7 @@ export function AccountMenu({ signedIn, name, initials, photoUrl }: { signedIn: 
         <span className="account-text"><strong>{name || "Your account"}</strong><small>Personal account</small></span><span aria-hidden="true" className="account-dots">···</span>
       </summary>
       <div className="account-popup">
+        {isAdmin && <Link href="/admin" onClick={() => { if (menu.current) menu.current.open = false; }}><Icon name="grid" />Admin</Link>}
         <Link href="/profile" onClick={() => { if (menu.current) menu.current.open = false; }}><Icon name="user" />Profile</Link>
         <div className="menu-divider" />
         <form action={logout}><button><Icon name="logout" />Log out</button></form>
