@@ -208,7 +208,7 @@ export function RoastStudio({ mock, configured, userId }: { mock: boolean; confi
   }
   const status = !camera ? starting ? "Waiting for camera permission…" : "Camera starts when you are ready." : !ready ? "Tracking unavailable / loading" : faceCount > 1 ? "One participant only, please" : faceCount === 0 ? "Looking for a face" : !enabled ? "Paused — camera is on" : thinking ? "Thinking…" : "Getting your roast ready…";
   const previewLabel = finished ? "Ego checked" : !camera ? starting ? "Connecting…" : "Camera off" : mock ? "Demo · no AI analysis" : "Camera on";
-  const tryAgainDisabled = !finished || publishing || !consent || !configured || (camera && (!ready || enabled));
+  const tryAgainDisabled = publishing || !consent || !configured || (camera && (!ready || enabled));
   return <main id="main" className={styles.page}>
     <header className={styles.header}>
       <div><h1>Get checked<span>.</span></h1><p>Your ego called. We declined.</p></div>
@@ -245,19 +245,17 @@ export function RoastStudio({ mock, configured, userId }: { mock: boolean; confi
           <label><input type="checkbox" checked={consent} onChange={e => changeConsent(e.target.checked)} /><span>{mock ? "I understand this is a local demo with scripted captions." : "I agree to send snapshots to Gemini for AI roasts and Seedream to add the punchline."}</span></label>
         </div>
         {!configured && <p role="alert" className={styles.message}>Live roasting is unavailable right now. Please try again later.</p>}
-        {!camera && !starting && <button className={styles.primary} disabled={!consent || !configured || publishing} onClick={() => void start()}>Check my ego <span aria-hidden="true">→</span></button>}
+        {!camera && !starting && !finished && <button className={styles.primary} disabled={!consent || !configured || publishing} onClick={() => void start()}>Check my ego <span aria-hidden="true">→</span></button>}
         {starting && <button className={styles.primary} onClick={stop}>Cancel camera request</button>}
-        {camera && <button className={styles.primary} disabled={!consent || !ready || publishing} onClick={() => { if (enabled) pause(); else roastAgain(); }}>{enabled ? "Cancel roast" : "Hurt my feelings again ↗"}</button>}
+        {camera && enabled && <button className={styles.primary} disabled={publishing} onClick={pause}>Cancel roast</button>}
+        {(camera && !enabled || finished && !camera) && !starting && <div className={styles.controlActions}>
+          <button className={styles.secondary} disabled={tryAgainDisabled} onClick={() => { if (camera) roastAgain(); else void start(); }}><StudioIcon name="refresh" />Try again</button>
+          {finished ? <PublishEgo key={finished.receipt} {...finished} onBusyChange={setPublishing} /> : <button className={`${styles.challengeButton} ${styles.publishButton}`} disabled>Publish my ego</button>}
+        </div>}
         {message && <p role="alert" className={styles.message}>{message}</p>}
       </section>
     </div>
-    <section className={styles.resultPanel} aria-label="Your punchline">
-      <div><h2>Your punchline</h2><p>{finished ? "Your screenshot is ready to share." : selected && publishing ? "Your screenshot is taking shape." : "Your roast will appear in your screenshot."}</p></div>
-      <div className={styles.resultActions}>
-        <button className={styles.secondary} disabled={tryAgainDisabled} onClick={() => { if (camera) roastAgain(); else void start(); }}><StudioIcon name="refresh" />Try again</button>
-        {finished ? <PublishEgo key={finished.receipt} {...finished} onBusyChange={setPublishing} /> : <button className={`${styles.challengeButton} ${styles.publishButton}`} disabled><StudioIcon name="send" />Publish</button>}
-      </div>
-    </section>
+
   </main>;
 }
 

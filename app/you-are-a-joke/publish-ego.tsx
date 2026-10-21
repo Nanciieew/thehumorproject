@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { isUuid } from "@/lib/gallery-types";
 import styles from "./studio.module.css";
+import modal from "./publish-ego.module.css";
 
 export function PublishEgo({ receipt, snapshot, onBusyChange }: { receipt: string; snapshot: string; roast: string; onBusyChange: (busy: boolean) => void }) {
   const [open, setOpen] = useState(false);
@@ -45,18 +46,29 @@ export function PublishEgo({ receipt, snapshot, onBusyChange }: { receipt: strin
   }
   return <>
     {photoId ? <Link ref={resultLink} href={href} className={`${styles.challengeButton} ${styles.publishButton}`}>View my ego ↗</Link> : <button ref={button} className={`${styles.challengeButton} ${styles.publishButton}`} aria-haspopup="dialog" onClick={() => setOpen(true)}>Publish my ego</button>}
-    {open && <dialog ref={dialog} className="design-dialog" aria-labelledby="publish-ego-title" onCancel={e => { e.preventDefault(); close(); }}>
-      <h2 id="publish-ego-title">{photoId ? "Your ego is public." : "Publish my ego"}</h2>
-      {/* This preview remains in browser memory until public sharing is confirmed. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className={styles.publishSnapshot} src={`data:image/webp;base64,${snapshot}`} width="320" alt="Your roast snapshot for public sharing" />
-      {photoId ? <><p role="status">Published to Checked Gallery. Gallery votes start at zero.</p><Link href={href} className="ego-button">View in Checked Gallery ↗</Link></> : <>
-        <p className="ego-note">Your snapshot, roast and profile name will be public. Signed-in people can vote.</p>
-        <label className="ego-check"><input type="checkbox" checked={approved} disabled={busy} onChange={e => setApproved(e.target.checked)} />I agree to publish this snapshot and roast to Checked Gallery.</label>
-        {error && <p role="alert" className="form-error">{error}</p>}
-        <button className="ego-button" disabled={!approved || busy} onClick={() => void publish()}>{busy ? "Publishing…" : "Publish to Checked Gallery"}</button>
-      </>}
-      <button className="dialog-cancel" disabled={busy} onClick={close}>{photoId ? "Close" : "Cancel"}</button>
+    {open && <dialog ref={dialog} className={modal.dialog} aria-labelledby="publish-ego-title" onCancel={e => { e.preventDefault(); close(); }}>
+      <header className={modal.header}>
+        <h2 id="publish-ego-title">{photoId ? "Your ego is public." : "Publish my ego"}</h2>
+        <button className={modal.close} aria-label="Close publish window" disabled={busy} onClick={close}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m5 5 14 14M19 5 5 19" /></svg></button>
+      </header>
+      <div className={modal.evidence}>
+        <div className={modal.photo}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`data:image/webp;base64,${snapshot}`} alt="Your roast snapshot for public sharing" />
+        </div>
+        <span className={modal.clip} aria-hidden="true"><svg viewBox="0 0 24 30" fill="none"><path d="M8 3h10v8" /><path d="m6 18 4 4 9-11" /></svg></span>
+      </div>
+      <div className={modal.details}>
+        {photoId ? <p role="status">Published to Checked Gallery. Gallery votes start at zero.</p> : <>
+          <p>Your screenshot and profile name will be public.</p>
+          <label className={modal.consent}><input type="checkbox" checked={approved} disabled={busy} onChange={e => setApproved(e.target.checked)} /><span>I agree to share this meme in Checked Gallery.</span></label>
+          {error && <p role="alert" className={modal.error}>{error}</p>}
+        </>}
+      </div>
+      <footer className={modal.actions}>
+        <button className={modal.cancel} disabled={busy} onClick={close}>{photoId ? "Close" : "Cancel"}</button>
+        {photoId ? <Link href={href} className={modal.publish}>View in Checked Gallery ↗</Link> : <button className={modal.publish} aria-label="Publish to Checked Gallery" disabled={!approved || busy} onClick={() => void publish()}>{busy ? "Publishing…" : "Publish my ego"}</button>}
+      </footer>
     </dialog>}
   </>;
 }
