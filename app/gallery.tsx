@@ -35,6 +35,9 @@ function orderPhotos(items: GalleryPhoto[], sort: GallerySort) {
 function GalleryCard({ photo, rank, leading, feedback, signedIn, requestLogin, updateVote }: { rank?: number; leading: boolean; feedback?: 1 | -1; photo: GalleryPhoto; signedIn: boolean; requestLogin: () => void; updateVote: VoteUpdate }) {
   const vote = photo.vote;
   const count = photo.upvotes;
+  const downloadName = `checked-meme-${photo.id}.webp`;
+  const downloadUrl = new URL(photo.photo_url);
+  downloadUrl.searchParams.set("download", downloadName);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const inFlight = useRef(false);
@@ -57,9 +60,9 @@ function GalleryCard({ photo, rank, leading, feedback, signedIn, requestLogin, u
     } finally { inFlight.current = false; setBusy(false); }
   }
   return <article id={`photo-${photo.id}`} className={`gallery-card ${styles.card}`} data-leading={leading} data-kind={photo.kind === "ego" || photo.result ? "ego" : "memes"}>
-    <div className="card-image"><MemeImage src={photo.photo_url} alt={photo.title || `Meme shared by ${photo.contributor_name}`} width={400} height={400} sizes="(max-width: 650px) 100vw, (max-width: 1150px) 50vw, 25vw" loading={rank === 1 ? "eager" : "lazy"} />{rank && <span className={styles.rank} aria-label={`Rank ${rank}`}>#{rank}{leading && <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="m2 6 5 4 5-7 5 7 5-4-3 14H5Z"/></svg>}</span>}</div>
+    <div className="card-image"><MemeImage src={photo.photo_url} alt={photo.title || `Meme shared by ${photo.contributor_name}`} width={400} height={400} sizes="(max-width: 650px) 100vw, (max-width: 1150px) 50vw, 25vw" loading={rank === 1 ? "eager" : "lazy"} />{rank && <span className={styles.rank} aria-label={`Rank ${rank}`}>#{rank}{leading && <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor"><path d="m2 6 5 4 5-7 5 7 5-4-3 14H5Z"/></svg>}</span>}<a className={styles.download} href={downloadUrl.href} download={downloadName} aria-label="Download meme" title="Download meme"><Icon name="download" /></a></div>
     <div className="card-info">
-      <h3 title={photo.title || photo.contributor_name}><Link className={styles.cardLink} aria-label={photo.title || photo.contributor_name} href={`/avatars/${photo.id}`}><span className={styles.avatar} aria-hidden="true">{photo.contributor_photo_url ? <Image src={photo.contributor_photo_url} alt="" width={38} height={38} unoptimized /> : <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M3 23v-3a9 9 0 0 1 18 0v3Z"/></svg>}</span><span className={styles.creatorName}>{photo.contributor_name}</span></Link></h3>
+      <h3 title={photo.title || photo.contributor_name}><span className={styles.creator}><span className={styles.avatar} aria-hidden="true">{photo.contributor_photo_url ? <Image src={photo.contributor_photo_url} alt="" width={38} height={38} unoptimized /> : <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M3 23v-3a9 9 0 0 1 18 0v3Z"/></svg>}</span><span className={styles.creatorName}>{photo.contributor_name}</span></span></h3>
       {photo.result && <p className="battle-tally">{photo.result.outcome} · Battle votes: {photo.result.battle_votes} · Gallery upvotes: {count}</p>}
       {photo.result && <blockquote className="work-card-description">{photo.result.roast}</blockquote>}
       {photo.description && (!photo.result || photo.description !== photo.result.roast) && <p className="work-card-description">{photo.description}</p>}

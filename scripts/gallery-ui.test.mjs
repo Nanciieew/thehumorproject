@@ -292,10 +292,17 @@ test("avatar name search sends a trimmed query, survives sort changes and clears
 });
 
 
-test("gallery has a single bubble title and avatar cards link to public descriptions while voting stays separate", () => {
+test("gallery memes stay on the gallery when clicked, with separate download and voting controls", () => {
   const ui = mount("user", [{...photo("one"), title: "Bubble Hero", description: "A happy little adventurer."}]);
   assert.equal(ui.getByRole("heading", {level: 1, name: "Checked Gallery"}).getAttribute("id"), "gallery-title");
-  assert.equal(ui.getByRole("link", {name: "Bubble Hero"}).getAttribute("href"), "/avatars/one");
+  const image = ui.getByRole("img", {name: "Bubble Hero"});
+  const location = window.location.href;
+  assert.equal(image.closest("a, button"), null);
+  fireEvent.click(image);
+  fireEvent.click(ui.getByText("Test Contributor"));
+  assert.equal(window.location.href, location);
+  assert.equal(ui.getByRole("article").querySelectorAll("a").length, 1);
+  assert.equal(ui.getByRole("link", {name: "Download meme"}).getAttribute("download"), "checked-meme-one.webp");
   assert.ok(ui.getByRole("button", {name: "Most upvotes"}));
   assert.ok(ui.getByRole("button", {name: "Memes"}));
   assert.ok(ui.getByRole("button", {name: "Newest first"}));

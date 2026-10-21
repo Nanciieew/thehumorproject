@@ -29,7 +29,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     const body = await request.json();
     await deleteWork(viewer.user.id, id, body?.confirmed === true);
-    revalidatePath("/my-works"); revalidatePath(`/my-works/${id}`); revalidatePath(`/avatars/${id}`); revalidatePath("/gallery");
+    revalidatePath("/my-works"); revalidatePath(`/my-works/${id}`); revalidatePath("/gallery");
     return Response.json({ deleted: true }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) { return galleryError(error); }
 }

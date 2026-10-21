@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type IconName = "quest" | "create" | "roast" | "checkboard" | "home" | "flame" | "people" | "settings" | "marketplace" | "works" | "arrow" | "grid" | "spark" | "mask" | "user" | "leaderboard" | "logout" | "upload" | "close";
+type IconName = "quest" | "create" | "roast" | "checkboard" | "home" | "flame" | "people" | "settings" | "marketplace" | "works" | "arrow" | "grid" | "spark" | "mask" | "user" | "leaderboard" | "logout" | "upload" | "download" | "close";
 export function Icon({ name, className = "" }: { name: IconName; className?: string }) {
   const paths: Record<IconName, ReactNode> = {
     quest: <><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M7 3v4m10-4v4M3 10h18m-13 5 3 3 5-5" /></>,
@@ -21,6 +21,7 @@ export function Icon({ name, className = "" }: { name: IconName; className?: str
     leaderboard: <path d="M4 21V12h5v9m0 0V4h6v17m0 0V9h5v12M2 21h20" />,
     logout: <path d="M10 4H4v16h6m4-12 4 4-4 4m-5-4h11" />,
     upload: <path d="M12 16V3m-5 5 5-5 5 5M3 15v5h18v-5" />,
+    download: <path d="M12 3v13m-5-5 5 5 5-5M3 16v5h18v-5" />,
     close: <path d="m5 5 14 14M19 5 5 19" />,
   };
   return <svg aria-hidden="true" className={`ui-icon ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
