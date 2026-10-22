@@ -420,6 +420,25 @@ aggregate SQL and permissions are also covered by `npm run test:leaderboard-db`.
 The live integration script `scripts/test-leaderboard.mjs` verifies the dashboard
 page and endpoint with temporary fixtures that are removed afterward.
 
+## Get Checked performance
+
+Get Checked keeps Gemini for the roast and Seedream for the finished image.
+Face tracking initializes while camera permission and startup are pending, after
+explicit consent and Start. Uploads still require a ready tracker and exactly one
+participant. A successful roast releases its database lease once; provider failures
+still release it, and failed releases retry cleanup. The interface shows
+“Generating your image…” until the final Seedream result is available.
+
+Inspect the `Server-Timing` response header on `/api/roast` and `/api/roast/meme`
+in browser Network tools. Server logs marked `[get-checked]` contain the same
+durations in milliseconds: authentication, lease acquire/finish or error cleanup,
+Gemini, Seedream, image download, compression, and total handler time. Each route
+reports only its own stages; these timings exclude browser camera/model startup,
+request/response transfer, and image display. Logs contain no account identifiers,
+captions, snapshots, keys, or image URLs. Provider model, prompt, resolution, and
+image quality settings are unchanged. `npm run test:roast` includes mocked pipeline
+checks without paid provider calls.
+
 ## checked — deployment and new competition features
 
 checked replaces the home gallery with **Get Checked**, the consent-first

@@ -18,7 +18,7 @@
     "test:leaderboard-db": "node --test scripts/leaderboard-db.test.mjs",
     "test:leaderboard-api": "node --conditions=react-server --import tsx --test scripts/leaderboard-api.test.mjs",
     "leaderboard:admin": "node --env-file=.env.local scripts/leaderboard-admin.mjs",
-    "test:roast": "node --import tsx --import ./scripts/roast-css-loader.mjs --test scripts/roast.test.mjs scripts/roast-ui.test.mjs && node --conditions=react-server --import tsx --test scripts/roast-provider.test.mjs",
+    "test:roast": "node --import tsx --import ./scripts/roast-css-loader.mjs --test scripts/roast.test.mjs scripts/roast-ui.test.mjs && node --conditions=react-server --import tsx --test scripts/roast-provider.test.mjs scripts/roast-pipeline.test.mjs",
     "test:factory": "node --import tsx --import ./scripts/roast-css-loader.mjs --test scripts/disguise-ui.test.mjs && node --conditions=react-server --import tsx --test scripts/factory-server.test.mjs scripts/factory-render.test.mjs && node --test scripts/factory-db.test.mjs",
     "test:disguise": "node --import tsx --import ./scripts/roast-css-loader.mjs --test scripts/disguise-ui.test.mjs && node --conditions=react-server --import tsx --test scripts/seedream-generation.test.mjs",
     "test:images-reference": "node --import tsx --test scripts/seedream-reference.test.mjs",

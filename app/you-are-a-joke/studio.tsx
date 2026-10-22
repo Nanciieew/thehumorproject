@@ -83,16 +83,19 @@ export function RoastStudio({ mock, configured, userId }: { mock: boolean; confi
     stop(); const token = generation.current; setStarting(true); setMessage("");
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("Camera access requires HTTPS or localhost and a supported browser.");
-      const media = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+      const permission = navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+      // Load the local model while permission/camera startup is pending.
+      // No frames are processed or sent until the camera and tracker are ready.
+      initializeTracking();
+      const media = await permission;
       if (token !== generation.current || !consentRef.current || document.hidden) { media.getTracks().forEach(t => t.stop()); return; }
       stream.current = media;
       if (!video.current) { media.getTracks().forEach(t => t.stop()); return; }
       video.current.srcObject = media; await video.current.play();
-      video.current.style.aspectRatio = `${video.current.videoWidth} / ${video.current.videoHeight}`;
       if (token !== generation.current) return;
+      video.current.style.aspectRatio = `${video.current.videoWidth} / ${video.current.videoHeight}`;
       setCamera(true); setStarting(false); running.current = true; setEnabled(true);
       session.current = crypto.randomUUID();
-      initializeTracking();
     } catch (e) {
       if (token !== generation.current) return;
       stop(); setMessage(e instanceof DOMException && e.name === "NotAllowedError" ? "Camera permission was blocked. Allow camera access in your browser and system privacy settings, then try again." : e instanceof Error ? e.message : "Could not open the camera. Check that a camera is connected and available.");
@@ -108,7 +111,7 @@ export function RoastStudio({ mock, configured, userId }: { mock: boolean; confi
       w.onmessage = ({ data }) => {
         if (worker.current !== w) return;
         if (data.type === "ready") { workerReady.current = true; setReady(true); setMessage(""); return; }
-        if (data.type === "error") { workerReady.current = false; busyTracking.current = false; setReady(false); pause(); setMessage("Local tracking could not load. Refresh the page to restart."); return; }
+        if (data.type === "error") { stop(); setMessage("Local tracking could not load. Refresh the page to restart."); return; }
         busyTracking.current = false;
         const points = data.landmarks as Point[][];
         const count = points.length; const now = Date.now();
@@ -134,9 +137,9 @@ export function RoastStudio({ mock, configured, userId }: { mock: boolean; confi
           if (!previous || now - previous.at > 700) previous = current;
         } else { tracking.current = { ...old, faces: count, at: now }; previous = null; frames.current = []; }
       };
-      w.onerror = () => { if (worker.current === w) { workerReady.current = false; busyTracking.current = false; setReady(false); pause(); setMessage("Local face tracking failed. Refresh the page to restart."); } };
+      w.onerror = () => { if (worker.current === w) { stop(); setMessage("Local face tracking failed. Refresh the page to restart."); } };
       w.postMessage({ type: "init" });
-    } catch { setMessage("This browser cannot start the tracking worker. Try a current desktop browser."); pause(); }
+    } catch { stop(); setMessage("This browser cannot start the tracking worker. Try a current desktop browser."); }
   }
   const busyTracking = useRef(false);
 
@@ -206,7 +209,7 @@ export function RoastStudio({ mock, configured, userId }: { mock: boolean; confi
     pause();
     setIntensity(nextIntensity); setTopics(nextTopics); options.current = { intensity: nextIntensity, direction: direction.trim(), excludedTopics: nextTopics.split(",").map(s => s.trim().slice(0, 80)).filter(Boolean).slice(0, 10) }; invalidate(true);
   }
-  const status = !camera ? starting ? "Waiting for camera permission…" : "Camera starts when you are ready." : !ready ? "Tracking unavailable / loading" : faceCount > 1 ? "One participant only, please" : faceCount === 0 ? "Looking for a face" : !enabled ? "Paused — camera is on" : thinking ? "Thinking…" : "Getting your roast ready…";
+  const status = selected && !finished && publishing ? "Generating your image…" : !camera ? starting ? "Waiting for camera permission…" : "Camera starts when you are ready." : !ready ? "Tracking unavailable / loading" : faceCount > 1 ? "One participant only, please" : faceCount === 0 ? "Looking for a face" : !enabled ? "Paused — camera is on" : thinking ? "Thinking…" : "Getting your roast ready…";
   const previewLabel = finished ? "Ego checked" : !camera ? starting ? "Connecting…" : "Camera off" : mock ? "Demo · no AI analysis" : "Camera on";
   const tryAgainDisabled = publishing || !consent || !configured || (camera && (!ready || enabled));
   return <main id="main" className={styles.page}>

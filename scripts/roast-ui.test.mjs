@@ -6,6 +6,7 @@ const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http:
 for (const name of ['window', 'document', 'HTMLElement', 'HTMLInputElement', 'MutationObserver', 'Node', 'Event', 'MouseEvent', 'getComputedStyle', 'navigator']) Object.defineProperty(globalThis, name, { configurable: true, value: dom.window[name] });
 globalThis.requestAnimationFrame = () => 1; globalThis.cancelAnimationFrame = () => {};
 globalThis.self = dom.window;
+globalThis.Worker = class { postMessage() {} terminate() {} };
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { render, fireEvent, waitFor, cleanup, act } = await import('@testing-library/react');
 const { RoastStudio } = await import('../app/you-are-a-joke/studio.tsx');
@@ -30,6 +31,42 @@ test('late permission after cancellation immediately stops the stream', async ()
   fireEvent.click(ui.getByRole('button', { name: 'Cancel camera request' }));
   resolve({ getTracks: () => [{ stop: () => stopped++ }] });
   await waitFor(() => assert.equal(stopped, 1)); assert.ok(ui.getByText(/Camera off/));
+});
+test('tracking initializes while camera permission is pending and cannot upload early', async () => {
+  let resolve, uploads = 0, terminated = 0;
+  const workers = [];
+  globalThis.Worker = class {
+    constructor() { workers.push(this); }
+    postMessage(data) { assert.equal(data.type, 'init'); }
+    terminate() { terminated++; }
+  };
+  globalThis.fetch = async () => { uploads++; return new Response(); };
+  Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: () => new Promise(r => resolve = r) } });
+  const ui = mount(false);
+  fireEvent.click(ui.getByRole('checkbox')); fireEvent.click(ui.getByRole('button', { name: /Check my ego/ }));
+  const tracker = workers[0];
+  assert.ok(tracker, 'worker starts before camera permission resolves');
+  assert.ok(ui.getByRole('button', { name: 'Cancel camera request' }));
+  await act(async () => tracker.onmessage({ data: { type: 'ready' } }));
+  assert.equal(uploads, 0);
+  fireEvent.click(ui.getByRole('button', { name: 'Cancel camera request' }));
+  let stopped = 0;
+  await act(async () => resolve({ getTracks: () => [{ stop: () => stopped++ }] }));
+  assert.equal(stopped, 1); assert.equal(terminated, 1); assert.equal(uploads, 0);
+});
+test('tracking failure during permission startup closes the attempt and stops a late camera', async () => {
+  let resolve, stopped = 0;
+  const workers = [];
+  globalThis.Worker = class { constructor() { workers.push(this); } postMessage() {} terminate() {} };
+  Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: () => new Promise(r => resolve = r) } });
+  const ui = mount(false);
+  fireEvent.click(ui.getByRole('checkbox')); fireEvent.click(ui.getByRole('button', { name: /Check my ego/ }));
+  const tracker = workers[0];
+  await act(async () => tracker.onmessage({ data: { type: 'error' } }));
+  assert.ok(ui.getByText('Local tracking could not load. Refresh the page to restart.'));
+  assert.equal(ui.queryByRole('button', { name: 'Cancel camera request' }), null);
+  await act(async () => resolve({ getTracks: () => [{ stop: () => stopped++ }] }));
+  assert.equal(stopped, 1); assert.ok(ui.getByText('Camera off'));
 });
 test('mock mode makes no uploads and missing configuration cannot start', () => {
   let calls = 0; globalThis.fetch = async () => { calls++; return new Response(); };
@@ -123,7 +160,7 @@ test('one click produces one roast, preserves its receipt while paused, and need
   await respond(0, 'First roast.');
   await waitFor(() => assert.ok(ui.getByRole('button', { name: 'Try again' })));
   assert.equal(ui.queryByRole('button', { name: 'Challenge a friend ↗' }), null);
-  assert.ok(ui.getByText(/Paused — camera is on/));
+  assert.ok(ui.getByText('Generating your image…'));
   assert.equal(memes.length, 1);
   assert.equal(memes[0].body.receipt, 'receipt-0');
   assert.equal(ui.queryByAltText('The screenshot captured for your punchline'),null);
@@ -136,6 +173,7 @@ test('one click produces one roast, preserves its receipt while paused, and need
   assert.ok(!ui.queryByRole('button', { name: 'Publish my ego' }) || ui.getByRole('button', { name: 'Publish my ego' }).disabled);
   await act(async () => memes[0].resolve(Response.json({ snapshot: 'Z2VuZXJhdGVk', receipt: 'meme-receipt' })));
   assert.equal(ui.getByAltText('Your checked screenshot').getAttribute('src'), 'data:image/webp;base64,Z2VuZXJhdGVk');
+  assert.ok(ui.getByText(/Paused — camera is on/));
   const publish = ui.getByRole('button', { name: 'Publish my ego' });
   assert.ok(ui.getByRole('region', { name: 'Experience controls' }).contains(publish));
   assert.equal(publish.parentElement,ui.getByRole('button',{name:'Try again'}).parentElement);
