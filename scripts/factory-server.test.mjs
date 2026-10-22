@@ -9,7 +9,7 @@ const {parseCaptions}=await import('../lib/factory/captions.ts');
 const originalFetch=globalThis.fetch,originalFrom=supabase.from,originalStorage=supabase.storage.from;
 const tables={images:new Map(),factory_batches:new Map()};
 const objects=new Map(),removed=[],requests=[];
-let failVariant=-1,failRemove=false;
+let failVariant=-1,failRemove=false,failOriginal=false;
 const bytes=await sharp({create:{width:400,height:300,channels:3,background:'#aaa'}}).jpeg().toBuffer();
 const image=`data:image/jpeg;base64,${bytes.toString('base64')}`;
 const owner=randomUUID(),captions=['My last brain cell has left the chat','When the deadline starts looking back','Me pretending the Wi-Fi caused this','Monday called and I declined','That meeting could have been a nap'];
@@ -33,13 +33,13 @@ class Query {
 }
 supabase.from=table=>new Query(table);
 supabase.storage.from=bucket=>({
- async upload(path,data){if(path.endsWith(`/${failVariant}.webp`))return{error:{message:'Failed'}};objects.set(`${bucket}/${path}`,Buffer.from(data));return{error:null};},
+ async upload(path,data){if(path.endsWith(`/${failVariant}.webp`)||(failOriginal&&path.includes('/original.')))return{error:{message:'Failed'}};objects.set(`${bucket}/${path}`,Buffer.from(data));return{error:null};},
  async remove(paths){if(failRemove)return{error:{message:'Failed'}};for(const path of paths){removed.push(`${bucket}/${path}`);objects.delete(`${bucket}/${path}`);}return{error:null};},
  async download(path){const value=objects.get(`${bucket}/${path}`);return value?{data:new Blob([value],{type:'image/webp'}),error:null}:{data:null,error:{}};},
  async createSignedUrl(path){return{data:{signedUrl:`https://fixture.supabase.co/${bucket}/${path}`},error:null};}
 });
 beforeEach(()=>{
- for(const rows of Object.values(tables))rows.clear();objects.clear();removed.length=0;requests.length=0;failVariant=-1;failRemove=false;
+ for(const rows of Object.values(tables))rows.clear();objects.clear();removed.length=0;requests.length=0;failVariant=-1;failRemove=false;failOriginal=false;
  globalThis.fetch=async(url,options)=>{
   if(String(url).includes('generateContent')){requests.push({provider:'captions',body:JSON.parse(options.body)});return Response.json({candidates:[{content:{parts:[{text:JSON.stringify({captions})}]}}]});}
   throw new Error('The factory must not call an image generator or download a replacement image.');
@@ -53,8 +53,10 @@ test('invalid input never calls either provider; malformed or duplicate caption 
  for(const value of [{captions:['one']},{captions:Array(5).fill('same')},{captions:[...captions.slice(0,4),'x'.repeat(181)]}])assert.throws(()=>parseCaptions(value));
 });
 test('five captions produce five cached overlays on the unchanged original, with no image-provider calls',async()=>{
- const result=await generate();assert.equal(result.variants.length,5);assert.equal(tables.images.size,0);assert.equal(objects.size,5);
+ const result=await generate();assert.equal(result.variants.length,5);assert.equal(tables.images.size,0);assert.equal(objects.size,6);
  assert.deepEqual(result.variants.map(variant=>variant.caption),captions);
+ const originalPath=tables.factory_batches.get(result.id).original_storage_path;
+ assert.deepEqual(objects.get(`generated-images/${originalPath}`),bytes,'the exact uncaptioned upload is retained separately');
  assert.equal(requests.filter(call=>call.provider==='captions').length,1);
  assert.equal(requests.length,1);
  const original=await sharp(bytes).ensureAlpha().raw().toBuffer();
@@ -70,11 +72,11 @@ test('five captions produce five cached overlays on the unchanged original, with
 test('publishing keeps the selected image, deletes the other four, and retries without duplicates',async()=>{
  const batch=await generate();const selected=2;
  const result=await publishFactoryBatch(owner,batch.id,selected);assert.equal(result.photoId,batch.id);
- assert.equal(tables.images.size,1);assert.equal(tables.images.get(batch.id).description,captions[selected]);assert.ok(tables.images.get(batch.id).published_at);
+ assert.equal(tables.images.size,1);assert.equal(tables.images.get(batch.id).original_storage_path,tables.factory_batches.get(batch.id).original_storage_path);assert.equal(tables.images.get(batch.id).description,captions[selected]);assert.ok(tables.images.get(batch.id).published_at);
  assert.ok(objects.has(`generated-images/${factoryPath(owner,batch.id,selected)}`));
  for(const index of [0,1,3,4])assert.equal(objects.has(`generated-images/${factoryPath(owner,batch.id,index)}`),false);
  assert.deepEqual(objects.get(`gallery-photos/${tables.images.get(batch.id).public_storage_path}`),objects.get(`generated-images/${factoryPath(owner,batch.id,selected)}`),'publication copies the exact lossless rendered bytes');
- assert.equal(objects.size,2);await publishFactoryBatch(owner,batch.id,selected);assert.equal(objects.size,2);
+ assert.equal(objects.size,3);await publishFactoryBatch(owner,batch.id,selected);assert.equal(objects.size,3);
  await assert.rejects(publishFactoryBatch(owner,batch.id,0),/already been published/);
  assert.equal(requests.length,1);
 });
@@ -82,7 +84,7 @@ test('cross-account reads and publications cannot reveal or delete another batch
  const batch=await generate(),other=randomUUID();
  await assert.rejects(readFactoryBatch(other,batch.id),/not found/);
  await assert.rejects(publishFactoryBatch(other,batch.id,0),/not found/);
- await assert.rejects(discardFactoryBatch(other,batch.id),/not found/);assert.equal(objects.size,5);
+ await assert.rejects(discardFactoryBatch(other,batch.id),/not found/);assert.equal(objects.size,6);
 });
 test('one failed image waits for siblings then deletes all partial outputs',async()=>{
  failVariant=2;await assert.rejects(generate(),/cache a meme/);assert.equal(objects.size,0);assert.equal(tables.images.size,0);
@@ -90,18 +92,30 @@ test('one failed image waits for siblings then deletes all partial outputs',asyn
 });
 test('concurrent differing selections publish only one keeper',async()=>{
  const batch=await generate();const results=await Promise.allSettled([publishFactoryBatch(owner,batch.id,0),publishFactoryBatch(owner,batch.id,1)]);
- assert.equal(results.filter(result=>result.status==='fulfilled').length,1);assert.equal(tables.images.size,1);assert.equal(objects.size,2);
+ assert.equal(results.filter(result=>result.status==='fulfilled').length,1);assert.equal(tables.images.size,1);assert.equal(objects.size,3);
 });
 test('cleanup failure after publishing is safely retryable without deleting the selected original',async()=>{
  const batch=await generate();failRemove=true;await assert.rejects(publishFactoryBatch(owner,batch.id,3),/cleanup is pending/);
  assert.equal(tables.factory_batches.get(batch.id).state,'published');assert.ok(tables.images.get(batch.id).published_at);
  assert.equal((await previewFactoryBatch(await readFactoryBatch(owner,batch.id))).photoId,undefined,'restoring a batch never reports unfinished cleanup as complete');
- failRemove=false;await publishFactoryBatch(owner,batch.id,3);assert.equal(objects.size,2);assert.ok(objects.has(`generated-images/${factoryPath(owner,batch.id,3)}`));
+ failRemove=false;await publishFactoryBatch(owner,batch.id,3);assert.equal(objects.size,3);assert.ok(objects.has(`generated-images/${factoryPath(owner,batch.id,3)}`));
 });
 test('expiration removes abandoned batches and preserves published memes',async()=>{
  const abandoned=await generate();await discardFactoryBatch(owner,abandoned.id);assert.equal(objects.size,0);
  const published=await generate();await publishFactoryBatch(owner,published.id,4);
  for(const batch of tables.factory_batches.values())batch.expires_at='2000-01-01T00:00:00Z';
- await cleanupFactoryBatches();assert.equal(tables.factory_batches.size,0);assert.equal(tables.images.size,1);assert.equal(objects.size,2);
+ await cleanupFactoryBatches();assert.equal(tables.factory_batches.size,0);assert.equal(tables.images.size,1);assert.equal(objects.size,3);
  assert.ok(objects.has(`generated-images/${factoryPath(owner,published.id,4)}`));
+ assert.deepEqual(objects.get(`generated-images/${tables.images.get(published.id).original_storage_path}`),bytes,'the original survives expiration of its preview batch');
+});
+test('PNG originals retain their exact bytes and MIME-compatible object path',async()=>{
+ const png=await sharp(bytes).png().toBuffer(),id=randomUUID();
+ await generateFactoryBatch(owner,{id,image:`data:image/png;base64,${png.toString('base64')}`,direction:'',approved:true});
+ const path=tables.factory_batches.get(id).original_storage_path;
+ assert.ok(path.endsWith('/original.png'));assert.deepEqual(objects.get(`generated-images/${path}`),png);
+ await discardFactoryBatch(owner,id);assert.equal(objects.size,0);
+});
+test('a failed original upload stops before AI generation and leaves no media or partial files',async()=>{
+ failOriginal=true;await assert.rejects(generate(),/save the original photo/);
+ assert.equal(requests.length,0);assert.equal(tables.images.size,0);assert.equal(objects.size,0);
 });

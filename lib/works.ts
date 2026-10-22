@@ -90,13 +90,13 @@ export async function readOwnedWorks(userId: string, cursor: string | null = nul
 export async function deleteWork(userId: string, id: string, confirmed: boolean) {
   if (!confirmed) throw new Error("Confirm deletion first.");
   if (!isUuid(id)) throw new Error("Work not found.");
-  const owned = await supabase.from("images").select("private_storage_path,public_storage_path").eq("contributor_id", userId).eq("id", id).maybeSingle();
+  const owned = await supabase.from("images").select("private_storage_path,public_storage_path,original_storage_path").eq("contributor_id", userId).eq("id", id).maybeSingle();
   if (owned.error) throw new Error("Couldn’t check this meme. Please try again.");
   if (!owned.data) return; // A retry after a successful deletion is safe.
   const removed = await supabase.from("images").delete().eq("contributor_id", userId).eq("id", id).select("id");
   if (removed.error) throw new Error("Couldn’t delete this meme. Please try again.");
   // Votes cascade from images. Remove media only after the row deletion succeeds.
-  for (const [bucket, path] of [["gallery-photos", owned.data.public_storage_path], ["generated-images", owned.data.private_storage_path]] as const) {
+  for (const [bucket, path] of [["gallery-photos", owned.data.public_storage_path], ["generated-images", owned.data.private_storage_path], ["generated-images", owned.data.original_storage_path]] as const) {
     if (path?.startsWith(`${userId}/`)) {
       try { await supabase.storage.from(bucket).remove([path]); } catch { /* The deleted row is already inaccessible. */ }
     }

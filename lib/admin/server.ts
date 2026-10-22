@@ -167,11 +167,11 @@ export async function deleteAdminMedia(id: string, body: unknown) {
   if (object(body).confirmed !== true) throw new AdminError("Confirm permanent deletion first.");
   if (!isUuid(id)) throw new AdminError("Media not found.", 404);
   const result = await supabase.from("images").delete().eq("id", id)
-    .select("contributor_id,private_storage_path,public_storage_path").maybeSingle();
+    .select("contributor_id,private_storage_path,public_storage_path,original_storage_path").maybeSingle();
   if (result.error?.code === "23503") throw new AdminError("This media is referenced by existing records, such as sales, and cannot be deleted.", 409);
   if (result.error) throw new AdminError("Unable to delete this media.", 503);
   if (result.data) {
-    for (const [bucket, path] of [["generated-images", result.data.private_storage_path], ["gallery-photos", result.data.public_storage_path]]) {
+    for (const [bucket, path] of [["generated-images", result.data.private_storage_path], ["gallery-photos", result.data.public_storage_path], ["generated-images", result.data.original_storage_path]]) {
       if (typeof path === "string" && path.startsWith(`${result.data.contributor_id}/`)) await removeObject(bucket, path);
     }
   }

@@ -78,6 +78,11 @@ const request = (path, method = 'GET', body, origin = 'https://app.test') => new
   method, headers: { origin, 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
 });
 const seed = () => { const row = { id, contributor_id: ownerId, source: 'generated', private_storage_path: `${ownerId}/${id}.webp`, public_storage_path: null, published_at: null, title: 'Before', description: 'Original' }; rows.set(id, row); objects.set(`generated-images/${row.private_storage_path}`, png); return row; };
+test('whole-record deletion also removes its privately retained original photo',async()=>{
+  const row=seed();row.original_storage_path=`${ownerId}/factory/${id}/original.png`;
+  objects.set(`generated-images/${row.original_storage_path}`,png);
+  await server.deleteAdminMedia(id,{confirmed:true});assert.equal(objects.size,0);assert.equal(rows.size,0);
+});
 
 test('all entry points deny anonymous, non-admin, missing-profile, non-Google, revoked, and failed permission lookups before privileged work', async () => {
   const endpoints = [

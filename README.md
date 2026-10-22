@@ -420,6 +420,26 @@ aggregate SQL and permissions are also covered by `npm run test:leaderboard-db`.
 The live integration script `scripts/test-leaderboard.mjs` verifies the dashboard
 page and endpoint with temporary fixtures that are removed afterward.
 
+## Factory original-photo retention
+
+New Checked Factory uploads retain the exact uncaptioned JPG/PNG privately,
+alongside the selected finished meme. Unconfirmed or failed batches expire with
+their originals; confirmed originals remain after preview cleanup. Existing media
+without a retained original cannot be reconstructed automatically.
+
+The new nullable `images.original_storage_path` column points to the original
+file in the private `generated-images` Supabase Storage bucket. The matching
+`factory_batches.original_storage_path` tracks it during generation. Confirmation
+links the original to the selected media record, and whole-record deletion removes
+both the original and finished files. No user-interface changes are included.
+
+Apply `supabase/migrations/20261022000000_factory_originals.sql` after the Factory
+migration. The trusted local command
+`node --env-file=.env.local scripts/factory-originals-migrate.mjs --apply` installs
+and verifies it without printing credentials. `npm run test:factory` covers exact
+original bytes, retention after confirmation and preview expiration, and cleanup
+of failed or abandoned generations.
+
 ## Get Checked performance
 
 Get Checked keeps Gemini for the roast and Seedream for the finished image.

@@ -29,8 +29,9 @@ export async function previewFactoryBatch(batch: FactoryBatch): Promise<FactoryP
   }));
   return { id: batch.id, variants, expiresAt: batch.expires_at, selected: batch.selected, ...(batch.state === "published" && batch.cleaned_at ? { photoId: batch.id } : {}) };
 }
-export async function removeFactoryCache(batch: FactoryBatch, keep: number | null = null) {
+export async function removeFactoryCache(batch: FactoryBatch, keep: number | null = null, keepOriginal = keep !== null) {
   const paths = Array.from({ length: 5 }, (_, index) => factoryPath(batch.user_id, batch.id, index)).filter((_, index) => index !== keep);
+  if (batch.original_storage_path && !keepOriginal) paths.push(batch.original_storage_path);
   const removed = await bucket().remove(paths);
   if (removed.error) throw new ImageGenerationError("Unused preview cleanup is pending. Please retry.", 503);
 }
@@ -50,7 +51,9 @@ export async function generateFactoryBatch(userId: string, input: unknown, signa
   const stale = await supabase.from("factory_batches").update({ state: "discarded" }).eq("user_id", userId).eq("state", "generating").lt("created_at", new Date(Date.now() - 10 * 60_000).toISOString());
   if (stale.error) throw new ImageGenerationError("Couldn’t start this batch. Please try again.", 503);
   const id = body.id;
-  const inserted = await supabase.from("factory_batches").insert({ id, user_id: userId }).select("*").single();
+  const mime = image.startsWith("data:image/png;") ? "image/png" : "image/jpeg";
+  const originalPath = `${userId}/factory/${id}/original.${mime === "image/png" ? "png" : "jpg"}`;
+  const inserted = await supabase.from("factory_batches").insert({ id, user_id: userId, original_storage_path: originalPath }).select("*").single();
   if (inserted.error) {
     if (inserted.error.code === "23505") {
       const prior = await supabase.from("factory_batches").select("*").eq("user_id", userId).eq("id", id).maybeSingle();
@@ -63,6 +66,8 @@ export async function generateFactoryBatch(userId: string, input: unknown, signa
   signal = signal ? AbortSignal.any([signal, AbortSignal.timeout(155_000)]) : AbortSignal.timeout(155_000);
   let finalized = false;
   try {
+    const original = await bucket().upload(originalPath, Buffer.from(image.slice(image.indexOf(",") + 1), "base64"), { contentType: mime });
+    if (original.error) throw new ImageGenerationError("Couldn’t save the original photo. Please try again.", 503);
     let captions: string[] = [];
     let images: Buffer[] = [];
     // Ask for shorter copy if a caption cannot fit. Never shrink the font,
@@ -126,7 +131,8 @@ export async function publishFactoryBatch(userId: string, id: string, selected: 
     if (existing.error) throw new Error("Couldn’t check the selected meme.");
     if (existing.data && (existing.data.contributor_id !== userId || existing.data.private_storage_path !== variant.path)) throw new Error("Selected meme does not match the confirmed version.");
     if (!existing.data) {
-      const saved = await supabase.from("images").insert({ id, contributor_id: userId, source: "generated", private_storage_path: variant.path, title: variant.caption.slice(0, 100), description: variant.caption });
+      const saved = await supabase.from("images").insert({ id, contributor_id: userId, source: "generated", private_storage_path: variant.path,
+        original_storage_path: batch.original_storage_path ?? null, title: variant.caption.slice(0, 100), description: variant.caption });
       if (saved.error) throw new Error("Couldn’t save the selected meme. Please retry publishing.");
     }
     await publishGalleryImage(userId, id, "generated");
@@ -159,11 +165,12 @@ export async function cleanupFactoryBatches() {
     const locked = await claim.select("id").maybeSingle();
     if (locked.error) throw new Error("Factory cleanup could not lock an expired batch.");
     if (!locked.data) continue;
-    const image = await supabase.from("images").select("id,published_at").eq("id", batch.id).eq("contributor_id", batch.user_id).maybeSingle();
+    const image = await supabase.from("images").select("id,published_at,original_storage_path").eq("id", batch.id).eq("contributor_id", batch.user_id).maybeSingle();
     if (image.error) throw new Error("Factory cleanup could not check publication.");
-    // Keep the selected private original if its gallery publication succeeded,
+    // Keep the selected finished meme and its uncaptioned upload if publication succeeded,
     // even if the final batch acknowledgement was interrupted.
-    await removeFactoryCache(batch, image.data?.published_at ? batch.selected : null);
+    await removeFactoryCache(batch, image.data?.published_at ? batch.selected : null,
+      !!image.data?.published_at && !!batch.original_storage_path && image.data.original_storage_path === batch.original_storage_path);
     if (image.data && !image.data.published_at) {
       const removed = await supabase.from("images").delete().eq("id", batch.id).eq("contributor_id", batch.user_id).is("published_at", null);
       if (removed.error) throw new Error("Factory cleanup could not remove an expired draft.");

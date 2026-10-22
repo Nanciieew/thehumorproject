@@ -8,6 +8,15 @@ test('factory migration is repeatable, private, and permits only one active gene
   await db.exec('create schema auth; create table auth.users(id uuid primary key); create role anon; create role authenticated; create role service_role bypassrls;');
   const migration=await readFile(new URL('../supabase/migrations/20261019000000_factory_batches.sql',import.meta.url),'utf8');
   await db.exec(migration);await db.exec(migration);
+  await db.exec("create schema storage; create table storage.buckets(id text primary key,public boolean,allowed_mime_types text[]); insert into storage.buckets values('generated-images',false,array['image/webp']); create table public.images(id uuid primary key,title text); grant select,update(title) on public.images to authenticated; insert into public.images values('40000000-0000-4000-8000-000000000001','Existing meme');");
+  const originals=await readFile(new URL('../supabase/migrations/20261022000000_factory_originals.sql',import.meta.url),'utf8');
+  await db.exec(originals);await db.exec(originals);
+  assert.equal((await db.query('select original_storage_path from public.images')).rows[0].original_storage_path,null,'legacy media stays intact without an invented original');
+  const bucket=(await db.query("select * from storage.buckets where id='generated-images'")).rows[0];
+  assert.equal(bucket.public,false);assert.deepEqual([...bucket.allowed_mime_types].sort(),['image/jpeg','image/png','image/webp']);
+  await db.exec('set role authenticated');
+  await assert.rejects(db.query("update public.images set original_storage_path='forged'"),/permission denied/);
+  await db.exec('reset role');
   const owner='10000000-0000-4000-8000-000000000001';
   await db.query('insert into auth.users values ($1)',[owner]);
   await db.query('insert into factory_batches(id,user_id) values ($1,$2)',['20000000-0000-4000-8000-000000000001',owner]);
