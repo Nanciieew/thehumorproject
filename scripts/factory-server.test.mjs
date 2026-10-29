@@ -1,3 +1,4 @@
+import { auditRpcFixture } from "./generation-audit-fixture.mjs";
 import assert from 'node:assert/strict';
 import { after, beforeEach, test } from 'node:test';
 import { randomUUID } from 'node:crypto';
@@ -31,6 +32,9 @@ class Query {
  }
  single(){return Promise.resolve(this.run(true));}maybeSingle(){return this.single();}then(resolve,reject){return Promise.resolve(this.run()).then(resolve,reject);}
 }
+const originalRpc=supabase.rpc;
+supabase.rpc=(name,args)=>auditRpcFixture(name,args);
+after(()=>{supabase.rpc=originalRpc;});
 supabase.from=table=>new Query(table);
 supabase.storage.from=bucket=>({
  async upload(path,data){if(path.endsWith(`/${failVariant}.webp`)||(failOriginal&&path.includes('/original.')))return{error:{message:'Failed'}};objects.set(`${bucket}/${path}`,Buffer.from(data));return{error:null};},

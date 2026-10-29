@@ -1,3 +1,4 @@
+import { auditRpcFixture } from "./generation-audit-fixture.mjs";
 import assert from 'node:assert/strict';
 import { after, beforeEach, test } from 'node:test';
 import { registerHooks } from 'node:module';
@@ -46,7 +47,8 @@ beforeEach(() => {
     assert.equal(table, 'profiles');
     return { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: completed ? { id: userId, onboarding_completed_at: '2026-10-01' } : null, error: null }; } };
   };
-  supabase.rpc = async (name, args) => {
+  supabase.rpc = (name, args) => {
+    const audit = auditRpcFixture(name,args); if (audit) return audit;
     assert.equal(name, 'ego_roast_lock'); calls.push(args);
     if (args.p_mode === 'finish' && finishFailures-- > 0) return { data: null, error: { message: 'unavailable' } };
     return { data: args.p_mode === 'acquire' ? { jokes: [] } : { current }, error: null };

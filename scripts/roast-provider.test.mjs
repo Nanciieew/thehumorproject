@@ -1,6 +1,13 @@
+import { auditRpcFixture } from "./generation-audit-fixture.mjs";
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { generateRoast } from '../lib/roast/gemini.ts';
+process.env.NEXT_PUBLIC_SUPABASE_URL='https://fixture.supabase.co';process.env.SUPABASE_SECRET_KEY='fixture';
+const {supabase}=await import('../lib/supabase.ts');
+const originalRpc=supabase.rpc;
+supabase.rpc=(name,args)=>auditRpcFixture(name,args);
+after(()=>{supabase.rpc=originalRpc;});
+const context={userId:'10000000-0000-4000-8000-000000000001',source:'provider_test',workflow:'live_roast'};
 const originalFetch = globalThis.fetch;
 const originalKey = process.env.GEMINI_API_KEY;
 const originalModel = process.env.GEMINI_MODEL;
@@ -20,15 +27,15 @@ test('Gemini adapter sends inline images, settings, bounded history and structur
     assert.ok(body.systemInstruction.parts[0].text.includes('protected traits'));
     return Response.json({ candidates: [{ content: { parts: [{ thought: true, text: 'internal' }, { text: JSON.stringify(result) }] } }] });
   };
-  assert.deepEqual(await generateRoast(input, ['Previous roast'], new AbortController().signal), result);
+  assert.deepEqual(await generateRoast(input, ['Previous roast'], new AbortController().signal, context), result);
 });
 test('refusals and malformed provider output become empty results; quota and missing config stay explicit', async () => {
   globalThis.fetch = async () => Response.json({ candidates: [{ content: { parts: [{ text: 'invalid' }] } }] });
-  assert.equal(await generateRoast(input, [], new AbortController().signal), null);
+  assert.equal(await generateRoast(input, [], new AbortController().signal, context), null);
   globalThis.fetch = async () => Response.json({ promptFeedback: { blockReason: 'SAFETY' } });
-  assert.equal(await generateRoast(input, [], new AbortController().signal), null);
+  assert.equal(await generateRoast(input, [], new AbortController().signal, context), null);
   globalThis.fetch = async () => new Response(null, { status: 429 });
-  await assert.rejects(generateRoast(input, [], new AbortController().signal), /QUOTA/);
+  await assert.rejects(generateRoast(input, [], new AbortController().signal, context), /QUOTA/);
   delete process.env.GEMINI_API_KEY;
-  await assert.rejects(generateRoast(input, [], new AbortController().signal), /CONFIG/);
+  await assert.rejects(generateRoast(input, [], new AbortController().signal, context), /CONFIG/);
 });

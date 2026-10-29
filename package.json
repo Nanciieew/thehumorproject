@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:generation-audit": "node --conditions=react-server --import tsx --test scripts/generation-audit.test.mjs",
     "test:admin": "node --test scripts/admin-db.test.mjs && node --conditions=react-server --import tsx --import ./scripts/admin-test-loader.mjs --test scripts/admin-api.test.mjs && node --import tsx --import ./scripts/roast-css-loader.mjs --test scripts/admin-ui.test.mjs",
     "test:performance": "node --conditions=react-server --import tsx --test scripts/gallery-server.test.mjs scripts/work-thumbnail.test.mjs scripts/works-server.test.mjs && node --test scripts/images-db.test.mjs",
     "dev": "next dev",

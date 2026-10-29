@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const meta = await sharp(Buffer.from(body.snapshot, "base64"), { limitInputPixels: 640 * 640 }).metadata();
     if (meta.format !== "jpeg" || !meta.width || !meta.height || Math.max(meta.width, meta.height) > 640) throw new Error("Invalid roast snapshot.");
     const prompt = `Turn this exact screenshot into a finished meme. Preserve the person's identity, facial features, expression, clothing, background, framing and aspect ratio. Do not add people or change the scene. Add only this punchline, verbatim (render in uppercase): ${JSON.stringify(roast)}. Match the Checked Factory format: bold condensed Anton-style white uppercase lettering with a thick black outline, centered at the bottom inside the image, generous side and bottom margins, wrapped into at most three readable lines. Keep the face visible. No other text, panels, borders or collage.`;
-    const url = await timing.measure("seedream", () => generateSeedreamOutput(prompt, `data:image/jpeg;base64,${body.snapshot}`, request.signal));
+    const url = await timing.measure("seedream", () => generateSeedreamOutput(prompt, `data:image/jpeg;base64,${body.snapshot}`, request.signal, { userId: viewer.user.id, source: "roast_meme", workflow: "roast_meme" }));
     const downloaded = await timing.measure("download", () => fetchGeneratedImage(url, request.signal));
     const bytes = await timing.measure("compress", () => normalizeGalleryImage(downloaded.bytes, downloaded.mime, 20 * 1024 * 1024));
     const snapshot = bytes.toString("base64");

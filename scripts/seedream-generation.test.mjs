@@ -1,3 +1,4 @@
+import { auditRpcFixture } from "./generation-audit-fixture.mjs";
 import assert from 'node:assert/strict';
 import {after,beforeEach,test} from 'node:test';
 import sharp from 'sharp';
@@ -8,6 +9,9 @@ const {generateSeedreamImage}=await import('../lib/seedream-generation.ts');
 const originalFetch=globalThis.fetch,originalFrom=supabase.from,originalStorage=supabase.storage.from;
 const bytes=await sharp({create:{width:40,height:40,channels:3,background:'#aaa'}}).jpeg().toBuffer();
 const image=`data:image/jpeg;base64,${bytes.toString('base64')}`;let saved,requests;
+const originalRpc=supabase.rpc;
+supabase.rpc=(name,args)=>auditRpcFixture(name,args);
+after(()=>{supabase.rpc=originalRpc;});
 supabase.from=table=>{assert.equal(table,'images');return{insert:async row=>{saved=row;return{error:null};}};};
 supabase.storage.from=bucket=>{assert.equal(bucket,'generated-images');return{upload:async()=>({error:null}),remove:async()=>({error:null}),createSignedUrl:async path=>({data:{signedUrl:`https://fixture.supabase.co/${path}`},error:null})};};
 beforeEach(()=>{saved=null;requests=[];globalThis.fetch=async(url,options)=>{

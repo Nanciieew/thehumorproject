@@ -7,7 +7,7 @@ import { generateRoast } from "@/lib/roast/gemini";
 import { readBoundedJson } from "@/lib/roast/read-body";
 import { createRoastTiming } from "@/lib/roast/timing";
 export const runtime = "nodejs";
-export const maxDuration = 20;
+export const maxDuration = 30;
 export async function POST(request: Request) {
   const timing = createRoastTiming("roast");
   const json = (body: unknown, status = 200) => Response.json(body, { status, headers: timing.headers(status) });
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   let finished = false;
   try {
     const signal = request.signal;
-    const output = await timing.measure("gemini", () => generateRoast(body, lock.jokes, signal));
+    const output = await timing.measure("gemini", () => generateRoast(body, lock.jokes, signal, { userId: viewer.user.id, source: "getchecked", workflow: "live_roast", externalRequestId: body.requestId, sessionId: body.sessionId }));
     const duplicate = validOutput(output) && output.roast && lock.jokes.some(j => j.toLowerCase().replace(/\W/g, "") === output.roast!.toLowerCase().replace(/\W/g, ""));
     const excluded = validOutput(output) && output.roast && body.settings.excludedTopics.some(t => t.trim() && output.roast!.toLowerCase().includes(t.toLowerCase()));
     const accepted = !signal.aborted && validOutput(output) && !duplicate && !excluded;
